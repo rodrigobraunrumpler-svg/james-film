@@ -1,12 +1,12 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  // Vite resuelve los paths de tsconfig de forma nativa: el plugin
-  // vite-tsconfig-paths está obsoleto.
   resolve: { tsconfigPaths: true },
   test: {
     globals: true,
     root: './',
-    include: ['src/**/*.spec.ts'],
+    include: ['test/**/*.integration.spec.ts'],
+    // Comparten la misma base: en serie, o se pisan entre sí.
+    fileParallelism: false,
   },
 });

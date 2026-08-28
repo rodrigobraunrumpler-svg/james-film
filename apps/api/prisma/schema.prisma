@@ -1,3 +1,11 @@
+// ============================================================
+//  JAMES FILM — Schema Prisma (PostgreSQL)
+//  Base: docs/proyecto.md §13 · Deltas: CLAUDE.md §3
+//  14 modelos + 1 pivote · 8 enums
+// ============================================================
+
+// Prisma 7: la conexión NO va aquí, va en prisma7.config.ts (que usa DIRECT_URL).
+// El cliente de runtime recibe DATABASE_URL vía driver adapter en PrismaService.
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -5,4 +13,425 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ------------------------------------------------------------
+//  CATEGORÍAS
+// ------------------------------------------------------------
+
+model Category {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  tagline     String?
+  description String? @db.Text
+
+  coverKey String? // key de R2, no relación: evita el ciclo Category→Media→Gallery→Category
+
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  metaTitle       String?
+  metaDescription String?
+
+  galleries Gallery[]
+  packages  PackageCategory[]
+  leads     Lead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, order])
+}
+
+// ------------------------------------------------------------
+//  GALERÍAS — un evento cubierto ("XV de Camila")
+// ------------------------------------------------------------
+
+model Gallery {
+  id          String  @id @default(cuid())
+  slug        String  @unique // se genera al crear y NO se regenera al renombrar
+  title       String
+  description String? @db.Text
+
+  eventDate DateTime? @db.Date // una fecha, no un instante. Formatear con timeZone: 'UTC'
+  location  String?
+  coverKey  String?
+
+  isPublished Boolean @default(false)
+  isFeatured  Boolean @default(false)
+  order       Int     @default(0)
+
+  deletedAt DateTime? // soft delete: el cron limpia R2 a los 30 días
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  media        Media[]
+  testimonials Testimonial[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId, isPublished, order])
+  @@index([isFeatured, isPublished])
+  @@index([deletedAt])
+}
+
+// ------------------------------------------------------------
+//  MEDIA — reels, aftermovies y fotos
+// ------------------------------------------------------------
+
+enum MediaType {
+  REEL
+  AFTERMOVIE
+  PHOTO
+}
+
+enum Orientation {
+  VERTICAL
+  HORIZONTAL
+  SQUARE
+}
+
+enum MediaStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+model Media {
+  id          String      @id @default(cuid())
+  type        MediaType
+  orientation Orientation @default(VERTICAL) // se deriva de width/height en el confirm
+  status      MediaStatus @default(PENDING)
+
+  storageKey String  @unique // "videos/uuid.mp4" — SIEMPRE la key, nunca la URL
+  posterKey  String? // frame extraído en el navegador
+
+  mimeType    String
+  sizeBytes   Int
+  width       Int?
+  height      Int?
+  durationSec Int?
+
+  error    String? // qué falló: sin esto el aviso del dashboard es inútil
+  attempts Int     @default(0)
+
+  clientUploadId String? // idempotencia del presign, sin tabla de claves
+
+  alt        String?
+  caption    String?
+  order      Int     @default(0)
+  isFeatured Boolean @default(false) // portada, exclusiva POR GALERÍA
+
+  deletedAt DateTime?
+
+  galleryId String
+  gallery   Gallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([galleryId, clientUploadId])
+  @@index([galleryId, order])
+  @@index([status])
+  @@index([type, isFeatured])
+  @@index([deletedAt])
+}
+
+// ------------------------------------------------------------
+//  PAQUETES — Básico S/300 · Pro S/600 · Premium S/900
+// ------------------------------------------------------------
+
+model Package {
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  name     String
+  subtitle String?
+
+  priceAmount Int? // CÉNTIMOS: S/300 → 30000
+  currency    String  @default("PEN")
+  priceNote   String?
+
+  idealFor String?
+
+  icon        String? // nombre lucide de la lista cerrada de copy.ts
+  imageKey    String? // foto de fondo de la tarjeta
+  accentColor String? // se guarda y se edita; la web v1 NO lo consume
+  badgeText   String? // "NUESTRO MÁS VENDIDO"
+
+  whatsappMessage String?
+
+  isHighlighted Boolean @default(false) // exclusivo, forzado en la API
+  isActive      Boolean @default(true)
+  order         Int     @default(0)
+
+  items          PackageItem[]
+  categories     PackageCategory[]
+  leads          Lead[]
+  whatsappClicks WhatsappClick[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, order])
+}
+
+model PackageCategory {
+  packageId  String
+  categoryId String
+
+  package  Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([packageId, categoryId])
+}
+
+model PackageItem {
+  id       String  @id @default(cuid())
+  text     String
+  included Boolean @default(true)
+  order    Int     @default(0)
+
+  packageId String
+  package   Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@index([packageId, order])
+}
+
+// ------------------------------------------------------------
+//  DIFERENCIADORES — la fila de 4 íconos del flyer
+// ------------------------------------------------------------
+
+model Differentiator {
+  id       String  @id @default(cuid())
+  title    String  @unique
+  subtitle String?
+  icon     String
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  @@index([isActive, order])
+}
+
+// ------------------------------------------------------------
+//  REDES SOCIALES — tabla propia. WhatsApp NO va aquí
+// ------------------------------------------------------------
+
+model SocialLink {
+  id       String  @id @default(cuid())
+  platform String  @unique // String, no enum: una red nueva no debe migrar la base
+  handle   String
+  url      String // completa, no se arma desde el handle
+  icon     String?
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, order])
+}
+
+// ------------------------------------------------------------
+//  TRACKING — el clic a WhatsApp ES el lead
+// ------------------------------------------------------------
+
+model WhatsappClick {
+  id String @id @default(cuid())
+
+  packageId String?
+  package   Package? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+
+  source String? // "hero" | "paquetes" | "footer"
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ------------------------------------------------------------
+//  TESTIMONIOS
+// ------------------------------------------------------------
+
+enum TestimonialFormat {
+  TEXT
+  SCREENSHOT
+}
+
+enum TestimonialSource {
+  WHATSAPP
+  INSTAGRAM
+  TIKTOK
+  DIRECTO
+}
+
+model Testimonial {
+  id     String            @id @default(cuid())
+  format TestimonialFormat @default(SCREENSHOT)
+  source TestimonialSource @default(WHATSAPP)
+
+  authorName   String
+  authorHandle String?
+  avatarKey    String?
+  eventType    String?
+  eventDate    DateTime? @db.Date
+
+  quote         String? @db.Text
+  screenshotKey String?
+  externalUrl   String?
+
+  rating Int?
+
+  galleryId String?
+  gallery   Gallery? @relation(fields: [galleryId], references: [id], onDelete: SetNull)
+
+  hasConsent Boolean @default(false) // NO publicar si es false — Ley 29733
+  isActive   Boolean @default(true)
+  isFeatured Boolean @default(false)
+  order      Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, order])
+  @@index([galleryId, isActive, order])
+}
+
+// ------------------------------------------------------------
+//  LEADS — fuera del v1. La tabla existe vacía a propósito
+// ------------------------------------------------------------
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUOTED
+  WON
+  LOST
+}
+
+model Lead {
+  id      String  @id @default(cuid())
+  name    String
+  phone   String
+  email   String?
+  message String? @db.Text
+
+  eventDate DateTime? @db.Date
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  packageId  String?
+  package    Package?  @relation(fields: [packageId], references: [id], onDelete: SetNull)
+
+  status LeadStatus @default(NEW)
+  notes  String?    @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+// ------------------------------------------------------------
+//  CONFIGURACIÓN DEL SITIO (fila única)
+// ------------------------------------------------------------
+
+model SiteSettings {
+  id String @id @default("singleton")
+
+  brandName String  @default("James Film")
+  role      String?
+  tagline   String?
+  slogan    String?
+  aboutText String? @db.Text // Markdown: el resaltado dorado del flyer
+
+  logoKey      String? // tira de película estilizada
+  signatureKey String? // firma manuscrita, SVG
+
+  whatsappNumber  String? // internacional SIN el +: "51994724944"
+  whatsappDisplay String?
+  whatsappMessage String?
+  ctaText         String?
+
+  email String?
+
+  heroMediaKey  String?
+  heroPosterKey String?
+
+  footerTagline String?
+
+  metaTitle       String?
+  metaDescription String?
+  ogImageKey      String?
+
+  updatedAt DateTime @updatedAt
+}
+
+// ------------------------------------------------------------
+//  USUARIOS Y SESIONES
+// ------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  EDITOR
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String
+  name         String
+  role         Role    @default(EDITOR)
+  isActive     Boolean @default(true)
+
+  sessions Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Rotación de refresh con detección de reuso. Una fila por login, no crece.
+// SHA-256, nunca argon2: argon2 lleva sal y `WHERE tokenHash = ?` no encontraría nada.
+model Session {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String  @unique // SHA-256 del refresh vigente
+  prevHash  String? @unique // SHA-256 del anterior → detecta reuso
+
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------
+//  ESTADO DE PUBLICACIÓN
+//  Tabla aparte: en SiteSettings el deploy se mordería la cola
+// ------------------------------------------------------------
+
+enum DeployStatus {
+  IDLE
+  QUEUED
+  BUILDING
+  SUCCESS
+  FAILED
+}
+
+model DeployState {
+  id             String       @id @default("singleton")
+  pendingChanges Int          @default(0) // "3 cambios sin publicar"
+  status         DeployStatus @default(IDLE)
+  deploymentId   String? // id que devuelve el deploy hook
+  triggeredAt    DateTime?
+  finishedAt     DateTime?
+  error          String?
+  updatedAt      DateTime     @updatedAt
 }

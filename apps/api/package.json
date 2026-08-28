@@ -14,8 +14,14 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:test:deploy": "dotenv -e .env.test -- prisma migrate deploy",
+    "db:test:drift": "dotenv -e .env.test -- prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
+    "test:integration": "dotenv -e .env.test -- vitest run --config vitest.config.integration.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -45,7 +51,6 @@
     "supertest": "^7.0.0",
     "tsx": "^4.23.12",
     "typescript": "catalog:",
-    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.2"
   }
 }
