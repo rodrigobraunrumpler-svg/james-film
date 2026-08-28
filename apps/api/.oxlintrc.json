@@ -1,10 +1,15 @@
 {
-  "ignorePatterns": ["src/generated/**", "dist/**"],
+  "ignorePatterns": [
+    "src/generated/**",
+    "dist/**"
+  ],
   "rules": {
     "typescript/no-explicit-any": "off",
     "typescript/no-floating-promises": "error",
-    "typescript/consistent-type-imports": "error",
     "typescript/no-deprecated": "error"
   },
-  "env": { "node": true }
+  "env": {
+    "node": true
+  },
+  "$comment": "consistent-type-imports esta DESACTIVADA a proposito: NestJS resuelve la inyeccion por `emitDecoratorMetadata`, que necesita la referencia en runtime. Con `import type` el arranque falla con UnknownDependenciesException, y ni el typecheck ni los tests unitarios lo detectan. Verificado, no supuesto. Sigue activa en apps/admin y apps/web, que no tienen DI."
 }

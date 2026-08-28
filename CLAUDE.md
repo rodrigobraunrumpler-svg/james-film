@@ -214,6 +214,12 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - NestJS 12 trae **oxlint**. Las reglas type-aware (`no-deprecated`, `no-floating-promises`)
   necesitan el paquete **`oxlint-tsgolint`** y el flag **`--type-aware`** en el script de lint.
   Sin cualquiera de los dos **no fallan, simplemente no existen**.
+- **`typescript/consistent-type-imports` está DESACTIVADA en `apps/api`**, y no debe reactivarse.
+  NestJS resuelve la inyección por `emitDecoratorMetadata`, que necesita la referencia en runtime:
+  con `import type` el arranque falla con `UnknownDependenciesException`. **Ni el typecheck ni los
+  tests unitarios lo detectan** —estos construyen los servicios a mano— así que el linter te pide
+  un cambio que rompe producción y nada te avisa. Verificado, no supuesto. Sigue activa en
+  `apps/admin` y `apps/web`, que no tienen DI.
 - **El fichero de config es `.oxlintrc.json`.** oxlint **no autodescubre `oxlint.json`** — que es
   justo el nombre que genera el scaffold de NestJS, así que sus reglas nunca se aplican. Si ves
   un `oxlint.json` en el repo, está muerto: bórralo.
