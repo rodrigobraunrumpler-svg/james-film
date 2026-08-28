@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: jamesfilm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jamesfilm
+      POSTGRES_PASSWORD: jamesfilm
+      POSTGRES_DB: jamesfilm
+    ports:
+      # 5433 en el host: evita el choque con un Postgres instalado localmente
+      - '5433:5432'
+    volumes:
+      - jamesfilm-pgdata:/var/lib/postgresql/data
+      - ./docker/initdb.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U jamesfilm -d jamesfilm']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  jamesfilm-pgdata:

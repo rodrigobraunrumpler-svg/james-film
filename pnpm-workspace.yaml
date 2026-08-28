@@ -1,0 +1,20 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Versiones compartidas por los cuatro paquetes. Se declaran como "catalog:"
+# en cada package.json: subir de versión es una línea, no cuatro archivos.
+catalog:
+  typescript: ^5.9.0
+  '@types/node': ^24.0.0
+
+# pnpm 11: los ajustes viven aquí, no en .npmrc (que solo guarda auth y registry).
+# Sin `engineStrict` el install avisaría en vez de fallar.
+engineStrict: true
+
+# Sustituye a `onlyBuiltDependencies`, eliminado en v11. Solo estos paquetes pueden
+# ejecutar scripts de instalación; el resto falla con ERR_PNPM_IGNORED_BUILDS.
+# Prisma lo necesita: su postinstall es lo que genera el cliente.
+allowBuilds:
+  prisma: true
+  '@prisma/client': true
