@@ -1,0 +1,486 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/galleries": {
+      "get": {
+        "description": "Solo publicadas y sin borrar. **No devuelve los medios**, solo `mediaCount`: incluirlos haría que el build de Astro se trajera todos los reels de todas las galerías en una respuesta que crece sin techo. Usa el detalle por slug.",
+        "operationId": "GalleriesController_listar",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEntity"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/GalleryListItemEntity"
+                          }
+                        },
+                        "meta": {
+                          "$ref": "#/components/schemas/PaginationMetaEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lista las galerías publicadas",
+        "tags": [
+          "galerías"
+        ]
+      }
+    },
+    "/galleries/{slug}": {
+      "get": {
+        "description": "Solo los medios en READY. Una galería sin publicar devuelve **404 y no 403**: un 403 confirmaría que ese enlace existe.",
+        "operationId": "GalleriesController_porSlug",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEntity"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/GalleryEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiFailureEntity"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Devuelve una galería publicada con sus medios",
+        "tags": [
+          "galerías"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "James Film · API pública",
+    "description": "Lo que consume la landing de Astro en build time. Toda respuesta va envuelta en `{ success, code, data, meta?, timestamp }`.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "ApiSuccessEntity": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "code": {
+            "type": "string",
+            "example": "OK"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2026-08-28T16:40:12.031Z"
+          }
+        },
+        "required": [
+          "success",
+          "code",
+          "timestamp"
+        ]
+      },
+      "PaginationMetaEntity": {
+        "type": "object",
+        "properties": {
+          "totalCount": {
+            "type": "number",
+            "example": 47
+          },
+          "pageCount": {
+            "type": "number",
+            "example": 3
+          },
+          "currentPage": {
+            "type": "number",
+            "example": 2
+          },
+          "pageSize": {
+            "type": "number",
+            "example": 20
+          },
+          "isFirstPage": {
+            "type": "boolean"
+          },
+          "isLastPage": {
+            "type": "boolean"
+          },
+          "previousPage": {
+            "type": "number",
+            "nullable": true,
+            "example": 1
+          },
+          "nextPage": {
+            "type": "number",
+            "nullable": true,
+            "example": 3
+          }
+        },
+        "required": [
+          "totalCount",
+          "pageCount",
+          "currentPage",
+          "pageSize",
+          "isFirstPage",
+          "isLastPage",
+          "previousPage",
+          "nextPage"
+        ]
+      },
+      "CategoryRefEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "example": "bodas"
+          },
+          "name": {
+            "type": "string",
+            "example": "Bodas"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name"
+        ]
+      },
+      "GalleryListItemEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "eventDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-03-15"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isFeatured": {
+            "type": "boolean"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CategoryRefEntity"
+          },
+          "mediaCount": {
+            "type": "number",
+            "description": "La lista NO trae los medios: solo cuántos hay listos.",
+            "example": 3
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "eventDate",
+          "location",
+          "coverUrl",
+          "isFeatured",
+          "category"
+        ]
+      },
+      "MediaEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "REEL",
+              "AFTERMOVIE",
+              "PHOTO"
+            ]
+          },
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "VERTICAL",
+              "HORIZONTAL",
+              "SQUARE"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "description": "URL absoluta. En la base se guarda la key, nunca esto."
+          },
+          "posterUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "width": {
+            "type": "number",
+            "nullable": true,
+            "example": 1080
+          },
+          "height": {
+            "type": "number",
+            "nullable": true,
+            "example": 1920
+          },
+          "durationSec": {
+            "type": "number",
+            "nullable": true,
+            "example": 45
+          },
+          "alt": {
+            "type": "string",
+            "nullable": true
+          },
+          "caption": {
+            "type": "string",
+            "nullable": true
+          },
+          "order": {
+            "type": "number"
+          },
+          "isFeatured": {
+            "type": "boolean",
+            "description": "La portada. Exclusiva por galería."
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "orientation",
+          "url",
+          "posterUrl",
+          "width",
+          "height",
+          "durationSec",
+          "alt",
+          "caption",
+          "order",
+          "isFeatured"
+        ]
+      },
+      "GalleryEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "example": "xv-de-camila"
+          },
+          "title": {
+            "type": "string",
+            "example": "XV de Camila"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-03-15",
+            "description": "Fecha de calendario, sin hora. Formatear con timeZone UTC."
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isFeatured": {
+            "type": "boolean"
+          },
+          "category": {
+            "$ref": "#/components/schemas/CategoryRefEntity"
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaEntity"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "description",
+          "eventDate",
+          "location",
+          "coverUrl",
+          "isFeatured",
+          "category",
+          "media"
+        ]
+      },
+      "FieldErrorEntity": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "items.0.text"
+          },
+          "code": {
+            "type": "string",
+            "example": "isNotEmpty"
+          },
+          "message": {
+            "type": "string",
+            "example": "No puede estar vacío"
+          }
+        },
+        "required": [
+          "field",
+          "code",
+          "message"
+        ]
+      },
+      "ApiFailureEntity": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "statusCode": {
+            "type": "number",
+            "example": 409
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_FAILED",
+              "UNAUTHORIZED",
+              "FORBIDDEN",
+              "NOT_FOUND",
+              "CONFLICT",
+              "RATE_LIMITED",
+              "INTERNAL",
+              "INVALID_CREDENTIALS",
+              "SESSION_EXPIRED",
+              "SESSION_REVOKED",
+              "SLUG_TAKEN",
+              "CONSENT_REQUIRED",
+              "UNSUPPORTED_MEDIA_TYPE",
+              "FILE_TOO_LARGE",
+              "UPLOAD_SIZE_MISMATCH"
+            ],
+            "example": "SLUG_TAKEN",
+            "description": "El contrato. El mensaje puede cambiar; esto no."
+          },
+          "message": {
+            "type": "string",
+            "example": "Ya existe una galería con ese enlace"
+          },
+          "details": {
+            "description": "Solo en VALIDATION_FAILED",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorEntity"
+            }
+          },
+          "requestId": {
+            "type": "string",
+            "example": "01JD4X…"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "statusCode",
+          "code",
+          "message",
+          "timestamp"
+        ]
+      }
+    }
+  }
+}

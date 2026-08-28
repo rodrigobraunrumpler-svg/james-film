@@ -1,7 +1,9 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { PaginationDto } from '../../common/dto/pagination.dto.js';
+import { DocGaleriaPorSlug, DocListarGalerias } from './docs/galleries.docs.js';
 import { GalleriesService } from './galleries.service.js';
 
 /**
@@ -12,15 +14,18 @@ import { GalleriesService } from './galleries.service.js';
  */
 @Public()
 @SkipThrottle()
+@ApiTags('galerías')
 @Controller('galleries')
 export class GalleriesController {
   constructor(private readonly galleries: GalleriesService) {}
 
+  @DocListarGalerias()
   @Get()
   listar(@Query() query: PaginationDto) {
     return this.galleries.listarPublicas(query.page, query.pageSize);
   }
 
+  @DocGaleriaPorSlug()
   @Get(':slug')
   porSlug(@Param('slug') slug: string) {
     return this.galleries.buscarPorSlug(slug);

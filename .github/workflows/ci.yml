@@ -83,3 +83,12 @@ jobs:
 
       - run: pnpm --filter api test
       - run: pnpm --filter api test:integration
+
+      # El contrato público es lo que consume Astro en build time. Si cambia sin
+      # querer, la landing se rompe en el siguiente deploy y el error aparece
+      # lejos de la causa. Mismo mecanismo que el drift de Prisma.
+      - name: El contrato público no ha cambiado sin querer
+        run: |
+          pnpm --filter api openapi:export
+          git diff --exit-code apps/api/docs/openapi-public.json \
+            || (echo "::error::El contrato público cambió. Revisa el diff y commitea el JSON si es intencionado." && exit 1)
