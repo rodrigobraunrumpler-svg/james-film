@@ -12,6 +12,8 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Este archivo** = el *qué se hace*. Donde los dos discrepan, **manda este archivo**.
 - **`preview.webp`** = el flyer original. Confirma los datos de §14 (paquetes, precios, bullets,
   diferenciadores, redes, `aboutText` con su resaltado). Es la referencia visual de la marca.
+- **[`docs/admin.md`](docs/admin.md)** = stack del admin y diseño del cliente HTTP (fase 4).
+- **[`docs/plans/`](docs/plans/)** = planes de implementación por fase.
 
 ---
 
@@ -94,6 +96,26 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   y sería el único sitio del monorepo sin cobertura de tipos — justo donde vive la lógica.
 - **Dependabot semanal**, minor y patch agrupados en un PR. Es la automatización de la regla
   de no-deprecación; el CI es lo que la hace segura.
+
+**Stack del admin (fase 4)** — detalle en [`docs/admin.md`](docs/admin.md)
+- TanStack Query 5 + **`fetch` nativo**. Sin axios ni ky: el interceptor de 401 se escribe igual.
+- **Sin Server Actions.** El admin es cliente de la API; meterlos lo convierte en un BFF y choca
+  con el refresh en cookie del dominio de la API (§16) y con la subida directa a R2 (§4, §10).
+- **`XMLHttpRequest` solo para subir a R2** — `fetch` no emite progreso de subida (§17).
+- `nuqs` para filtros y pestañas: la URL **es** la clave de TanStack Query. Una fuente, no dos.
+- `zustand` solo para la cola de subidas: con Context, cada tick de progreso re-renderiza a todos
+  los consumidores.
+- shadcn/ui sobre Radix (código propio, no dependencia — por eso no contradice §6), `react-hook-form`
+  + `zod`, `@dnd-kit`, `lucide-react`, `sonner`, `motion`, `clsx` + `tailwind-merge`.
+- **Base UI descartada**: sigue en `1.0.0-rc`. Radix está estable.
+- **Sin TanStack Table en v1** (5 tablas de decenas de filas, y §7 obliga a tarjetas apiladas en
+  móvil igual) y sin librería de fechas (`Intl` + `<input type="date">`, que en el iPhone de James
+  abre el selector nativo de iOS).
+- **Los esquemas Zod de formulario viven en el admin, no en `packages/contracts`** — son runtime y
+  romperían la propiedad de "solo tipos". La API sigue siendo la autoridad (`whitelist`).
+- El admin **no tiene presupuesto de INP**: no se indexa. Las restricciones duras de §6 son de la
+  landing. Aun así, animaciones solo con `transform` y `opacity`, y `prefers-reduced-motion`
+  respetado sin excepciones.
 
 **Estabilidad — nada deprecado, nada experimental**
 - **Ninguna API deprecada.** Si TypeScript, el linter o el runtime avisan de una deprecación,
