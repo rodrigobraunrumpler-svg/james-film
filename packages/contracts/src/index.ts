@@ -40,6 +40,45 @@ export interface MediaDto {
   isFeatured: boolean;
 }
 
+export type MediaStatus = 'PENDING' | 'READY' | 'FAILED';
+
+/**
+ * Lo que el navegador declara ANTES de subir. La API valida mime y tamaño y solo
+ * entonces firma: firmar primero y validar después deja una URL válida en manos
+ * de quien mandó basura (§4).
+ */
+export interface PresignItemInput {
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  type: MediaType;
+  /** Idempotencia: reenviar el mismo devuelve el MISMO mediaId, no uno nuevo. */
+  clientUploadId: string;
+  width?: number;
+  height?: number;
+  durationSec?: number;
+  /** El poster que extrae el canvas. Se valida y se firma igual que el vídeo. */
+  posterMimeType?: string;
+  posterSizeBytes?: number;
+}
+
+export interface PresignItemResult {
+  mediaId: string;
+  uploadUrl: string;
+  posterUploadUrl: string | null;
+  storageKey: string;
+  posterKey: string | null;
+}
+
+/** Lo que el editor necesita para mover su máquina de estados por archivo. */
+export interface MediaConfirmResult {
+  id: string;
+  status: MediaStatus;
+  orientation: Orientation;
+  /** Qué falló, en castellano. Sin esto el aviso del dashboard no dice nada. */
+  error: string | null;
+}
+
 // ------------------------------------------------------------
 //  Galerías y categorías
 // ------------------------------------------------------------
