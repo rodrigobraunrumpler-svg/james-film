@@ -1,4 +1,11 @@
-import type { GalleryDto, GalleryListItemDto, MediaDto } from '@james-film/contracts';
+import type {
+  AdminGalleryDto,
+  AdminMediaDto,
+  GalleryDto,
+  GalleryListItemDto,
+  MediaDto,
+  MediaStatus,
+} from '@james-film/contracts';
 import type { StorageService } from '../../storage/storage.service.js';
 
 /**
@@ -20,6 +27,9 @@ export const SELECT_MEDIA = {
   order: true,
   isFeatured: true,
 } as const;
+
+/** El admin ve además el estado: sin él no puede pintar la tarjeta rota tras recargar. */
+export const SELECT_MEDIA_ADMIN = { ...SELECT_MEDIA, status: true, error: true } as const;
 
 export const SELECT_CATEGORIA = { id: true, slug: true, name: true } as const;
 
@@ -92,6 +102,46 @@ export function mapMedia(m: FilaMedia, storage: StorageService): MediaDto {
   };
 }
 
+/**
+ * La portada se DERIVA, no se guarda. Escribir `coverKey` metería un `.mp4` en el
+ * campo de portada cuando el vídeo no tiene poster —y `confirmar` anula el posterKey
+ * justo cuando el poster falla—, además de duplicar estado que se puede calcular.
+ */
+function claveDePortada(
+  media: { isFeatured: boolean; posterKey: string | null; storageKey: string; type: MediaDto['type'] }[],
+): string | null {
+  const portada = media.find((m) => m.isFeatured);
+  if (!portada) return null;
+  // Nunca el storageKey de un vídeo: sería un .mp4 dentro de un <img>.
+  return portada.posterKey ?? (portada.type === 'PHOTO' ? portada.storageKey : null);
+}
+
+export function mapMediaAdmin(
+  m: FilaMedia & { status: MediaStatus; error: string | null },
+  storage: StorageService,
+): AdminMediaDto {
+  return { ...mapMedia(m, storage), status: m.status, error: m.error };
+}
+
+export function mapGaleriaAdmin(
+  g: FilaGaleria & { media: (FilaMedia & { status: MediaStatus; error: string | null })[] },
+  storage: StorageService,
+): AdminGalleryDto {
+  const clave = g.coverKey ?? claveDePortada(g.media);
+  return {
+    id: g.id,
+    slug: g.slug,
+    title: g.title,
+    description: g.description,
+    eventDate: aFecha(g.eventDate),
+    location: g.location,
+    coverUrl: clave ? storage.getPublicUrl(clave) : null,
+    isFeatured: g.isFeatured,
+    category: g.category,
+    media: g.media.map((m) => mapMediaAdmin(m, storage)),
+  };
+}
+
 export function mapGaleria(
   g: FilaGaleria & { media: FilaMedia[] },
   storage: StorageService,
@@ -103,7 +153,10 @@ export function mapGaleria(
     description: g.description,
     eventDate: aFecha(g.eventDate),
     location: g.location,
-    coverUrl: g.coverKey ? storage.getPublicUrl(g.coverKey) : null,
+    coverUrl: (() => {
+      const clave = g.coverKey ?? claveDePortada(g.media);
+      return clave ? storage.getPublicUrl(clave) : null;
+    })(),
     isFeatured: g.isFeatured,
     category: g.category,
     media: g.media.map((m) => mapMedia(m, storage)),
@@ -111,7 +164,7 @@ export function mapGaleria(
 }
 
 export function mapGaleriaLista(
-  g: FilaGaleria & { _count: { media: number } },
+  g: FilaGaleria & { _count: { media: number }; media: FilaMedia[] },
   storage: StorageService,
 ): GalleryListItemDto {
   return {
@@ -120,7 +173,10 @@ export function mapGaleriaLista(
     title: g.title,
     eventDate: aFecha(g.eventDate),
     location: g.location,
-    coverUrl: g.coverKey ? storage.getPublicUrl(g.coverKey) : null,
+    coverUrl: (() => {
+      const clave = g.coverKey ?? claveDePortada(g.media);
+      return clave ? storage.getPublicUrl(clave) : null;
+    })(),
     isFeatured: g.isFeatured,
     category: g.category,
     mediaCount: g._count.media,

@@ -105,6 +105,25 @@ export interface GalleryDto {
  * de Astro se traería todos los reels de todas las galerías en una respuesta que
  * crece sin techo con cada evento. El detalle por slug sí los trae.
  */
+/**
+ * Lo que ve el ADMIN, no el público. Añade el estado de subida porque el editor
+ * tiene que poder distinguir un medio subido de uno a medias tras una recarga:
+ * `buscarPorId` devuelve PENDING y FAILED con una `url` que apunta a un objeto
+ * que nunca llegó, y sin esto serían tarjetas idénticas a las buenas.
+ *
+ * Aparte del MediaDto público a propósito: añadirlo allí movería el
+ * openapi-public.json que el CI congela, y exponer un campo debe ser deliberado.
+ */
+export interface AdminMediaDto extends MediaDto {
+  status: MediaStatus;
+  /** Qué falló, en castellano. Lo escribe el confirm. */
+  error: string | null;
+}
+
+export interface AdminGalleryDto extends Omit<GalleryDto, 'media'> {
+  media: AdminMediaDto[];
+}
+
 export interface GalleryListItemDto {
   id: string;
   slug: string;

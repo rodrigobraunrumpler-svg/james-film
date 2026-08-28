@@ -128,11 +128,25 @@ describe('presign: lote e idempotencia', () => {
 
   it('firma también el poster cuando el navegador lo declara', async () => {
     const { body } = await presign([
-      reel({ posterMimeType: 'image/webp', posterSizeBytes: 500 }),
+      reel({ posterMimeType: 'image/jpeg', posterSizeBytes: 500 }),
     ]).expect(201);
 
     expect(body.data[0].posterUploadUrl).toBeTruthy();
-    expect(body.data[0].posterKey).toMatch(/^posters\/[0-9a-f-]{36}\.webp$/);
+    // La extensión sale del mime declarado, no de una constante.
+    expect(body.data[0].posterKey).toMatch(/^posters\/[0-9a-f-]{36}\.jpg$/);
+  });
+
+  it('el poster en WebP se rechaza: Safari no lo puede generar', async () => {
+    // canvas.toBlob('image/webp') no existe en Safari —ni iOS ni macOS— y la spec
+    // obliga a caer a PNG SIN error. Aceptar webp aquí significaría que en el iPhone
+    // de James ningún reel tendría miniatura, y en silencio.
+    const res = await presign([
+      reel({ posterMimeType: 'image/webp', posterSizeBytes: 500 }),
+    ]).expect(422);
+
+    expect(res.body.details).toContainEqual(
+      expect.objectContaining({ field: 'items.0.posterMimeType' }),
+    );
   });
 
   it('una foto va al prefijo photos/', async () => {
@@ -140,6 +154,24 @@ describe('presign: lote e idempotencia', () => {
       reel({ type: 'PHOTO', mimeType: 'image/jpeg', filename: 'f.jpg' }),
     ]).expect(201);
     expect(body.data[0].storageKey).toMatch(/^photos\/[0-9a-f-]{36}\.jpg$/);
+  });
+});
+
+describe('orden', () => {
+  it('los medios nuevos nacen AL FINAL, no empatando en 0', async () => {
+    // ReorderService numera solo los ids que recibe: con order @default(0), las dos
+    // fotos del martes se colarían entre los primeros de una grilla ya ordenada.
+    const a = await presign([reel(), reel(), reel()]).expect(201);
+    const primeros = await prisma.media.findMany({
+      where: { id: { in: a.body.data.map((r: { mediaId: string }) => r.mediaId) } },
+      orderBy: { order: 'asc' },
+      select: { order: true },
+    });
+    expect(primeros.map((m) => m.order)).toEqual([0, 1, 2]);
+
+    const b = await presign([reel()]).expect(201);
+    const nuevo = await prisma.media.findUniqueOrThrow({ where: { id: b.body.data[0].mediaId } });
+    expect(nuevo.order).toBe(3);
   });
 });
 

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { GalleryDto, GalleryListItemDto } from '@james-film/contracts';
+import type { AdminGalleryDto, GalleryDto, GalleryListItemDto } from '@james-film/contracts';
 import type { ListaPaginada } from '../../common/interceptors/response-envelope.interceptor.js';
 import { paginar } from '../../common/pagination.js';
 import { ExclusiveFlagService } from '../../common/services/exclusive-flag.service.js';
@@ -12,7 +12,9 @@ import type { UpdateGalleryDto } from './dto/update-gallery.dto.js';
 import {
   SELECT_GALERIA,
   SELECT_MEDIA,
+  SELECT_MEDIA_ADMIN,
   mapGaleria,
+  mapGaleriaAdmin,
   mapGaleriaLista,
 } from './galleries.mapper.js';
 
@@ -35,7 +37,12 @@ export class GalleriesService {
     const [filas, total] = await this.prisma.$transaction([
       this.prisma.gallery.findMany({
         where: VISIBLE,
-        select: { ...SELECT_GALERIA, _count: { select: { media: { where: MEDIA_VISIBLE } } } },
+        select: {
+          ...SELECT_GALERIA,
+          _count: { select: { media: { where: MEDIA_VISIBLE } } },
+          // Solo la portada: es lo que necesita claveDePortada para derivar coverUrl.
+          media: { where: { ...MEDIA_VISIBLE, isFeatured: true }, select: SELECT_MEDIA, take: 1 },
+        },
         // El `{ id: 'asc' }` final NO es decorativo: con `order` empatado,
         // Postgres puede devolver las filas en distinto orden entre páginas y
         // una saldría dos veces mientras otra no sale nunca.
@@ -80,7 +87,12 @@ export class GalleriesService {
     const [filas, total] = await this.prisma.$transaction([
       this.prisma.gallery.findMany({
         where,
-        select: { ...SELECT_GALERIA, _count: { select: { media: { where: { deletedAt: null } } } } },
+        select: {
+          ...SELECT_GALERIA,
+          // Solo READY: si no, "Medios · 8" cuenta también los que fallaron.
+          _count: { select: { media: { where: { deletedAt: null, status: 'READY' } } } },
+          media: { where: { deletedAt: null, isFeatured: true }, select: SELECT_MEDIA, take: 1 },
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -96,23 +108,28 @@ export class GalleriesService {
     );
   }
 
-  async buscarPorId(id: string): Promise<GalleryDto> {
+  /**
+   * Devuelve AdminGalleryDto, con `status` y `error` por medio: el editor tiene que
+   * poder distinguir un medio subido de uno a medias tras una recarga. La anotación
+   * del retorno es lo que hace que el `select` falle cerrado.
+   */
+  async buscarPorId(id: string): Promise<AdminGalleryDto> {
     const fila = await this.prisma.gallery.findFirst({
       where: { id, deletedAt: null },
       select: {
         ...SELECT_GALERIA,
         media: {
           where: { deletedAt: null },
-          select: SELECT_MEDIA,
+          select: SELECT_MEDIA_ADMIN,
           orderBy: [{ order: 'asc' }, { id: 'asc' }],
         },
       },
     });
     if (!fila) throw new NotFoundException();
-    return mapGaleria(fila, this.storage);
+    return mapGaleriaAdmin(fila, this.storage);
   }
 
-  async crear(dto: CreateGalleryDto): Promise<GalleryDto> {
+  async crear(dto: CreateGalleryDto): Promise<AdminGalleryDto> {
     const slug = await this.slug.unique(dto.title, async (candidato) => {
       // A propósito SIN filtrar deletedAt: el índice Gallery_slug_key no es
       // parcial, así que el slug de una galería borrada sigue ocupado. Si aquí
@@ -139,7 +156,7 @@ export class GalleriesService {
     return this.buscarPorId(creada.id);
   }
 
-  async actualizar(id: string, dto: UpdateGalleryDto): Promise<GalleryDto> {
+  async actualizar(id: string, dto: UpdateGalleryDto): Promise<AdminGalleryDto> {
     await this.asegurarQueExiste(id);
 
     // El slug NO se regenera al renombrar: James comparte links por WhatsApp
@@ -173,13 +190,13 @@ export class GalleriesService {
     ]);
   }
 
-  async reordenarMedios(id: string, ids: string[]): Promise<GalleryDto> {
+  async reordenarMedios(id: string, ids: string[]): Promise<AdminGalleryDto> {
     await this.asegurarQueExiste(id);
     await this.reorder.reorder(this.prisma.media, ids);
     return this.buscarPorId(id);
   }
 
-  async marcarPortada(galleryId: string, mediaId: string): Promise<GalleryDto> {
+  async marcarPortada(galleryId: string, mediaId: string): Promise<AdminGalleryDto> {
     await this.asegurarQueExiste(galleryId);
     // El `scope` es lo que hace la portada única POR GALERÍA: sin él, marcar la
     // de la boda de Ana desmarcaría la de los XV de Camila.

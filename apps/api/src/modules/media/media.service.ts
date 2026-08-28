@@ -29,7 +29,18 @@ export class MediaService {
     // no queremos dos URLs vivas y una fila creada a medias.
     for (const item of items) this.validar(item);
 
-    return Promise.all(items.map((item) => this.firmarUno(galleryId, item)));
+    // Los medios nuevos van AL FINAL. Con `order @default(0)` se colarían entre los
+    // primeros: ReorderService solo numera los ids que se le envían, así que tras un
+    // reorden todo lo nuevo empata en 0 con el primero.
+    // El aggregate va AQUÍ y no dentro de firmarUno: con Promise.all, los ocho leerían
+    // el mismo máximo.
+    const { _max } = await this.prisma.media.aggregate({
+      where: { galleryId, deletedAt: null },
+      _max: { order: true },
+    });
+    const base = (_max.order ?? -1) + 1;
+
+    return Promise.all(items.map((item, i) => this.firmarUno(galleryId, item, base + i)));
   }
 
   async confirmar(id: string): Promise<MediaConfirmResult> {
@@ -134,10 +145,10 @@ export class MediaService {
       });
     }
 
-    if (item.posterMimeType && !MIMES_POSTER.includes(item.posterMimeType as 'image/webp')) {
+    if (item.posterMimeType && !MIMES_POSTER.includes(item.posterMimeType as 'image/jpeg')) {
       throw new BadRequestException({
         code: 'UNSUPPORTED_MEDIA_TYPE',
-        message: 'El poster debe ser WebP.',
+        message: 'El poster debe ser JPEG.',
       });
     }
   }
@@ -145,12 +156,17 @@ export class MediaService {
   private async firmarUno(
     galleryId: string,
     item: PresignItemDto,
+    order: number,
   ): Promise<PresignItemResult> {
     // Nombre UUID, nunca el original del usuario: evita colisiones y previene
     // path traversal (§17).
     const uuid = randomUUID();
     const storageKey = `${prefijoDe(item.type)}/${uuid}.${extensionDe(item.mimeType)}`;
-    const posterKey = item.posterMimeType ? `posters/${uuid}.webp` : null;
+    // La extensión y el content-type salen del mime DECLARADO, no de una constante:
+    // hardcodear webp aquí era el segundo sitio donde el poster se rompía en Safari.
+    const posterKey = item.posterMimeType
+      ? `posters/${uuid}.${extensionDe(item.posterMimeType)}`
+      : null;
 
     const media = await this.prisma.media.upsert({
       where: { galleryId_clientUploadId: { galleryId, clientUploadId: item.clientUploadId } },
@@ -159,6 +175,7 @@ export class MediaService {
       update: {},
       create: {
         galleryId,
+        order,
         clientUploadId: item.clientUploadId,
         type: item.type,
         mimeType: item.mimeType,
@@ -179,10 +196,10 @@ export class MediaService {
         contentType: media.mimeType,
         contentLength: media.sizeBytes,
       }),
-      media.posterKey && item.posterSizeBytes
+      media.posterKey && item.posterMimeType && item.posterSizeBytes
         ? this.storage.getUploadUrl({
             key: media.posterKey,
-            contentType: 'image/webp',
+            contentType: item.posterMimeType,
             contentLength: item.posterSizeBytes,
           })
         : Promise.resolve(null),

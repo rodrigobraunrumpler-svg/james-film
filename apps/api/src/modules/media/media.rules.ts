@@ -7,8 +7,16 @@ import type { MediaType, Orientation } from '@james-film/contracts';
  */
 export const MIMES_VIDEO = ['video/mp4'] as const;
 export const MIMES_FOTO = ['image/jpeg', 'image/png', 'image/webp'] as const;
-/** El poster sale de `canvas.toBlob(..., 'image/webp')`: no hay otra opción válida. */
-export const MIMES_POSTER = ['image/webp'] as const;
+/**
+ * JPEG, no WebP. `canvas.toBlob('image/webp')` NO existe en Safari —ni iOS ni macOS,
+ * ninguna versión— y la especificación obliga a caer a PNG **sin lanzar error**. Con
+ * WebP, en el iPhone de James ningún reel tendría poster jamás: o el presign rechaza
+ * el lote entero, o el content-type firmado no cuadra y el bucket devuelve 403.
+ *
+ * Además es coherente con la regla de las fotos: nunca WebP propio, porque Cloudflare
+ * re-comprime al servir y comprimir dos veces degrada. El poster lo sirve el mismo CDN.
+ */
+export const MIMES_POSTER = ['image/jpeg'] as const;
 
 const EXTENSIONES: Record<string, string> = {
   'video/mp4': 'mp4',

@@ -176,6 +176,76 @@ describe('slug', () => {
   });
 });
 
+describe('portada y estado (lo que necesita el editor)', () => {
+  it('marcar portada rellena coverUrl en la lista, no la deja en null', async () => {
+    // coverKey no lo escribe NADIE: ni create, ni update, ni el seed. Se deriva del
+    // medio destacado, o marcar portada no cambiaría nada visible.
+    const g = await crear({ title: 'Con portada' });
+    const m = await prisma.media.create({
+      data: {
+        galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1,
+        storageKey: 'videos/p.mp4', posterKey: 'posters/p.jpg', status: 'READY',
+      },
+    });
+
+    const antes = await http().get('/admin/galleries').set(auth()).expect(200);
+    expect(antes.body.data[0].coverUrl).toBeNull();
+
+    await http().patch(`/admin/galleries/${g.id}/media/${m.id}/cover`).set(auth()).expect(200);
+
+    const despues = await http().get('/admin/galleries').set(auth()).expect(200);
+    expect(despues.body.data[0].coverUrl).toContain('posters/p.jpg');
+  });
+
+  it('la portada de un VÍDEO sin poster no mete un .mp4 en coverUrl', async () => {
+    const g = await crear({ title: 'Sin poster' });
+    const m = await prisma.media.create({
+      data: { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/np.mp4', status: 'READY' },
+    });
+    await http().patch(`/admin/galleries/${g.id}/media/${m.id}/cover`).set(auth()).expect(200);
+
+    const { body } = await http().get('/admin/galleries').set(auth()).expect(200);
+    // Un .mp4 dentro de un <img> no se ve: mejor null y que la UI ponga su placeholder.
+    expect(body.data[0].coverUrl).toBeNull();
+  });
+
+  it('el detalle de admin trae status y error; el público NO', async () => {
+    const g = await crear({ title: 'Estados' });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await prisma.media.createMany({
+      data: [
+        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/ok.mp4', status: 'READY' },
+        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/ko.mp4', status: 'FAILED', error: 'La subida quedó incompleta' },
+      ],
+    });
+
+    // El editor DEBE poder distinguir el bueno del roto tras una recarga.
+    const admin = await http().get(`/admin/galleries/${g.id}`).set(auth()).expect(200);
+    expect(admin.body.data.media).toHaveLength(2);
+    const roto = admin.body.data.media.find((m: { status: string }) => m.status === 'FAILED');
+    expect(roto.error).toContain('incompleta');
+
+    // Y el público no ve ni el roto ni el campo.
+    const publico = await http().get('/galleries/estados').expect(200);
+    expect(publico.body.data.media).toHaveLength(1);
+    expect(publico.body.data.media[0]).not.toHaveProperty('status');
+  });
+
+  it('mediaCount de la lista de admin NO cuenta los rotos', async () => {
+    const g = await crear({ title: 'Cuenta' });
+    await prisma.media.createMany({
+      data: [
+        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/a.mp4', status: 'READY' },
+        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/b.mp4', status: 'FAILED' },
+        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/c.mp4', status: 'PENDING' },
+      ],
+    });
+
+    const { body } = await http().get('/admin/galleries').set(auth()).expect(200);
+    expect(body.data[0].mediaCount).toBe(1);
+  });
+});
+
 describe('borrado', () => {
   it('es soft, y propaga deletedAt a sus medios', async () => {
     // Sin la propagación, el Cascade de Postgres borraría las filas sin que la
