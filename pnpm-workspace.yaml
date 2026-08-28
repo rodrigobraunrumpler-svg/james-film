@@ -21,9 +21,11 @@ allowBuilds:
   '@prisma/engines': true   # descarga los binarios del query engine
   esbuild: true             # lo usan tsx y vitest
   # Telemetría que viaja con @nestjs/swagger vía swagger-ui-dist. Denegado a
-  # propósito: no queremos un postinstall que reporte nada, y negarlo no rompe
-  # la UI de Swagger.
+  # propósito: no queremos un postinstall que reporte nada.
   '@scarf/scarf': false
+  # Su postinstall instala el service worker para el modo NAVEGADOR de msw.
+  # Nosotros usamos setupServer en Node, así que no hace falta.
+  msw: false
 
 # Las tres advisories de lodash y la de deepmerge-ts llegan por el CLI de Prisma
 # (Studio y su cargador de config). Prisma las arrastra como peer opcional, así que

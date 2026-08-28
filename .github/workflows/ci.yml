@@ -84,6 +84,11 @@ jobs:
       - run: pnpm --filter api test
       - run: pnpm --filter api test:integration
 
+      # Sin esta línea, los tests del admin se escriben y NUNCA corren en un PR.
+      # Es fácil no darse cuenta: `lint` y `typecheck` sí son recursivos.
+      # Milisegundos y sin servicios.
+      - run: pnpm --filter admin test
+
       # El contrato público es lo que consume Astro en build time. Si cambia sin
       # querer, la landing se rompe en el siguiente deploy y el error aparece
       # lejos de la causa. Mismo mecanismo que el drift de Prisma.
