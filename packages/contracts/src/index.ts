@@ -185,11 +185,91 @@ export interface SiteSettingsDto {
 //  Utilidades
 // ------------------------------------------------------------
 
+// ------------------------------------------------------------
+//  Paginación
+// ------------------------------------------------------------
+
+/**
+ * Resumen de una página. `isFirstPage`, `isLastPage`, `previousPage` y `nextPage`
+ * son derivables, y aun así viajan: el cliente no debería repetir la aritmética de
+ * paginación en cada sitio donde pinta un control. `disabled={meta.isFirstPage}`
+ * se lee mejor que `disabled={meta.currentPage <= 1}` y no se equivoca.
+ *
+ * Con cero resultados: `totalPages: 0`, `isFirstPage` e `isLastPage` en `true`,
+ * y ambos vecinos en `null`.
+ */
+export interface PaginationMeta {
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  /** Necesario para "mostrando 1-20 de 47" y para un selector de tamaño. */
+  pageSize: number;
+  isFirstPage: boolean;
+  isLastPage: boolean;
+  previousPage: number | null;
+  nextPage: number | null;
+}
+
 export interface Paginated<T> {
   items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
+  meta: PaginationMeta;
+}
+
+// ------------------------------------------------------------
+//  Errores
+// ------------------------------------------------------------
+
+/**
+ * El código es el contrato; el mensaje es para humanos y puede reescribirse sin
+ * romper a nadie. El admin hace `switch (error.code)`, nunca compara cadenas.
+ *
+ * Es un tipo unión, no un enum: `packages/contracts` no emite runtime.
+ */
+export type ErrorCode =
+  // Genéricos
+  | 'VALIDATION_FAILED'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'RATE_LIMITED'
+  | 'INTERNAL'
+  // Sesión — cada uno pide una reacción distinta en el admin
+  | 'INVALID_CREDENTIALS'
+  | 'SESSION_EXPIRED'
+  | 'SESSION_REVOKED'
+  // Contenido
+  | 'SLUG_TAKEN'
+  | 'CONSENT_REQUIRED'
+  // Subidas
+  | 'UNSUPPORTED_MEDIA_TYPE'
+  | 'FILE_TOO_LARGE'
+  | 'UPLOAD_SIZE_MISMATCH';
+
+/**
+ * Un error de validación por campo. Con esta forma, el admin puede llamar
+ * directamente a `setError(field, { message })` de react-hook-form en vez de
+ * parsear el array de frases que devuelve class-validator por defecto.
+ */
+export interface FieldError {
+  /** Ruta del campo, con puntos para lo anidado: "title", "items.0.text". */
+  field: string;
+  /** La restricción que falló: "isNotEmpty", "minLength", "isEmail". */
+  code: string;
+  message: string;
+}
+
+/** El cuerpo de CUALQUIER respuesta de error de la API. */
+export interface ApiErrorBody {
+  statusCode: number;
+  code: ErrorCode;
+  /** En castellano y accionable. Puede cambiar entre versiones: no es contrato. */
+  message: string;
+  /** Solo en VALIDATION_FAILED. */
+  details?: FieldError[];
+  /** Correlaciona con los logs. Se rellena en la fase 6 con el request id de pino. */
+  requestId?: string;
+  timestamp: string;
 }
 
 /** El clic a WhatsApp ES el lead: sin formulario, sin fricción. */

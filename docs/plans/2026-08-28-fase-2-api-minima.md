@@ -818,10 +818,14 @@ const CATALOGO: Record<CodigoError, string> = {
   429: 'Demasiadas peticiones',
 };
 
-class RespuestaError {
+/** Implementa ApiErrorBody de @james-film/contracts: si divergen, no compila. */
+class RespuestaError implements ApiErrorBody {
   statusCode!: number;
-  /** El ValidationPipe devuelve un array de frases; el resto, una sola. */
-  message!: string | string[];
+  code!: ErrorCode;
+  message!: string;
+  details?: FieldError[];
+  requestId?: string;
+  timestamp!: string;
 }
 
 export const ApiErrors = (...codigos: CodigoError[]): MethodDecorator =>
@@ -991,6 +995,153 @@ pnpm lint && pnpm typecheck && pnpm test
 - [ ] El confirm de una subida truncada deja `FAILED` con motivo
 - [ ] Ningún DTO público expone `storageKey`, `sizeBytes` ni `status`
 - [ ] `/docs/public` no incluye ninguna ruta de admin
+
+---
+
+# El contrato de respuesta
+
+Definido en `packages/contracts`: `PaginationMeta`, `Paginated<T>`, `ErrorCode`, `FieldError`
+y `ApiErrorBody`.
+
+## Qué se envuelve y qué no
+
+| Respuesta | Forma | Por qué |
+|---|---|---|
+| **Error** (cualquiera) | **Siempre envuelta**, con `code` | El código es el contrato |
+| **Lista** | `{ items, meta }` | El meta necesita un sitio |
+| **Recurso único** | **Desnudo** | Ver abajo |
+
+**Los recursos individuales no se envuelven.** Un `{ success: true, data: {...} }` junto a un 200
+repite lo que el código HTTP ya dice, obliga a desenvolver en cada consumidor y ensucia todos los
+esquemas de Swagger — y ese doc público es el contrato que Astro consume en build time. Es lo que
+hacen Stripe y GitHub: el recurso va desnudo y solo los errores llevan sobre.
+
+> Si prefieres uniformidad total, es un interceptor de quince líneas y se cambia en cualquier
+> momento. Pero recomiendo no hacerlo: el coste se paga en cada endpoint y en cada consumidor,
+> para siempre.
+
+## Errores: el `code` es lo que importa
+
+```jsonc
+{
+  "statusCode": 409,
+  "code": "SLUG_TAKEN",              // ← el contrato
+  "message": "Ya existe una galería con ese enlace",  // ← para humanos, puede reescribirse
+  "requestId": "01JD4X…",
+  "timestamp": "2026-08-28T16:40:12.031Z"
+}
+```
+
+**El mensaje se reescribe, el código no.** Sin `code`, el admin acabaría comparando cadenas en
+castellano y cualquier mejora de redacción rompería un `if`. Con `code`, el `switch` es exhaustivo
+y TypeScript avisa cuando aparece un código nuevo, porque `ErrorCode` es una unión cerrada.
+
+Y por eso hay códigos de dominio y no solo genéricos: `SESSION_EXPIRED` y `SESSION_REVOKED` son
+ambos 401, pero **piden reacciones distintas** — el primero manda al login sin más, el segundo
+debe decir "cerramos tu sesión por seguridad", que es lo que pasa cuando la rotación detecta reuso.
+
+### El detalle que más rinde: errores por campo
+
+`class-validator` devuelve `message: ["title must be longer than 2 characters"]`. Atar eso a un
+campo de formulario obliga a parsear inglés. En su lugar:
+
+```jsonc
+{
+  "statusCode": 422,
+  "code": "VALIDATION_FAILED",
+  "message": "Revisa los campos marcados",
+  "details": [
+    { "field": "title", "code": "minLength", "message": "Mínimo 2 caracteres" },
+    { "field": "items.0.text", "code": "isNotEmpty", "message": "No puede estar vacío" }
+  ]
+}
+```
+
+El admin recorre `details` y llama a `setError(field, { message })` de react-hook-form. **Sin
+parsear nada.** Se consigue con `exceptionFactory` en el `ValidationPipe`, aplanando los
+`ValidationError` anidados a rutas con puntos.
+
+- [ ] **Un solo filtro global, no dos.** El plan tenía `PrismaExceptionFilter` aparte. Lo correcto
+  es un `AllExceptionsFilter` que normaliza **todo** —`HttpException`, errores de Prisma y lo
+  desconocido— al mismo sobre. Con dos filtros, un error no contemplado se escapa sin `code` y el
+  cliente recibe una forma que no espera. El mapa de Prisma vive dentro.
+- [ ] **En producción no salen ni stacks ni mensajes de Prisma.** Un error desconocido es
+  `INTERNAL` con mensaje genérico; el detalle va al log con el `requestId`.
+
+## Paginación: tu shape, con dos cambios
+
+Tu forma viene de `prisma-extension-pagination` y **está bien pensada**: que `isFirstPage`,
+`previousPage` y compañía viajen aunque sean derivables es lo correcto — el cliente no debería
+repetir la aritmética de paginación en cada control que pinta, y `disabled={meta.isFirstPage}`
+no se equivoca.
+
+Dos cambios:
+
+| Cambio | Motivo |
+|---|---|
+| **`+ pageSize`** | Sin él no se puede pintar "mostrando 1-20 de 47" ni un selector de tamaño. Es el único dato que falta para que el meta sea autosuficiente |
+| `pageCount` → **`totalPages`**, `totalCount` → **`totalItems`** | `pageCount` se lee como "cuántos elementos hay en esta página". `totalPages` no admite dos lecturas |
+
+Y un caso borde que hay que fijar o los clientes se rompen: **con cero resultados,
+`totalPages: 0`, `isFirstPage` e `isLastPage` en `true`, ambos vecinos en `null`.**
+
+### ¿Usar `prisma-extension-pagination`?
+
+**No.** Es una extensión 0.x en el camino caliente de acceso a datos, y lo que ahorra son diez
+líneas de aritmética más un `$transaction([findMany, count])`:
+
+```ts
+export function paginar<T>(items: T[], totalItems: number, page: number, pageSize: number): Paginated<T> {
+  const totalPages = Math.ceil(totalItems / pageSize);
+  return {
+    items,
+    meta: {
+      totalItems, totalPages, currentPage: page, pageSize,
+      isFirstPage: page <= 1,
+      isLastPage: page >= totalPages,
+      previousPage: page > 1 ? page - 1 : null,
+      nextPage: page < totalPages ? page + 1 : null,
+    },
+  };
+}
+```
+
+Además la extensión construye la consulta por ti, y eso pelea con nuestra regla de **`select`
+explícito** en los controllers públicos, que es lo que impide que un campo interno se filtre.
+
+> **Offset, no cursor.** Con decenas de galerías, `skip/take` es correcto y permite saltar a una
+> página concreta. El cursor gana a partir de miles de filas y con scroll infinito; anotado como
+> escape, no como pendiente.
+
+## Qué se testea del contrato
+
+```ts
+it('un error de validación devuelve details por campo, no un array de frases', async () => {
+  const err = await post('/admin/galleries', { title: 'x' }).catch((e) => e);
+  expect(err.body.code).toBe('VALIDATION_FAILED');
+  expect(err.body.details).toContainEqual(
+    expect.objectContaining({ field: 'title', code: 'minLength' }),
+  );
+});
+
+it('los campos anidados llegan con ruta de puntos', async () => {
+  // "items.0.text", no "text" a secas: si no, el formulario no sabe a cuál atarlo.
+});
+
+it('un slug duplicado da code SLUG_TAKEN, no un 409 genérico', async () => { ... });
+
+it('el reuso de refresh da SESSION_REVOKED, no SESSION_EXPIRED', async () => {
+  // Son el mismo 401 pero el admin muestra mensajes distintos.
+});
+
+it('un error desconocido en producción no filtra el stack ni el SQL', async () => { ... });
+
+it('página vacía: totalPages 0, isLastPage true, nextPage null', async () => { ... });
+
+it('la última página tiene nextPage null e isLastPage true', async () => { ... });
+```
+
+---
 
 ## Librerías: qué entra y qué no
 
