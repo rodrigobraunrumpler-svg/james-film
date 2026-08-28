@@ -1285,6 +1285,16 @@ Todas verificadas con `npm view <pkg> dist-tags`, ninguna en RC.
 | `slugify` | 1.6.9 | Con `locale: 'es'` para la ñ y los acentos |
 | `helmet` | 8.3.0 | Cabeceras de seguridad. La API es alcanzable desde internet |
 
+**`cookie-parser` NO entra.** La API nunca lee una cookie: la pasarela sostiene la sesión en el
+dominio del admin y manda `Authorization: Bearer`. Es una consecuencia directa de esa decisión,
+y arrastra dos más: la API se queda **sin CORS con credenciales** y **sin superficie de CSRF** —
+no existe credencial que el navegador envíe por su cuenta. Vuelve a hacer falta el día que un
+navegador hable directamente con la API.
+
+> **Aviso con `helmet`: su CSP por defecto rompe la UI de Swagger** (usa scripts y estilos en
+> línea). Se exceptúa la ruta `/docs`, **no** se desactiva la CSP entera — que es el atajo que
+> aparece en todas las respuestas de internet y deja la API sin cabecera.
+
 **Para los decoradores de Swagger no hace falta ninguna librería.** `applyDecorators` viene en
 `@nestjs/common` y es exactamente para esto. Cualquier paquete de terceros aquí sería una capa
 sobre una función de doce caracteres.

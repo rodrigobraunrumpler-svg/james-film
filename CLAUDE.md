@@ -143,6 +143,12 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Snapshot del OpenAPI público en CI.** `/docs/public` es el contrato que consume Astro: se
   compara con `docs/openapi-public.json` commiteado y el CI falla si cambia sin querer. Mismo
   mecanismo que el drift de Prisma, aplicado a la frontera con la landing.
+- **`helmet` sí, `cookie-parser` no.** La API **nunca lee una cookie**: la pasarela sostiene la
+  sesión en el dominio del admin y manda `Authorization: Bearer`. Eso también deja a la API sin
+  CORS con credenciales y **sin superficie de CSRF** — no hay credencial que el navegador envíe
+  sola. Vuelve a hacer falta el día que un navegador hable directamente con la API.
+- **La CSP por defecto de `helmet` rompe la UI de Swagger** (scripts y estilos en línea). Hay que
+  exceptuar la ruta de `/docs`, no desactivar la CSP entera.
 - **Nada de Fastify, cache-manager ni compression.** La carga es cero —un usuario y unos builds
   a la semana— y el único cuello real es el arranque en frío de Neon, que ninguna librería arregla.
 - **Toda consulta paginada termina en `{ id: 'asc' }` como desempate.** `ORDER BY "order"` con
@@ -501,7 +507,7 @@ Planes: [fase 1 — base](docs/plans/2026-08-28-fase-1-base.md) ✅ ·
 | # | Fase | Duración |
 |---|---|---|
 | 1 | Base: monorepo, ESLint, Prettier, schema, migración, seed | ~1 día |
-| 2 | API mínima: auth con refresh en cookie, galerías, media con presign | ~3 días |
+| 2 | API mínima: auth con tokens en el cuerpo, galerías, media con presign | ~3 días |
 | 3 | **Editor de galería** — 60% del esfuerzo y todo el riesgo técnico | ~1 semana |
 | 3.5 | **Probar en el iPhone real de James con un aftermovie real por 4G.** Solo entonces se decide si hace falta multipart | — |
 | 4 | Resto del admin: categorías, paquetes, testimonios, configuración | ~3 días |
