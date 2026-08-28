@@ -11,15 +11,21 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Limpiar TAMBIÉN al final: `beforeEach` deja las filas del último test en la base,
+  // y el fichero del seed cuenta todas las categorías. Un test debe devolver la base
+  // como la encontró.
+  await limpiar();
   await prisma.$disconnect();
 });
 
-beforeEach(async () => {
-  // En este orden: Media cuelga de Gallery, Gallery de Category con Restrict.
+/** En este orden: Media cuelga de Gallery, y Gallery de Category con Restrict. */
+async function limpiar(): Promise<void> {
   await prisma.media.deleteMany();
   await prisma.gallery.deleteMany();
-  await prisma.category.deleteMany();
-});
+  await prisma.category.deleteMany({ where: { slug: { startsWith: 'test-' } } });
+}
+
+beforeEach(limpiar);
 
 describe('schema', () => {
   it('eventDate guarda solo la fecha, sin componente horario', async () => {
@@ -48,7 +54,8 @@ describe('schema', () => {
     });
 
     await expect(prisma.category.delete({ where: { id: category.id } })).rejects.toThrow();
-    expect(await prisma.category.count()).toBe(1);
+    // Contra la categoría concreta, no contra el total: el seed deja las suyas.
+    expect(await prisma.category.findUnique({ where: { slug: 'test-bodas' } })).not.toBeNull();
   });
 
   it('el mismo clientUploadId no se puede repetir dentro de una galería', async () => {
