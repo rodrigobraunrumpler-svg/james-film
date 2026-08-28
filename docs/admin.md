@@ -18,10 +18,14 @@ Utilidades   clsx + tailwind-merge
 Tests        Vitest + Testing Library + happy-dom + Playwright
 ```
 
-**Sin Server Actions.** El admin es cliente de la API NestJS (§4). Meterlos convertiría a Next
-en un BFF y chocaría con tres decisiones cerradas: el refresh vive en una cookie `httpOnly` del
-dominio de la API (§16), las subidas van directas a R2 sin pasar por ningún servidor (§4, §10),
-y tendrías dos sistemas de caché sin relación (`revalidateTag` y TanStack Query).
+**Sin Server Actions** — pero eso **no** significa renunciar al servidor de Next. Son dos cosas
+distintas y conviene no confundirlas:
+
+- **Server Actions** quedan fuera por una razón concreta: traen su propia invalidación
+  (`revalidatePath` / `revalidateTag`) y tendrías **dos sistemas de caché que no se hablan**
+  junto a TanStack Query. Es el único argumento que se sostiene.
+- **Todo lo demás del servidor de Next sí se usa**: Route Handlers, `middleware`, `cookies()`,
+  `headers()`, Server Components, Metadata API, `manifest.ts`. Ver la sección siguiente.
 
 **`zustand` solo para la cola de subidas.** Con Context, cada tick de progreso re-renderiza a
 todos los consumidores, y son tres subidas concurrentes emitiendo varias veces por segundo. Los
@@ -39,7 +43,175 @@ descarta), `xstate` (un `useReducer` dentro del store).
 
 ---
 
+# Qué usamos de Next.js
+
+Regla: **si Next ya lo trae, no se reimplementa.**
+
+| Herramienta | Uso en el admin |
+|---|---|
+| **App Router**: `layout`, `loading`, `error`, `not-found`, `template` | Estructura y estados de carga por ruta. `loading.tsx` da el skeleton gratis |
+| **Route Groups** `(auth)` / `(panel)` | Layout de login sin sidebar, layout del panel con sidebar. Sin condicionales en el layout |
+| **`middleware.ts`** | Protección de rutas: sin sesión → `/login`. Evita el parpadeo de contenido protegido que sí tiene un guard de cliente |
+| **Route Handlers** `app/api/**/route.ts` | La pasarela a NestJS. Ver "la frontera de auth" |
+| **`cookies()` / `headers()`** | Leer la sesión en servidor, en middleware y en Route Handlers |
+| **Server Components** | Shell, layouts y primera carga. `'use client'` solo en hojas con estado, efectos, APIs del navegador o handlers |
+| **Metadata API** (`metadata`, `generateMetadata`) | Títulos por pantalla, tipado |
+| **`app/manifest.ts`** | El PWA de §10, tipado con `MetadataRoute.Manifest`. Sin `manifest.json` a mano |
+| **`next/font`** | Inter autoalojada, sin petición a Google Fonts ni CLS |
+| **`next/image`** | Posters y portadas desde R2. `remotePatterns` apuntando al dominio del CDN |
+| **`next/link` + `useRouter`** | Navegación y prefetch |
+| **Rutas tipadas** | Next 16 las genera solo: `href="/galerias/xyz"` mal escrito **no compila** |
+| **`instrumentation.ts`** | Sentry en la fase 6 |
+
+## La frontera de auth — la única decisión que falta
+
+Todo lo de arriba es independiente **salvo** `middleware`, `cookies()` y los Server Components
+con datos: los tres necesitan que el servidor de Next conozca la sesión. Y hoy la sesión vive en
+una cookie del dominio de la API (§16), que el servidor de Next **no puede leer**.
+
+Hay dos formas coherentes. **Es una decisión de la fase 2** (auth), pero se anota aquí porque
+determina cuánto de Next se aprovecha.
+
+### Opción A — cliente puro
+
+El navegador guarda el access token en memoria y habla con NestJS entre dominios.
+
+- La API necesita **CORS con credenciales** y un origen explícito.
+- El `middleware` no puede proteger rutas: el guard es de cliente, con parpadeo.
+- Los Server Components no pueden traer datos autenticados.
+- El navegador necesita el **single-flight** del refresh (ver más abajo).
+
+### Opción B — pasarela con Route Handlers  ← recomendada
+
+Un `app/api/[...ruta]/route.ts` reenvía a NestJS y adjunta el `Bearer` **en el servidor**.
+
+- **El token nunca llega al JavaScript del navegador.** Estrictamente mejor que "en memoria":
+  un XSS no puede robar lo que nunca estuvo ahí.
+- La sesión vive en una cookie `httpOnly` **del dominio del admin** → `cookies()`, `middleware`
+  y Server Components funcionan.
+- **Mismo origen**: se acaban el CORS con credenciales y los preflight.
+- El cliente del navegador se simplifica mucho: sin token store, sin cabecera `Authorization`,
+  sin single-flight.
+- **Las subidas siguen yendo directas a R2**: la pasarela solo mueve JSON; el `PUT` firmado no
+  pasa por ningún servidor. §4 y §10 intactos.
+
+**Coste**: un salto de red más (Vercel → Railway) y un fichero de ~60 líneas.
+
+**El problema real de la opción B, y su cura.** En serverless cada invocación es un proceso
+nuevo, así que **el single-flight no se puede hacer con una promesa compartida**. Dos peticiones
+concurrentes que reciban 401 refrescarían a la vez, presentando el mismo refresh token — y la
+rotación de §16 lo interpreta como reuso y **revoca la sesión entera**.
+
+La cura no necesita cambiar el schema, porque `Session` ya tiene lo que hace falta:
+
+> **Ventana de gracia.** Si el token presentado coincide con `prevHash` **y** `updatedAt` es de
+> hace menos de ~30 s, se devuelve el token vigente **sin rotar y sin revocar**. Fuera de esa
+> ventana, `prevHash` sí significa reuso y se revoca. Es el patrón estándar de *refresh token
+> grace period*, y `Session.updatedAt` ya guarda el instante de la última rotación.
+
+Esto hay que implementarlo en la fase 2 **elijamos la opción que elijamos**: la opción A lo evita
+en el caso normal gracias al single-flight, pero no ante dos pestañas abiertas.
+
+---
+
+# Estructura de carpetas
+
+Convención `src/features`: cada feature es autocontenida y las rutas son finas.
+
+```text
+apps/admin/src/
+├── app/                          # SOLO routing. Nada de lógica ni fetch aquí
+│   ├── (auth)/login/page.tsx
+│   ├── (panel)/
+│   │   ├── layout.tsx            # sidebar + barra de publicación
+│   │   ├── page.tsx              # dashboard
+│   │   ├── galerias/
+│   │   │   ├── page.tsx
+│   │   │   └── [id]/page.tsx     # el editor
+│   │   ├── categorias/page.tsx
+│   │   ├── paquetes/page.tsx
+│   │   ├── testimonios/page.tsx
+│   │   └── configuracion/page.tsx
+│   ├── api/[...ruta]/route.ts    # la pasarela a NestJS (opción B)
+│   ├── manifest.ts
+│   ├── layout.tsx
+│   ├── loading.tsx · error.tsx · not-found.tsx
+│   └── middleware.ts
+│
+├── features/                     # el núcleo del producto
+│   ├── auth/
+│   ├── galerias/
+│   │   ├── components/           # GaleriaEditor, MediaGrid, MediaCard, Dropzone
+│   │   ├── hooks/                # useGaleria, useSubidas, useReordenar
+│   │   ├── services/             # llamadas a la API, tipadas con @james-film/contracts
+│   │   ├── schemas/              # zod de los formularios
+│   │   ├── types/                # tipos locales de la feature
+│   │   ├── utils/                # extraerPoster, validarVideo, normalizarImagen
+│   │   ├── constants/            # umbrales: 2160p, 15 Mbps, 50 MB, concurrencia 3
+│   │   └── store/                # zustand: la cola de subidas
+│   ├── dashboard/
+│   ├── categorias/ · paquetes/ · testimonios/ · configuracion/
+│   └── publicacion/              # la barra de estado, que es global
+│
+├── components/
+│   ├── ui/                       # primitivas de shadcn. Código propio
+│   └── shared/                   # compartido entre features: EmptyState, DataList, ConfirmDialog
+│
+├── lib/
+│   ├── api/                      # el cliente HTTP (abajo)
+│   ├── query/                    # QueryClient, keys, provider
+│   └── format/                   # Intl: fechas, relativos, moneda
+│
+└── hooks/ · utils/               # transversales, no de una feature
+```
+
+## Las reglas que la sostienen
+
+1. **`app/` solo enruta.** Sin lógica, sin fetch, sin JSX largo. Una ruta es:
+   ```tsx
+   import { EditorGaleria } from '@/features/galerias/components/editor-galeria';
+   export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+     const { id } = await params;
+     return <EditorGaleria id={id} />;
+   }
+   ```
+2. **Ninguna feature importa de otra feature.** Si dos la necesitan, sube a
+   `components/shared` o `lib`. Es la misma regla que §3 impone entre apps, un nivel abajo.
+3. **Las llamadas a la API viven en `services/`.** Un componente nunca hace `fetch`.
+4. **Validación en `schemas/`**, con zod.
+5. **Server Component por defecto.** `'use client'` solo en la hoja que lo necesita — no en el
+   contenedor, o arrastras el árbol entero al cliente.
+6. **Nada hardcodeado en las features**: umbrales y magic numbers a `constants/`.
+
+> Esto se puede verificar: las skills `nextjs-boundary-enforcer` y `nextjs-architecture-review`
+> revisan justo estas reglas. Conviene pasarlas al cerrar la fase 4.
+
+---
+
+# Tipado
+
+- **`strict: true`** ya está en el `tsconfig` del admin (verificado en la fase 1).
+- **Rutas tipadas de Next 16**: un `href` inexistente no compila.
+- **Los DTOs vienen de `@james-film/contracts`**, nunca se redeclaran en el admin. Si la API
+  cambia el contrato, el admin **no compila** — que es exactamente el punto.
+- **Cero `any`.** Lo que no se pueda tipar se estrecha con un type guard.
+- **`unknown` en las fronteras** (respuestas HTTP, `localStorage`, mensajes), y de ahí a un tipo
+  concreto pasando por zod o un guard.
+- **Los schemas de zod de formulario derivan el tipo**, no al revés:
+  `type Datos = z.infer<typeof esquema>`. Una sola fuente.
+- **`satisfies` en vez de anotación** cuando quieras validar sin ensanchar el tipo.
+- Los `params` de las rutas son `Promise` en Next 16: hay que esperarlos.
+
+---
+
 # El cliente HTTP
+
+Vive en `src/lib/api/`. **Con la opción B es más simple**: el navegador habla con su propio
+origen y no maneja tokens, así que `token-store.ts` y el single-flight de `session.ts` se mueven
+al Route Handler. Lo demás (config, errores, `http.ts`, claves, endpoints) es idéntico en las dos.
+
+Se documentan las cuatro capas completas porque la opción A las necesita todas y la B reutiliza
+las mismas piezas del lado servidor.
 
 Cuatro capas, cada una con una responsabilidad y testeable por separado:
 

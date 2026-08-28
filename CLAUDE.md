@@ -99,8 +99,25 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 
 **Stack del admin (fase 4)** — detalle en [`docs/admin.md`](docs/admin.md)
 - TanStack Query 5 + **`fetch` nativo**. Sin axios ni ky: el interceptor de 401 se escribe igual.
-- **Sin Server Actions.** El admin es cliente de la API; meterlos lo convierte en un BFF y choca
-  con el refresh en cookie del dominio de la API (§16) y con la subida directa a R2 (§4, §10).
+- **Sin Server Actions**, y solo por una razón: traen su propia invalidación (`revalidateTag`)
+  y serían un segundo sistema de caché junto a TanStack Query. **El resto del servidor de Next sí
+  se usa**: Route Handlers, `middleware`, `cookies()`, `headers()`, Server Components, Metadata
+  API, `manifest.ts`, rutas tipadas. Si Next ya lo trae, no se reimplementa.
+- **Frontera de auth — decisión de la fase 2.** Recomendada: una **pasarela con Route Handlers**
+  (`app/api/[...ruta]/route.ts`) que adjunta el `Bearer` en el servidor. El token nunca llega al
+  JS del navegador, la sesión vive en una cookie del dominio del admin (así `middleware` y
+  `cookies()` funcionan), y se acaba el CORS con credenciales. Las subidas siguen yendo directas
+  a R2: la pasarela solo mueve JSON.
+- **Ventana de gracia en el refresh (fase 2).** En serverless no hay single-flight posible: dos
+  invocaciones concurrentes refrescarían a la vez y la rotación lo leería como reuso, revocando
+  la sesión. Si el token presentado coincide con `prevHash` **y** `Session.updatedAt` es de hace
+  menos de ~30 s, se devuelve el vigente sin rotar ni revocar. Sin cambios de schema.
+- **Estructura `src/features`**: `app/` solo enruta (sin lógica ni fetch), ninguna feature importa
+  de otra, las llamadas a la API viven en `services/`, la validación en `schemas/`. Verificable
+  con las skills `nextjs-boundary-enforcer` y `nextjs-architecture-review`.
+- **Tipado estricto**: los DTOs vienen de `@james-film/contracts` y no se redeclaran — si la API
+  cambia el contrato, el admin **no compila**. Cero `any`; `unknown` en las fronteras y de ahí a
+  un tipo concreto vía zod o guard. Los tipos de formulario salen de `z.infer`, nunca al revés.
 - **`XMLHttpRequest` solo para subir a R2** — `fetch` no emite progreso de subida (§17).
 - `nuqs` para filtros y pestañas: la URL **es** la clave de TanStack Query. Una fuente, no dos.
 - `zustand` solo para la cola de subidas: con Context, cada tick de progreso re-renderiza a todos
