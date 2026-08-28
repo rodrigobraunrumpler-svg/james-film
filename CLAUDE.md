@@ -88,6 +88,11 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - pnpm 11 retrasa **un día** la instalación de paquetes recién publicados (protección de cadena
   de suministro). Si una versión publicada hoy no resuelve, es eso, no un fallo.
 - PostgreSQL **17** en Docker, en el puerto **5433** (evita el choque con un Postgres local).
+- **MinIO en Docker para el almacenamiento en local y en CI** (fase 2). R2 es S3-compatible, así
+  que es el mismo `@aws-sdk/client-s3` con otro endpoint: el flujo de subida se prueba entero sin
+  cuenta de Cloudflare, y el código probado es exactamente el que correrá contra R2.
+- **Un solo adaptador de almacenamiento**, no dos. §5 propone `r2.adapter` y `s3.adapter`, pero
+  §17 admite que es el mismo SDK cambiando endpoint: serían el mismo archivo dos veces.
 - Puertos de desarrollo: API 3000 · admin 3001 · web 4321.
 - **`catalog:` de pnpm** en `pnpm-workspace.yaml` para lo que comparten los cuatro paquetes
   (`typescript`, `@types/node`). Se declaran como `"catalog:"`, nunca con número: subir de
@@ -446,7 +451,8 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
 
 **Principio: lo más incierto primero.** No empieces por la landing. §18
 
-Plan detallado de la fase 1: [`docs/plans/2026-08-28-fase-1-base.md`](docs/plans/2026-08-28-fase-1-base.md)
+Planes: [fase 1 — base](docs/plans/2026-08-28-fase-1-base.md) ✅ ·
+[fase 2 — API mínima](docs/plans/2026-08-28-fase-2-api-minima.md)
 
 | # | Fase | Duración |
 |---|---|---|
