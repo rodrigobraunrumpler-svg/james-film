@@ -132,6 +132,11 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Tipado estricto**: los DTOs vienen de `@james-film/contracts` y no se redeclaran — si la API
   cambia el contrato, el admin **no compila**. Cero `any`; `unknown` en las fronteras y de ahí a
   un tipo concreto vía zod o guard. Los tipos de formulario salen de `z.infer`, nunca al revés.
+- **`signableHeaders` es obligatorio al firmar la subida.** Por defecto el SDK de S3 firma solo
+  `content-length;host`: el `content-type` que le pasas **no se aplica**, así que alguien con la
+  URL podría subir `text/html` bajo una clave `.mp4` y el CDN lo serviría — XSS almacenado. Hay
+  que pasar `signableHeaders: new Set(['content-type', 'content-length'])`. Verificado inspeccionando
+  la firma, no supuesto.
 - **`GET /galleries` NO devuelve los medios**, solo portada y `mediaCount`. El detalle por slug
   sí. Si la lista los incluyera, el build de Astro se traería todos los reels de todas las
   galerías en una respuesta que crece sin techo con cada evento.

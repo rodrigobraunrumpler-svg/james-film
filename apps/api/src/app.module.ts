@@ -8,6 +8,7 @@ import { RolesGuard } from './common/guards/roles.guard.js';
 import { validateEnv } from './config/env.schema.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { StorageModule } from './storage/storage.module.js';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     }),
     PrismaModule,
     CommonModule,
+    StorageModule,
     AuthModule,
   ],
   providers: [
