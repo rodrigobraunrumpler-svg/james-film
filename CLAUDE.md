@@ -103,7 +103,7 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   y serían un segundo sistema de caché junto a TanStack Query. **El resto del servidor de Next sí
   se usa**: Route Handlers, `middleware`, `cookies()`, `headers()`, Server Components, Metadata
   API, `manifest.ts`, rutas tipadas. Si Next ya lo trae, no se reimplementa.
-- **Frontera de auth — decisión de la fase 2.** Recomendada: una **pasarela con Route Handlers**
+- **Frontera de auth: DECIDIDA — pasarela con Route Handlers**
   (`app/api/[...ruta]/route.ts`) que adjunta el `Bearer` en el servidor. El token nunca llega al
   JS del navegador, la sesión vive en una cookie del dominio del admin (así `middleware` y
   `cookies()` funcionan), y se acaba el CORS con credenciales. Las subidas siguen yendo directas
@@ -118,6 +118,19 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Tipado estricto**: los DTOs vienen de `@james-film/contracts` y no se redeclaran — si la API
   cambia el contrato, el admin **no compila**. Cero `any`; `unknown` en las fronteras y de ahí a
   un tipo concreto vía zod o guard. Los tipos de formulario salen de `z.infer`, nunca al revés.
+- **`server-only`** en todo módulo que toque el token: si se importa desde un componente cliente,
+  el build falla. Es la regla de ESLint de §3 aplicada un nivel abajo.
+- **Estados de carga — un skeleton no vale para todo.** La señal va donde ocurrió la acción,
+  nunca en un overlay global:
+  - Primera carga de pantalla → **skeleton con la forma real** del contenido, en las 8 pantallas.
+  - Refetch con datos ya en pantalla → **`placeholderData: keepPreviousData`** y atenuar. Volver
+    al skeleton es un retroceso: tenías información y pasas a tener menos.
+  - Mutación → **optimista con reversión** por defecto; si hay que esperar, pendiente **dentro
+    del botón**. Nunca overlay. Toast al terminar, no al empezar.
+  - Autoguardado y barra de publicación → línea de texto discreta, ni spinner ni toast.
+  - Subidas → **progreso real**, nunca indeterminado.
+  - No ser optimista cuando el servidor decide algo impredecible (el slug con desambiguación) o
+    en borrados con confirmación fuerte.
 - **`XMLHttpRequest` solo para subir a R2** — `fetch` no emite progreso de subida (§17).
 - `nuqs` para filtros y pestañas: la URL **es** la clave de TanStack Query. Una fuente, no dos.
 - `zustand` solo para la cola de subidas: con Context, cada tick de progreso re-renderiza a todos

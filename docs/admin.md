@@ -14,8 +14,10 @@ UI           shadcn/ui sobre Radix + Tailwind 4
 Iconos       lucide-react       Toasts  sonner
 Drag & drop  @dnd-kit           Animación  motion
 Fechas       Intl + <input type="date">   — sin librería
-Utilidades   clsx + tailwind-merge
-Tests        Vitest + Testing Library + happy-dom + Playwright
+Utilidades   clsx + tailwind-merge · use-debounce · server-only
+Móvil        vaul (hojas con arrastre) · next-themes (opcional)
+Tests        Vitest + Testing Library + happy-dom + Playwright + msw
+Dev          @tanstack/react-query-devtools
 ```
 
 **Sin Server Actions** — pero eso **no** significa renunciar al servidor de Next. Son dos cosas
@@ -36,10 +38,30 @@ esa misma tupla **es la clave de TanStack Query**. Una fuente, no dos: recargar 
 el botón atrás funciona, y no hay que sincronizar `useState` con la caché. Es lo que evita la
 clase de bug de "la URL dice una cosa y la tabla muestra otra".
 
+## Complementos
+
+Analizados contra lo que las 8 pantallas necesitan de verdad:
+
+| Librería | Versión | Por qué entra |
+|---|---|---|
+| **`server-only`** | 0.0.1 | Marca los módulos que manejan el token: si alguien los importa desde un componente cliente, **el build falla**. Cero bytes en el bundle. Con la pasarela es la pieza que impide que el secreto se filtre por accidente — el mismo tipo de garantía que la regla de ESLint de §3, un nivel abajo |
+| **`vaul`** | 1.1.2 | §7 exige "modales → hojas a pantalla completa en móvil". Da el arrastre para cerrar que se siente nativo en iOS, que es donde James lo usa. Es el `Drawer` de shadcn |
+| **`use-debounce`** | 10.1.1 | Tres debounces distintos en §10: autoguardado 2 s, reorden 800 ms, búsqueda. Escribirlo a mano son 10 líneas, pero la limpieza al desmontar es donde se cuela la fuga |
+| **`@tanstack/react-query-devtools`** | 5.102.8 | Solo desarrollo. Sin esto, depurar por qué una query no se invalida es adivinar |
+| **`msw`** | 2.15.0 | §15 pide tests de componente del editor. Interceptar en la capa de red en vez de mockear módulos hace que el test pruebe el código real, incluido el cliente HTTP |
+| **`next-themes`** | 0.4.6 | Opcional, pero barato y con un motivo real: **revisar material de vídeo se hace mejor en oscuro**. Integrado en shadcn |
+
+**Opcional para el pulido de la fase 4**: `cmdk` (1.1.1) para una paleta ⌘K. Es el `Command` de
+shadcn y da un aire de SaaS premium, pero es una feature, no infraestructura. Se decide cuando
+las 8 pantallas existan.
+
 **Fuera por ahora**: TanStack Table (5 tablas de decenas de filas, y §7 obliga a tarjetas
 apiladas en móvil igual), `react-dropzone` (30 líneas nativas; entra si el `dragleave` anidado
 se pone pesado), `axios`/`ky` (el interceptor de 401 se escribe igual), gráficos (§9 los
-descarta), `xstate` (un `useReducer` dentro del store).
+descarta), `xstate` (un `useReducer` dentro del store), `react-error-boundary` (`error.tsx` por
+ruta cubre el caso), `@t3-oss/env-nextjs` (nuestro `config.ts` con zod son 20 líneas),
+`superjson` (los DTOs ya tipan las fechas como `IsoDate`, así que no hay `Date` que serializar),
+y cualquier librería de barra de progreso de navegación (`useLinkStatus` de Next lo da nativo).
 
 ---
 
@@ -69,10 +91,9 @@ Todo lo de arriba es independiente **salvo** `middleware`, `cookies()` y los Ser
 con datos: los tres necesitan que el servidor de Next conozca la sesión. Y hoy la sesión vive en
 una cookie del dominio de la API (§16), que el servidor de Next **no puede leer**.
 
-Hay dos formas coherentes. **Es una decisión de la fase 2** (auth), pero se anota aquí porque
-determina cuánto de Next se aprovecha.
+**Decidido: opción B.** La A queda documentada solo para que conste por qué se descartó.
 
-### Opción A — cliente puro
+### Opción A — cliente puro (descartada)
 
 El navegador guarda el access token en memoria y habla con NestJS entre dominios.
 
@@ -81,7 +102,7 @@ El navegador guarda el access token en memoria y habla con NestJS entre dominios
 - Los Server Components no pueden traer datos autenticados.
 - El navegador necesita el **single-flight** del refresh (ver más abajo).
 
-### Opción B — pasarela con Route Handlers  ← recomendada
+### Opción B — pasarela con Route Handlers  ← **DECIDIDA**
 
 Un `app/api/[...ruta]/route.ts` reenvía a NestJS y adjunta el `Bearer` **en el servidor**.
 
@@ -111,6 +132,111 @@ La cura no necesita cambiar el schema, porque `Session` ya tiene lo que hace fal
 
 Esto hay que implementarlo en la fase 2 **elijamos la opción que elijamos**: la opción A lo evita
 en el caso normal gracias al single-flight, pero no ante dos pestañas abiertas.
+
+---
+
+# Estados de carga
+
+**Un skeleton no vale para todo, y un spinner genérico no ayuda casi nunca.** Hay cinco
+situaciones distintas y cada una tiene una respuesta correcta. La regla que las une:
+
+> **La señal va donde ocurrió la acción**, nunca en un overlay global. Y si se puede evitar
+> la espera, se evita en vez de decorarla.
+
+| Situación | Qué se muestra | Por qué |
+|---|---|---|
+| **Primera carga de una pantalla** | **Skeleton** con la forma final | Sin salto de layout. `loading.tsx` lo da por ruta, gratis |
+| **Refetch con datos ya en pantalla** (cambiar filtro, paginar) | **Los datos anteriores**, atenuados | Sustituirlos por un skeleton es un retroceso: tenías información y ahora tienes menos |
+| **Mutación** (guardar, reordenar, publicar) | **Optimista** + estado pendiente en el propio botón | Ver abajo |
+| **Navegación entre pantallas** | `loading.tsx` + View Transitions, y pendiente **en el enlace pulsado** | Un overlay global tapa la pantalla que ya estaba bien |
+| **Operación con progreso real** (subidas) | **Barra de progreso real**, nunca indeterminada | Ya lo da `xhr.upload.onprogress` (§10) |
+
+## Primera carga: skeleton en todas las pantallas
+
+Cada pantalla tiene su skeleton, con la **forma real** de su contenido — no un rectángulo gris
+genérico. Un skeleton que no coincide con lo que llega produce salto de layout, que es peor que
+no tener nada.
+
+| Pantalla | Skeleton |
+|---|---|
+| Dashboard | Los tres bloques de §9 con sus alturas reales |
+| Galerías | 6 filas / tarjetas con la proporción de la portada |
+| Editor de galería | La grilla de medios con `aspect-ratio: 9/16` ya reservado |
+| Categorías · Paquetes · Testimonios | Filas de tabla, tarjetas apiladas bajo `md` |
+| Configuración | Los campos del formulario con sus alturas |
+
+El `aspect-ratio` reservado no es cosmético: es lo que mantiene el CLS bajo (§17), y aquí además
+evita que la grilla salte cuando entran 15 posters.
+
+## Refetch: nunca vuelvas al skeleton
+
+```ts
+useQuery({
+  queryKey: keys.galleries.list(filtros),
+  queryFn: ({ signal }) => galleries.list(filtros, { signal }),
+  placeholderData: keepPreviousData,   // ← conserva lo anterior mientras llega lo nuevo
+});
+```
+
+Con `isFetching` se atenúa ligeramente la lista (`opacity: .6`) o se muestra una barra fina
+arriba. **Sin `keepPreviousData`, cambiar de filtro hace parpadear la pantalla entera** con cada
+pulsación.
+
+## Mutaciones: aquí el skeleton no aplica, y el spinner tampoco
+
+No hay forma que dibujar: no estás esperando datos, estás esperando una confirmación. Tres
+niveles, de mejor a peor:
+
+**1 · Optimista — el caso por defecto.** La UI muestra el resultado **al instante** y revierte si
+falla. Es lo que §10 ya exige para el reorden, y aplica igual a publicar, marcar portada, activar
+un testimonio o reordenar paquetes.
+
+```ts
+useMutation({
+  mutationFn: (ids: string[]) => galleries.reorderMedia(id, ids),
+  onMutate: async (ids) => {
+    await qc.cancelQueries({ queryKey: keys.galleries.detail(id) });
+    const previo = qc.getQueryData(keys.galleries.detail(id));
+    qc.setQueryData(keys.galleries.detail(id), (g) => reordenar(g, ids));
+    return { previo };                                    // ← para revertir
+  },
+  onError: (_e, _v, ctx) => {
+    qc.setQueryData(keys.galleries.detail(id), ctx?.previo);
+    toast.error('No se pudo reordenar. Vuelve a intentarlo.');
+  },
+  onSettled: () => qc.invalidateQueries({ queryKey: keys.galleries.detail(id) }),
+});
+```
+
+**Cuándo NO ser optimista**: cuando el servidor decide algo que el cliente no puede predecir —
+el slug generado con desambiguación, o un borrado con confirmación fuerte (§9). Ahí se espera.
+
+**2 · Estado pendiente local, cuando hay que esperar.** El botón se deshabilita, cambia el texto
+("Guardar" → "Guardando…") y lleva un spinner **de 16px dentro de él**. El resto de la pantalla
+sigue viva y navegable. Nunca un overlay que bloquee todo.
+
+**3 · Confirmación al terminar, no al empezar.** Un toast de sonner al éxito, o un error que
+diga qué hacer. Un toast de "guardando…" es ruido: el botón ya lo dice.
+
+## Autoguardado: ni spinner ni toast
+
+El editor guarda el borrador con debounce de 2 s (§10). Un spinner cada dos segundos es una
+pantalla que tiembla. Una línea de texto discreta, como Notion o Google Docs:
+
+```
+Guardando…        →        Guardado hace un momento
+```
+
+Mismo patrón en la **barra de publicación** de §9, que ya está diseñada así:
+`● 3 cambios sin publicar` → `◐ Publicando… (~1 min)` → `✓ Publicado hace 4 minutos`.
+
+## Errores y vacíos son estados de carga también
+
+- **Error**: `error.tsx` por ruta, con botón de reintentar. Nunca una pantalla en blanco.
+- **Vacío**: §9 lo exige explícitamente — "Aún no tienes galerías → Crear la primera". El estado
+  vacío es el momento en que James decide si la herramienta le sirve.
+- **Sin conexión**: el `NetworkError` del cliente HTTP se distingue del `TimeoutError`, así que
+  el mensaje puede ser "no hay conexión" y no "algo falló".
 
 ---
 
