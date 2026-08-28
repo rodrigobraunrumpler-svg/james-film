@@ -373,7 +373,25 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
 - Los DTOs de NestJS hacen `implements` de las interfaces de `packages/contracts`.
   **Si divergen, no compila.** Swagger se genera, no se mantiene.
 - Env validada con Zod al arrancar. Si falta una variable, la app no levanta. §5
-- `PrismaExceptionFilter`: P2002→409, P2025→404, P2003→400, con **mapa estático por código**
+- **Contrato de respuesta** (tipos en `packages/contracts`):
+  - **Los errores van siempre envueltos con `code`**, un `ErrorCode` de unión cerrada. El código
+    es el contrato; el mensaje es para humanos y puede reescribirse sin romper a nadie. El admin
+    hace `switch (error.code)`, nunca compara cadenas.
+  - **Códigos de dominio, no solo genéricos.** `SESSION_EXPIRED` y `SESSION_REVOKED` son ambos
+    401 pero piden reacciones distintas: el segundo es el reuso de refresh y debe decir "cerramos
+    tu sesión por seguridad".
+  - **`VALIDATION_FAILED` lleva `details: FieldError[]`** con `{ field, code, message }` y rutas
+    con puntos (`items.0.text`). El admin llama a `setError(field)` sin parsear nada. Se consigue
+    con `exceptionFactory` en el `ValidationPipe`.
+  - **Las listas devuelven `{ items, meta }`** con `PaginationMeta` (incluye `pageSize`; con cero
+    resultados `totalPages: 0` y ambos vecinos en `null`). **Los recursos individuales van
+    desnudos**: un `{ success: true }` junto a un 200 repite lo que el HTTP ya dice y ensucia el
+    doc público que consume Astro.
+  - **Paginación por offset**, no cursor: con decenas de galerías `skip/take` es correcto y deja
+    saltar a una página concreta. Cursor queda como escape, no como pendiente.
+  - **Un solo `AllExceptionsFilter` global**, no uno por tipo: con dos, un error no contemplado se
+    escapa sin `code`. El mapa de Prisma vive dentro. En producción no salen stacks ni SQL.
+- `AllExceptionsFilter`: P2002→409, P2025→404, P2003→400, con **mapa estático por código**
   como el de §5 del doc. **Nunca leer `err.meta.target`:** en Prisma 7 con driver adapter ya no
   existe (`meta = { driverAdapterError, table, modelName }`), y leerlo lanza un TypeError que
   convierte el 409 en un 500. El nombre del índice está en
