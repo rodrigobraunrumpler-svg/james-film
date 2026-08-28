@@ -1,0 +1,19 @@
+{
+  "ignorePatterns": ["dist/**", ".next/**", ".astro/**", "node_modules/**"],
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@prisma/client", "**/apps/api/**", "**/generated/prisma/**"],
+            "message": "El frontend no habla con la base de datos. Usa @james-film/contracts."
+          }
+        ]
+      }
+    ],
+    "typescript/no-deprecated": "error",
+    "typescript/consistent-type-imports": "error"
+  },
+  "env": { "node": true, "browser": true }
+}

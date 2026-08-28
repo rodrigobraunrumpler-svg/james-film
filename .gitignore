@@ -8,3 +8,8 @@ dist/
 !apps/api/.env.test
 *.log
 coverage/
+
+# Los scaffolds de Next y Astro crean su propio workspace: convierte la app
+# en un proyecto independiente y rompe la resolución del catálogo.
+apps/*/pnpm-workspace.yaml
+apps/*/pnpm-lock.yaml
