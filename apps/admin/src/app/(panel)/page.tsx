@@ -1,11 +1,18 @@
+import { Suspense } from 'react';
+import { ListaGalerias } from '@/features/galerias/components/lista-galerias';
+import { SkeletonLista } from '@/features/galerias/components/skeleton-lista';
+
 export const metadata = { title: 'Galerías · James Film' };
 
-/** Ruta fina. La lista real llega en el Task 3. */
+/** Ruta fina: importa la feature y ya. Sin lógica, sin fetch, sin JSX largo. */
 export default function Page() {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Galerías</h1>
-      <p className="text-neutral-600">Aquí irá la lista de eventos.</p>
+      {/* nuqs lee la URL: necesita Suspense en el App Router. */}
+      <Suspense fallback={<SkeletonLista />}>
+        <ListaGalerias />
+      </Suspense>
     </div>
   );
 }

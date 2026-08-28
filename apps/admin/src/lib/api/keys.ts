@@ -10,7 +10,7 @@ export const keys = {
   galleries: {
     all: ['galleries'] as const,
     lists: () => [...keys.galleries.all, 'list'] as const,
-    list: (filtros: Record<string, unknown>) => [...keys.galleries.lists(), filtros] as const,
+    list: (filtros: object) => [...keys.galleries.lists(), filtros] as const,
     detail: (id: string) => [...keys.galleries.all, 'detail', id] as const,
   },
   categories: {

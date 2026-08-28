@@ -2,6 +2,7 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { useState } from 'react';
 import { crearQueryClient } from './cliente';
 
@@ -23,5 +24,10 @@ export function ProveedorQuery({ children }: { children: React.ReactNode }) {
     }),
   );
 
-  return <QueryClientProvider client={cliente}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={cliente}>
+      {/* nuqs necesita su adaptador para el App Router. */}
+      <NuqsAdapter>{children}</NuqsAdapter>
+    </QueryClientProvider>
+  );
 }
