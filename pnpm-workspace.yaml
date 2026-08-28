@@ -16,10 +16,14 @@ engineStrict: true
 # ejecutar scripts de instalación; el resto falla con ERR_PNPM_IGNORED_BUILDS.
 # Prisma lo necesita: su postinstall es lo que genera el cliente.
 allowBuilds:
-  prisma: true # genera el cliente en el postinstall
+  prisma: true              # genera el cliente en el postinstall
   '@prisma/client': true
-  '@prisma/engines': true # descarga los binarios del query engine
-  esbuild: true # lo usan tsx y vitest
+  '@prisma/engines': true   # descarga los binarios del query engine
+  esbuild: true             # lo usan tsx y vitest
+  # Telemetría que viaja con @nestjs/swagger vía swagger-ui-dist. Denegado a
+  # propósito: no queremos un postinstall que reporte nada, y negarlo no rompe
+  # la UI de Swagger.
+  '@scarf/scarf': false
 
 # Las tres advisories de lodash y la de deepmerge-ts llegan por el CLI de Prisma
 # (Studio y su cargador de config). Prisma las arrastra como peer opcional, así que
