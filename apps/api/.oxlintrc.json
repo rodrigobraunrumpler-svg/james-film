@@ -1,0 +1,10 @@
+{
+  "ignorePatterns": ["src/generated/**", "dist/**"],
+  "rules": {
+    "typescript/no-explicit-any": "off",
+    "typescript/no-floating-promises": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-deprecated": "error"
+  },
+  "env": { "node": true }
+}
