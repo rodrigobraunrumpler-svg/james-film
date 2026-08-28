@@ -79,6 +79,8 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **NestJS 12 · TypeScript 6 · Prisma 7.10.0 · Vitest 4 · oxlint · Zod 4 · PostgreSQL 17.**
 - **`apps/api` es ESM** (`"type": "module"`): todo import relativo lleva extensión `.js`,
   incluso desde un `.ts`. `import { X } from './x.js'`.
+  **`apps/admin` es al revés**: usa `moduleResolution: bundler` y los imports relativos van
+  **sin extensión**. Poner `.js` allí rompe el build de Next con `module-not-found`.
 - **En pnpm 11 los ajustes NO van en `.npmrc`** — ahí solo quedan auth y registry. Todo lo demás
   vive en `pnpm-workspace.yaml`. **El repo no tiene `.npmrc`**; si vuelve a aparecer uno con
   ajustes, se ignoran en silencio.
@@ -184,6 +186,9 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   iPhone de James ningún reel tendría miniatura nunca, y en silencio. Y el `posterMimeType` que
   se declara al presign es siempre `blob.type`, jamás una constante escrita a mano.
 - **`middleware.ts` está deprecado en Next 16**: se llama `proxy.ts`, con `export function proxy`.
+- **`proxy.ts` protege PÁGINAS; de las llamadas a la API se ocupa la pasarela.** Todo `/api` va
+  fuera de su `matcher`: si entrara, un `fetch()` sin sesión seguiría el 307 y recibiría el HTML
+  del login donde espera JSON. Verificado — la página redirige, la API devuelve 401.
 - **`server-only`** en todo módulo que toque el token: si se importa desde un componente cliente,
   el build falla. Es la regla de ESLint de §3 aplicada un nivel abajo.
 - **Estados de carga — un skeleton no vale para todo.** La señal va donde ocurrió la acción,

@@ -16,6 +16,13 @@ export default defineConfig({
     projects: [
       {
         extends: true,
+        // `server-only` lanza si se importa fuera de un Server Component: es justo
+        // su trabajo. Aquí se apunta a su propio módulo vacío —el que Next usa bajo
+        // la condición `react-server`—, no se neutraliza el guardarraíl: el que de
+        // verdad cuenta lo aplica `next build` sobre el bundle del cliente.
+        resolve: {
+          alias: { 'server-only': new URL('./src/lib/soporte/server-only-vacio.ts', import.meta.url).pathname },
+        },
         test: {
           name: 'nodo',
           environment: 'node',
