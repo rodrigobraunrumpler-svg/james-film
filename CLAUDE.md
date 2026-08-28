@@ -67,12 +67,20 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   necesitan transpilarlo y aparece config de bundler donde no debería haberla.
 
 **Versiones (actualizadas a 2026 — sobrescriben §3)**
-- Node **`>=24 <25`** (Active LTS hasta oct-2026), pnpm **10**, `engine-strict=true`.
-- **Sin `node-linker=hoisted`.** Ese flag desactiva el `node_modules` estricto, que es la única
+- Node **`>=24 <25`** (Active LTS hasta oct-2026), pnpm **11**.
+- **En pnpm 11 los ajustes NO van en `.npmrc`** — ahí solo quedan auth y registry. Todo lo demás
+  vive en `pnpm-workspace.yaml`. **El repo no tiene `.npmrc`**; si vuelve a aparecer uno con
+  ajustes, se ignoran en silencio.
+- **`engineStrict: true`** en `pnpm-workspace.yaml` (antes `engine-strict` en `.npmrc`).
+  El install **falla**, no avisa.
+- **`allowBuilds`** en `pnpm-workspace.yaml`, un mapa `paquete: booleano`. Sustituye a
+  `onlyBuiltDependencies`, **eliminado en pnpm 11**. Solo `prisma` y `@prisma/client` pueden
+  correr scripts de instalación; el resto falla con `ERR_PNPM_IGNORED_BUILDS`. Sin esa entrada
+  el cliente de Prisma no se genera y el error no menciona pnpm.
+- **Sin `nodeLinker: hoisted`.** Ese flag desactiva el `node_modules` estricto, que es la única
   razón por la que §3 eligió pnpm. Prisma 6 funciona con el linker por defecto.
-- **`pnpm.onlyBuiltDependencies: ["prisma", "@prisma/client"]`** en el `package.json` raíz.
-  pnpm 10 bloquea los scripts de instalación por defecto; sin esa lista el cliente de Prisma
-  no se genera y el error no menciona pnpm.
+- pnpm 11 retrasa **un día** la instalación de paquetes recién publicados (protección de cadena
+  de suministro). Si una versión publicada hoy no resuelve, es eso, no un fallo.
 - PostgreSQL **17** en Docker, en el puerto **5433** (evita el choque con un Postgres local).
 - Puertos de desarrollo: API 3000 · admin 3001 · web 4321.
 - **`catalog:` de pnpm** en `pnpm-workspace.yaml` para lo que comparten los cuatro paquetes
@@ -135,7 +143,8 @@ El `.md` se contradice en estos puntos. Resueltos así:
 | Repository pattern | **No se usa.** Servicios → `PrismaService` directo | §5 y §21 lo definen en detalle |
 | Adaptadores de storage | **Uno solo**, S3-compatible con endpoint por env | §5 define `r2.adapter` + `s3.adapter` |
 | Multipart >50MB | **No entra en la fase 3.** Se decide tras probar un aftermovie real en el iPhone de James por 4G | §10 lo da por hecho |
-| Node y pnpm | **Node 24 LTS · pnpm 10.** Node 22 está en mantenimiento desde oct-2025 | §3 pinea Node 22 y pnpm 9.15.0 |
+| Node y pnpm | **Node 24 LTS · pnpm 11.** Node 22 está en mantenimiento desde oct-2025 | §3 pinea Node 22 y pnpm 9.15.0 |
+| `.npmrc` | **No existe.** pnpm 11 solo lee auth y registry de ahí; los ajustes van en `pnpm-workspace.yaml` | §3 pone la configuración en `.npmrc` |
 | `node-linker=hoisted` | **No se usa** (ver arriba) | §3 lo declara obligatorio |
 | Hash de contraseñas | **argon2id**, no bcrypt | El doc no lo especifica |
 | Config de Tailwind | **Tailwind 4**: los tokens de §6 van en `@theme` dentro del CSS, no en `tailwind.config.ts` | §6 muestra sintaxis de Tailwind 3 |
