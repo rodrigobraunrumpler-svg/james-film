@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Minor y patch en un solo PR: si no, abre quince y se ignoran todos.
+      # Los major llegan sueltos, que es donde de verdad hay que mirar el changelog.
+      minor-y-patch:
+        update-types: ['minor', 'patch']
+    ignore:
+      # Deliberado, ver CLAUDE.md: son los tipos de Node 26 y estamos en Node 24.
+      - dependency-name: '@types/node'
+        versions: ['>=25']
+      # TypeScript 7 es el compilador nativo nuevo; NestJS 12 declara ^6.0.2.
+      - dependency-name: 'typescript'
+        versions: ['>=7']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

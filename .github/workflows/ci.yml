@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  # Un push nuevo cancela el anterior de la misma rama: no se pagan builds obsoletos.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: jamesfilm
+          POSTGRES_PASSWORD: jamesfilm
+          # Mismo nombre, usuario y puerto que el Docker local: el CI corre
+          # exactamente lo mismo que tú, sin una segunda configuración que mantener.
+          POSTGRES_DB: jamesfilm_test
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U jamesfilm -d jamesfilm_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Lee la versión de `packageManager` en el package.json raíz.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # prisma7.config.ts lee el .env de la raíz. `prisma generate` no toca la base,
+      # pero exige que la URL esté definida.
+      - run: cp .env.example .env
+
+      # Genera el cliente de Prisma y los tipos de ruta de Next, y comprueba tipos.
+      # Va antes del lint porque las reglas type-aware necesitan esos tipos.
+      - run: pnpm typecheck
+
+      - run: pnpm lint
+
+      - run: pnpm --filter api db:test:deploy
+
+      # Falla si alguien editó schema.prisma sin generar la migración.
+      # Sin esto, la divergencia se descubre en el deploy.
+      - run: pnpm --filter api db:test:drift
+
+      - run: pnpm --filter api test
+      - run: pnpm --filter api test:integration
