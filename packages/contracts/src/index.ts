@@ -186,21 +186,21 @@ export interface SiteSettingsDto {
 // ------------------------------------------------------------
 
 // ------------------------------------------------------------
-//  Paginación
+//  Sobre de respuesta
 // ------------------------------------------------------------
 
 /**
  * Resumen de una página. `isFirstPage`, `isLastPage`, `previousPage` y `nextPage`
  * son derivables, y aun así viajan: el cliente no debería repetir la aritmética de
- * paginación en cada sitio donde pinta un control. `disabled={meta.isFirstPage}`
- * se lee mejor que `disabled={meta.currentPage <= 1}` y no se equivoca.
+ * paginación en cada control que pinta. `disabled={meta.isFirstPage}` se lee mejor
+ * que `disabled={meta.currentPage <= 1}` y no se equivoca.
  *
- * Con cero resultados: `totalPages: 0`, `isFirstPage` e `isLastPage` en `true`,
+ * Con cero resultados: `pageCount: 0`, `isFirstPage` e `isLastPage` en `true`,
  * y ambos vecinos en `null`.
  */
 export interface PaginationMeta {
-  totalItems: number;
-  totalPages: number;
+  totalCount: number;
+  pageCount: number;
   currentPage: number;
   /** Necesario para "mostrando 1-20 de 47" y para un selector de tamaño. */
   pageSize: number;
@@ -209,15 +209,6 @@ export interface PaginationMeta {
   previousPage: number | null;
   nextPage: number | null;
 }
-
-export interface Paginated<T> {
-  items: T[];
-  meta: PaginationMeta;
-}
-
-// ------------------------------------------------------------
-//  Errores
-// ------------------------------------------------------------
 
 /**
  * El código es el contrato; el mensaje es para humanos y puede reescribirse sin
@@ -247,9 +238,9 @@ export type ErrorCode =
   | 'UPLOAD_SIZE_MISMATCH';
 
 /**
- * Un error de validación por campo. Con esta forma, el admin puede llamar
- * directamente a `setError(field, { message })` de react-hook-form en vez de
- * parsear el array de frases que devuelve class-validator por defecto.
+ * Un error de validación por campo. Con esta forma el admin puede llamar
+ * directamente a `setError(field, { message })` de react-hook-form, en vez de
+ * parsear el array de frases en inglés que devuelve class-validator.
  */
 export interface FieldError {
   /** Ruta del campo, con puntos para lo anidado: "title", "items.0.text". */
@@ -259,8 +250,18 @@ export interface FieldError {
   message: string;
 }
 
-/** El cuerpo de CUALQUIER respuesta de error de la API. */
-export interface ApiErrorBody {
+/** Toda respuesta correcta de la API. `meta` solo viaja en las listas. */
+export interface ApiSuccess<T> {
+  success: true;
+  code: 'OK';
+  data: T;
+  meta?: PaginationMeta;
+  timestamp: string;
+}
+
+/** Toda respuesta de error de la API. */
+export interface ApiFailure {
+  success: false;
   statusCode: number;
   code: ErrorCode;
   /** En castellano y accionable. Puede cambiar entre versiones: no es contrato. */
@@ -271,6 +272,22 @@ export interface ApiErrorBody {
   requestId?: string;
   timestamp: string;
 }
+
+/**
+ * Unión discriminada por `success`: TypeScript estrecha sola tras un `if`.
+ * Astro la consume en build time sin lanzar; el cliente del admin lanza `ApiError`
+ * antes de devolver, así que allí solo se ve la rama de éxito.
+ */
+export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
+/** Atajo para las listas: `data` es el array y `meta` está garantizado. */
+export interface ApiPaginated<T> extends ApiSuccess<T[]> {
+  meta: PaginationMeta;
+}
+
+// ------------------------------------------------------------
+//  Tracking
+// ------------------------------------------------------------
 
 /** El clic a WhatsApp ES el lead: sin formulario, sin fricción. */
 export interface TrackWhatsappClickInput {

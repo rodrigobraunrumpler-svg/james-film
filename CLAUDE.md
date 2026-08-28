@@ -132,6 +132,16 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Tipado estricto**: los DTOs vienen de `@james-film/contracts` y no se redeclaran — si la API
   cambia el contrato, el admin **no compila**. Cero `any`; `unknown` en las fronteras y de ahí a
   un tipo concreto vía zod o guard. Los tipos de formulario salen de `z.infer`, nunca al revés.
+- **Toda consulta paginada termina en `{ id: 'asc' }` como desempate.** `ORDER BY "order"` con
+  filas empatadas no garantiza secuencia estable en Postgres: una fila aparece en dos páginas y
+  otra en ninguna. Y ocho modelos tienen `order @default(0)`, o sea que empatan por defecto.
+- **El login ejecuta siempre una verificación argon2**, contra un hash señuelo si el usuario no
+  existe. Sin eso el tiempo de respuesta delata qué emails existen aunque el mensaje sea idéntico.
+- **Los servicios anotan su retorno con el DTO** (`Promise<GalleryDto>`). Es lo que hace que
+  `select` falle cerrado: sin la anotación, olvidar un campo compila y revienta en la landing.
+- **404, no 403, para recursos no publicados.** Un 403 confirma que ese slug existe.
+- `app.enableShutdownHooks()` y **límite de cuerpo de 256 kb**: el segundo convierte "nunca subas
+  archivos por la API" de frase a imposibilidad.
 - **`server-only`** en todo módulo que toque el token: si se importa desde un componente cliente,
   el build falla. Es la regla de ESLint de §3 aplicada un nivel abajo.
 - **Estados de carga — un skeleton no vale para todo.** La señal va donde ocurrió la acción,
@@ -383,10 +393,13 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
   - **`VALIDATION_FAILED` lleva `details: FieldError[]`** con `{ field, code, message }` y rutas
     con puntos (`items.0.text`). El admin llama a `setError(field)` sin parsear nada. Se consigue
     con `exceptionFactory` en el `ValidationPipe`.
-  - **Las listas devuelven `{ items, meta }`** con `PaginationMeta` (incluye `pageSize`; con cero
-    resultados `totalPages: 0` y ambos vecinos en `null`). **Los recursos individuales van
-    desnudos**: un `{ success: true }` junto a un 200 repite lo que el HTTP ya dice y ensucia el
-    doc público que consume Astro.
+  - **Sobre uniforme en TODA respuesta**: `{ success, code, data, meta?, timestamp }`.
+    `ApiResponse<T>` es una unión discriminada por `success`, así que TypeScript estrecha solo.
+    Lo aplica un `ResponseEnvelopeInterceptor` global, y `ApiDoc` lo refleja en el esquema **en un
+    solo sitio** — sin los decoradores propios del Task 6 sería un cambio de cincuenta ficheros.
+  - `PaginationMeta` conserva los nombres de `prisma-extension-pagination` (`totalCount`,
+    `pageCount`) y añade **`pageSize`**. Con cero resultados: `pageCount: 0`, ambos `isFirst/isLast`
+    en `true`, ambos vecinos en `null`.
   - **Paginación por offset**, no cursor: con decenas de galerías `skip/take` es correcto y deja
     saltar a una página concreta. Cursor queda como escape, no como pendiente.
   - **Un solo `AllExceptionsFilter` global**, no uno por tipo: con dos, un error no contemplado se

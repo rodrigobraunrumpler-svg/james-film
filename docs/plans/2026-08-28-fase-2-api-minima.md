@@ -1000,146 +1000,192 @@ pnpm lint && pnpm typecheck && pnpm test
 
 # El contrato de respuesta
 
-Definido en `packages/contracts`: `PaginationMeta`, `Paginated<T>`, `ErrorCode`, `FieldError`
-y `ApiErrorBody`.
+Definido en `packages/contracts`: `ApiSuccess`, `ApiFailure`, `ApiResponse`, `ApiPaginated`,
+`PaginationMeta`, `ErrorCode` y `FieldError`.
 
-## Qué se envuelve y qué no
-
-| Respuesta | Forma | Por qué |
-|---|---|---|
-| **Error** (cualquiera) | **Siempre envuelta**, con `code` | El código es el contrato |
-| **Lista** | `{ items, meta }` | El meta necesita un sitio |
-| **Recurso único** | **Desnudo** | Ver abajo |
-
-**Los recursos individuales no se envuelven.** Un `{ success: true, data: {...} }` junto a un 200
-repite lo que el código HTTP ya dice, obliga a desenvolver en cada consumidor y ensucia todos los
-esquemas de Swagger — y ese doc público es el contrato que Astro consume en build time. Es lo que
-hacen Stripe y GitHub: el recurso va desnudo y solo los errores llevan sobre.
-
-> Si prefieres uniformidad total, es un interceptor de quince líneas y se cambia en cualquier
-> momento. Pero recomiendo no hacerlo: el coste se paga en cada endpoint y en cada consumidor,
-> para siempre.
-
-## Errores: el `code` es lo que importa
+## Sobre uniforme en TODA respuesta
 
 ```jsonc
+// Éxito
+{ "success": true, "code": "OK", "data": { … }, "timestamp": "2026-08-28T16:40:12.031Z" }
+
+// Lista
+{ "success": true, "code": "OK", "data": [ … ], "meta": { … }, "timestamp": "…" }
+
+// Error
 {
+  "success": false,
   "statusCode": 409,
-  "code": "SLUG_TAKEN",              // ← el contrato
-  "message": "Ya existe una galería con ese enlace",  // ← para humanos, puede reescribirse
+  "code": "SLUG_TAKEN",                                // ← el contrato
+  "message": "Ya existe una galería con ese enlace",   // ← humano, reescribible
   "requestId": "01JD4X…",
-  "timestamp": "2026-08-28T16:40:12.031Z"
+  "timestamp": "…"
 }
 ```
 
+`ApiResponse<T>` es una **unión discriminada por `success`**: TypeScript estrecha solo con un
+`if`, sin type guards a mano.
+
+- [ ] **`ResponseEnvelopeInterceptor` global.** Envuelve lo que devuelve el controller. Si el
+  servicio devolvió `{ items, meta }`, lo desestructura a `data` + `meta`; si devolvió un recurso,
+  va tal cual en `data`. **El interceptor no toca los errores**: de esos se ocupa el filtro, y
+  ambos producen la misma forma.
+- [ ] **`ApiDoc` envuelve el esquema.** Aquí se paga solo el diseño del Task 6: en vez de tocar
+  cada `@ApiResponse` del proyecto, el sobre se aplica **en un sitio** y todos los endpoints
+  quedan documentados con la forma real. Sin los decoradores propios, esto sería un cambio de
+  cincuenta ficheros.
+
+## Errores: el `code` es lo que importa
+
 **El mensaje se reescribe, el código no.** Sin `code`, el admin acabaría comparando cadenas en
-castellano y cualquier mejora de redacción rompería un `if`. Con `code`, el `switch` es exhaustivo
-y TypeScript avisa cuando aparece un código nuevo, porque `ErrorCode` es una unión cerrada.
+castellano y cualquier mejora de redacción rompería un `if`. Con `ErrorCode` como unión cerrada,
+el `switch` es exhaustivo y TypeScript avisa cuando aparece un código nuevo.
 
-Y por eso hay códigos de dominio y no solo genéricos: `SESSION_EXPIRED` y `SESSION_REVOKED` son
+Por eso hay códigos de dominio y no solo genéricos: `SESSION_EXPIRED` y `SESSION_REVOKED` son
 ambos 401, pero **piden reacciones distintas** — el primero manda al login sin más, el segundo
-debe decir "cerramos tu sesión por seguridad", que es lo que pasa cuando la rotación detecta reuso.
+debe decir "cerramos tu sesión por seguridad", que es lo que ocurre cuando la rotación detecta
+reuso.
 
-### El detalle que más rinde: errores por campo
+### Errores por campo
 
 `class-validator` devuelve `message: ["title must be longer than 2 characters"]`. Atar eso a un
 campo de formulario obliga a parsear inglés. En su lugar:
 
 ```jsonc
-{
-  "statusCode": 422,
-  "code": "VALIDATION_FAILED",
-  "message": "Revisa los campos marcados",
-  "details": [
-    { "field": "title", "code": "minLength", "message": "Mínimo 2 caracteres" },
-    { "field": "items.0.text", "code": "isNotEmpty", "message": "No puede estar vacío" }
-  ]
-}
+"code": "VALIDATION_FAILED",
+"message": "Revisa los campos marcados",
+"details": [
+  { "field": "title", "code": "minLength", "message": "Mínimo 2 caracteres" },
+  { "field": "items.0.text", "code": "isNotEmpty", "message": "No puede estar vacío" }
+]
 ```
 
-El admin recorre `details` y llama a `setError(field, { message })` de react-hook-form. **Sin
-parsear nada.** Se consigue con `exceptionFactory` en el `ValidationPipe`, aplanando los
-`ValidationError` anidados a rutas con puntos.
+El admin recorre `details` y llama a `setError(field, { message })`. **Sin parsear nada.** Se
+consigue con `exceptionFactory` en el `ValidationPipe`, aplanando los `ValidationError` anidados
+a rutas con puntos.
 
-- [ ] **Un solo filtro global, no dos.** El plan tenía `PrismaExceptionFilter` aparte. Lo correcto
-  es un `AllExceptionsFilter` que normaliza **todo** —`HttpException`, errores de Prisma y lo
-  desconocido— al mismo sobre. Con dos filtros, un error no contemplado se escapa sin `code` y el
-  cliente recibe una forma que no espera. El mapa de Prisma vive dentro.
-- [ ] **En producción no salen ni stacks ni mensajes de Prisma.** Un error desconocido es
-  `INTERNAL` con mensaje genérico; el detalle va al log con el `requestId`.
+- [ ] **Un solo `AllExceptionsFilter` global, no dos.** Normaliza **todo** —`HttpException`,
+  errores de Prisma y lo desconocido— al mismo sobre. Con dos filtros, un error no contemplado se
+  escapa sin `code` y el cliente recibe una forma que no espera. El mapa de Prisma vive dentro.
+- [ ] **En producción no salen ni stacks ni mensajes de Prisma.** Lo desconocido es `INTERNAL`
+  con mensaje genérico; el detalle va al log con el `requestId`.
 
-## Paginación: tu shape, con dos cambios
+## Paginación
 
-Tu forma viene de `prisma-extension-pagination` y **está bien pensada**: que `isFirstPage`,
-`previousPage` y compañía viajen aunque sean derivables es lo correcto — el cliente no debería
-repetir la aritmética de paginación en cada control que pinta, y `disabled={meta.isFirstPage}`
-no se equivoca.
+Se conservan los nombres de `prisma-extension-pagination` (`totalCount`, `pageCount`) y se añade
+**`pageSize`**, que faltaba: sin él no se puede pintar "mostrando 1-20 de 47" ni un selector de
+tamaño.
 
-Dos cambios:
-
-| Cambio | Motivo |
-|---|---|
-| **`+ pageSize`** | Sin él no se puede pintar "mostrando 1-20 de 47" ni un selector de tamaño. Es el único dato que falta para que el meta sea autosuficiente |
-| `pageCount` → **`totalPages`**, `totalCount` → **`totalItems`** | `pageCount` se lee como "cuántos elementos hay en esta página". `totalPages` no admite dos lecturas |
-
-Y un caso borde que hay que fijar o los clientes se rompen: **con cero resultados,
-`totalPages: 0`, `isFirstPage` e `isLastPage` en `true`, ambos vecinos en `null`.**
-
-### ¿Usar `prisma-extension-pagination`?
-
-**No.** Es una extensión 0.x en el camino caliente de acceso a datos, y lo que ahorra son diez
-líneas de aritmética más un `$transaction([findMany, count])`:
+Caso borde fijado: **con cero resultados, `pageCount: 0`, `isFirstPage` e `isLastPage` en `true`,
+ambos vecinos en `null`.**
 
 ```ts
-export function paginar<T>(items: T[], totalItems: number, page: number, pageSize: number): Paginated<T> {
-  const totalPages = Math.ceil(totalItems / pageSize);
+export function paginar<T>(items: T[], totalCount: number, page: number, pageSize: number) {
+  const pageCount = Math.ceil(totalCount / pageSize);
   return {
     items,
     meta: {
-      totalItems, totalPages, currentPage: page, pageSize,
+      totalCount, pageCount, currentPage: page, pageSize,
       isFirstPage: page <= 1,
-      isLastPage: page >= totalPages,
+      isLastPage: page >= pageCount,
       previousPage: page > 1 ? page - 1 : null,
-      nextPage: page < totalPages ? page + 1 : null,
+      nextPage: page < pageCount ? page + 1 : null,
     },
   };
 }
 ```
 
-Además la extensión construye la consulta por ti, y eso pelea con nuestra regla de **`select`
-explícito** en los controllers públicos, que es lo que impide que un campo interno se filtre.
+**Sin `prisma-extension-pagination`**: es una extensión 0.x en el camino caliente de acceso a
+datos, ahorra estas diez líneas, y construye la consulta por ti — lo que pelea con nuestra regla
+de `select` explícito.
 
-> **Offset, no cursor.** Con decenas de galerías, `skip/take` es correcto y permite saltar a una
-> página concreta. El cursor gana a partir de miles de filas y con scroll infinito; anotado como
-> escape, no como pendiente.
+> **Offset, no cursor.** Con decenas de galerías `skip/take` es correcto y deja saltar a una
+> página concreta. El cursor gana a partir de miles de filas y con scroll infinito.
 
-## Qué se testea del contrato
+---
+
+# Ocho mejoras de robustez
+
+Encontradas revisando la fase entera. Ordenadas por lo que evitan.
+
+### 1 · Orden determinista o la paginación repite filas 🔴
+
+`ORDER BY "order"` con dos filas del mismo `order` **no garantiza secuencia estable en Postgres**:
+la misma consulta puede devolverlas en distinto orden entre páginas, así que un elemento aparece
+dos veces y otro no aparece nunca. Y ocho de nuestros modelos tienen `order` con `@default(0)`,
+o sea que **empatan por defecto**.
+
+> **Regla: toda consulta paginada termina en `{ id: 'asc' }` como desempate.**
+> `orderBy: [{ order: 'asc' }, { id: 'asc' }]`. Con test que crea tres filas con el mismo `order`
+> y comprueba que dos páginas de tamaño 2 no repiten ni pierden ninguna.
+
+### 2 · Login de tiempo constante 🔴
+
+Si el email no existe, se responde sin ejecutar argon2 (~1 ms). Si existe, se gastan ~50 ms
+verificando. Eso es un **oráculo de enumeración por tiempo**: el mensaje es idéntico, pero el
+reloj lo delata. El test que tenía el plan solo comparaba mensajes.
+
+> **Ejecutar siempre una verificación**, contra un hash señuelo si el usuario no existe. El coste
+> es el mismo que ya se paga en el camino feliz.
+
+### 3 · `enableShutdownHooks()` 🟠
+
+Railway y Render mandan `SIGTERM` en cada redeploy. Sin los hooks, `onModuleDestroy` no corre,
+Prisma no cierra y **cada despliegue deja conexiones colgando** — que en el plan free de Neon,
+con su límite bajo, se nota rápido.
 
 ```ts
-it('un error de validación devuelve details por campo, no un array de frases', async () => {
-  const err = await post('/admin/galleries', { title: 'x' }).catch((e) => e);
-  expect(err.body.code).toBe('VALIDATION_FAILED');
-  expect(err.body.details).toContainEqual(
-    expect.objectContaining({ field: 'title', code: 'minLength' }),
-  );
-});
-
-it('los campos anidados llegan con ruta de puntos', async () => {
-  // "items.0.text", no "text" a secas: si no, el formulario no sabe a cuál atarlo.
-});
-
-it('un slug duplicado da code SLUG_TAKEN, no un 409 genérico', async () => { ... });
-
-it('el reuso de refresh da SESSION_REVOKED, no SESSION_EXPIRED', async () => {
-  // Son el mismo 401 pero el admin muestra mensajes distintos.
-});
-
-it('un error desconocido en producción no filtra el stack ni el SQL', async () => { ... });
-
-it('página vacía: totalPages 0, isLastPage true, nextPage null', async () => { ... });
-
-it('la última página tiene nextPage null e isLastPage true', async () => { ... });
+app.enableShutdownHooks();
 ```
+
+### 4 · Límite de cuerpo explícito y pequeño 🟠
+
+`"Nunca subas archivos a través de la API"` (§4) es hoy una frase. Un límite explícito lo
+convierte en una imposibilidad:
+
+```ts
+app.use(express.json({ limit: '256kb' }));
+```
+
+El presign de ocho archivos ocupa ~2 kb. Cualquier cosa que se acerque a 256 kb es alguien
+intentando lo que el diseño prohíbe.
+
+### 5 · Los servicios anotan su tipo de retorno con el DTO 🟠
+
+La regla de "usar `select`, no `@Exclude()`" solo falla cerrado **si el tipo lo comprueba**:
+
+```ts
+async findBySlug(slug: string): Promise<GalleryDto | null> { … }
+```
+
+Sin la anotación, olvidar un campo en el `select` compila igual y el fallo aparece en la landing.
+Con ella, no compila.
+
+### 6 · 404, no 403, para lo no publicado 🟡
+
+`GET /galleries/:slug` de una galería en borrador debe devolver **404**. Un 403 confirma que ese
+slug existe, que es exactamente lo que un borrador no debería revelar.
+
+### 7 · Coherencia entre `type` y `mimeType` al firmar 🟡
+
+Hoy se validan por separado: un `type: 'PHOTO'` con `mimeType: 'video/mp4'` pasaría las dos
+validaciones y crearía un `Media` incoherente que la landing renderizaría como imagen.
+
+> `REEL` y `AFTERMOVIE` exigen `video/*`; `PHOTO` exige `image/*`. Y el poster, `image/webp`.
+
+### 8 · `helmet` y CORS explícito 🟡
+
+La API es alcanzable desde internet (la pasarela y, en la fase 6, `/track/whatsapp`). `helmet` son
+dos líneas y cubre las cabeceras de seguridad básicas. Y **CORS con lista blanca explícita, nunca
+`origin: true`** — aunque con la pasarela casi nada lo necesite.
+
+### Anotado, no construido
+
+- **Carrera TOCTOU en el slug**: `exists()` dice libre y otro proceso crea el mismo entre medias.
+  Con un solo usuario no ocurre; el arreglo es capturar `P2002` y reintentar una vez, **fuera** de
+  la transacción.
+- **Concurrencia optimista** con `updatedAt`: dos pestañas editando la misma galería. Un usuario,
+  un dispositivo: no ahora.
 
 ---
 
