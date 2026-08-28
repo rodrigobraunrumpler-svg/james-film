@@ -67,7 +67,11 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   necesitan transpilarlo y aparece config de bundler donde no debería haberla.
 
 **Versiones (actualizadas a 2026 — sobrescriben §3)**
-- Node **`>=24 <25`** (Active LTS hasta oct-2026), pnpm **11**.
+- Node **24.20.0** fijado en `.nvmrc`; `engines` exige `>=24.15 <25` (una dependencia
+  transitiva de NestJS pone ese suelo). pnpm **11**.
+- **NestJS 12 · TypeScript 6 · Prisma 7.10.0 · Vitest 4 · oxlint · Zod 4 · PostgreSQL 17.**
+- **`apps/api` es ESM** (`"type": "module"`): todo import relativo lleva extensión `.js`,
+  incluso desde un `.ts`. `import { X } from './x.js'`.
 - **En pnpm 11 los ajustes NO van en `.npmrc`** — ahí solo quedan auth y registry. Todo lo demás
   vive en `pnpm-workspace.yaml`. **El repo no tiene `.npmrc`**; si vuelve a aparecer uno con
   ajustes, se ignoran en silencio.
@@ -97,6 +101,9 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   Forzado por **`@typescript-eslint/no-deprecated: 'error'`** en las tres apps, no por memoria.
 - **Nada en `preview`, `experimental` o `canary`** en código que llega a producción. Si una
   feature solo existe tras un flag experimental, no se usa: se resuelve de otra forma.
+- **`latest` en npm no significa estable.** Prisma publica release candidates bajo ese dist-tag:
+  `pnpm add prisma` traía `8.0.0-rc.12` y con él un árbol entero (`@prisma/composer` → `alchemy`
+  → `workerd`). **Comprueba `npm view <pkg> dist-tags` y fija la versión estable a mano.**
 - **Antes de añadir una dependencia**: release en los últimos 12 meses y sin aviso de
   deprecación en su README o su registro. Si no cumple, no entra — se escribe a mano o se
   busca otra. (Es la misma razón por la que §7 descarta `react-beautiful-dnd`.)
@@ -108,7 +115,36 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Al cerrar cada fase**: `pnpm outdated` y `pnpm audit`. Lo que esté deprecado o con
   vulnerabilidad se resuelve ahí, no se acumula para "más adelante".
 
-**Seguridad**
+**Linting: oxlint, no ESLint**
+- NestJS 12 trae **oxlint**. Las reglas type-aware (`no-deprecated`, `no-floating-promises`)
+  necesitan el paquete **`oxlint-tsgolint`** y el flag **`--type-aware`** en el script de lint.
+  Sin cualquiera de los dos **no fallan, simplemente no existen**.
+- **El fichero de config es `.oxlintrc.json`.** oxlint **no autodescubre `oxlint.json`** — que es
+  justo el nombre que genera el scaffold de NestJS, así que sus reglas nunca se aplican. Si ves
+  un `oxlint.json` en el repo, está muerto: bórralo.
+- Reglas activas en `apps/api`: `no-deprecated`, `no-floating-promises`, `consistent-type-imports`.
+  En `apps/admin` y `apps/web` se añade `no-restricted-imports` (la frontera arquitectónica).
+- `src/generated/**` va en `ignorePatterns`.
+
+**Testing: Vitest, no Jest**
+- NestJS 12 trae **Vitest 4**. Sustituye a Jest en §15, y de paso unifica: §15 ya quería Vitest
+  para el admin, así que ahora todo el repo usa el mismo runner.
+
+**Prisma 7 — cuatro cosas que cambiaron respecto a lo que describe §13 y §16**
+- Generador **`prisma-client`** (no `prisma-client-js`), con salida a **`apps/api/src/generated/prisma`**.
+  Está en `.gitignore`: **el CI tiene que correr `prisma generate` antes de typecheck y tests.**
+- Se importa de **`../generated/prisma/client.js`**, nunca de `@prisma/client`.
+- **El cliente exige un driver adapter**: `new PrismaClient({ adapter: new PrismaPg({ connectionString }) })`.
+  Ya no lee `DATABASE_URL` por su cuenta.
+- **`directUrl` ya no existe.** La conexión de migraciones vive en `prisma7.config.ts`, cuyo
+  `datasource` solo acepta `url` y `shadowDatabaseUrl`. El reparto queda invertido respecto a §16:
+  **`prisma7.config.ts` → `DIRECT_URL`** (migraciones, conexión directa, en Neon sin `-pooler`) y
+  **`PrismaService` → `DATABASE_URL`** (runtime, en Neon con `-pooler`).
+- `prisma7.config.ts` carga el `.env` de la raíz él mismo con `override: false`, así que los
+  comandos de Prisma **no** necesitan `dotenv-cli`. Solo se usa para apuntar los tests a
+  `jamesfilm_test`, donde la variable ya presente en el entorno gana.
+
+**Seguridad
 - Contraseñas con **argon2id** vía `@node-rs/argon2` (m=19456, t=2, p=1 — OWASP). Binarios
   precompilados, sin node-gyp. El hasher vive en `apps/api/src/common/hash.ts` y lo comparten
   el seed y el login.
@@ -148,6 +184,11 @@ El `.md` se contradice en estos puntos. Resueltos así:
 | `node-linker=hoisted` | **No se usa** (ver arriba) | §3 lo declara obligatorio |
 | Hash de contraseñas | **argon2id**, no bcrypt | El doc no lo especifica |
 | Config de Tailwind | **Tailwind 4**: los tokens de §6 van en `@theme` dentro del CSS, no en `tailwind.config.ts` | §6 muestra sintaxis de Tailwind 3 |
+| Linter | **oxlint** (+ `oxlint-tsgolint`), config en `.oxlintrc.json` | §3 configura ESLint con `eslint.config.js` |
+| Test runner | **Vitest 4** en todo el repo | §15 usa Jest en el backend |
+| Prisma | **7.10.0** con generador `prisma-client`, salida a `src/generated/`, driver adapter obligatorio | §13 asume `prisma-client-js` y `@prisma/client` |
+| `directUrl` | **No existe en Prisma 7.** `prisma7.config.ts` usa `DIRECT_URL`; el runtime usa `DATABASE_URL` | §16 los pone al revés, en el `datasource` del schema |
+| Módulos de `apps/api` | **ESM**: imports relativos con `.js` | El doc asume CommonJS |
 | Env del monorepo | **Un solo `.env` en la raíz.** El CLI de Prisma no lo encuentra solo: sus scripts van envueltos en `dotenv -e ../../.env --` | El doc no lo trata |
 
 ---
@@ -276,6 +317,8 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
   lucide** en `copy.ts` con `<select>` en el admin. `astro-icon` no hace tree-shaking de nombres
   dinámicos, y un typo deja un hueco en la web. Fallback `?? 'link'`.
 - Seed **idempotente**: `upsert` por slug. Se ejecuta en local, en cada branch de CI y en producción.
+- En `apps/api` todo import relativo lleva `.js` (ESM). El cliente de Prisma se importa de
+  `src/generated/prisma/client.js`.
 - `Media.durationSec` es `Int`: `Math.round(video.duration)` en el cliente. `Media.orientation`
   se deriva de `width`/`height` en el `confirm`, no lo elige nadie a mano.
 - `SiteSettings.aboutText` es Markdown y **solo usa negrita** (el resaltado dorado del flyer).
