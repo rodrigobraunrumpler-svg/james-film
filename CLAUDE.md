@@ -332,6 +332,45 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
   lucide** en `copy.ts` con `<select>` en el admin. `astro-icon` no hace tree-shaking de nombres
   dinámicos, y un typo deja un hueco en la web. Fallback `?? 'link'`.
 - Seed **idempotente**: `upsert` por slug. Se ejecuta en local, en cada branch de CI y en producción.
+
+**Fechas y zona horaria — sin librería**
+
+- **Perú es UTC-5 fijo, sin horario de verano** (verificado: Lima da `GMT-05:00` en enero y en
+  julio). Eso elimina de raíz la clase de problemas que justifica una librería de zonas horarias.
+- **No se instala date-fns, dayjs, luxon ni moment.** Node 24 trae ICU completo y `Intl` cubre
+  todo lo que este proyecto necesita. `Temporal` **todavía no está** en Node 24.20, así que no
+  se usa. Cuando llegue, sustituye a los cálculos a mano, no a `Intl`.
+  - Formato de fecha y hora → `Intl.DateTimeFormat`
+  - "hace 3 días" del dashboard y la barra de publicación → `Intl.RelativeTimeFormat`
+  - `S/ 300.00` desde céntimos → `Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' })`
+  - Aritmética de fechas ("hace 30 días") → una resta sobre `Date.now()`
+- **`timeZone` SIEMPRE explícito.** Nunca dependas de la zona horaria del proceso: la máquina de
+  desarrollo está en `America/Lima` y el contenedor de producción estará en UTC, así que el mismo
+  código daría días distintos.
+  - `eventDate` y todo lo que sea `@db.Date` → **`timeZone: 'UTC'`**. Es una fecha de calendario,
+    no un instante. Formatearla en Lima resta 5 horas y muestra **el día anterior** (verificado:
+    `2026-03-15` sale como "14 de marzo").
+  - `createdAt`, `updatedAt` y demás instantes que ve James → **`timeZone: 'America/Lima'`**.
+- Locale **`es-PE`** en todo lo que se muestra.
+- **Los rangos del dashboard son ventanas móviles**, no días de calendario: "últimos 30 días" es
+  `now - 30*86400e3`, no "desde el 1 de agosto en Lima". Así el cálculo no depende de la zona.
+- `TZ=UTC` en el contenedor de la API (fase 6). Con la regla del `timeZone` explícito es
+  redundante, pero hace determinista cualquier descuido.
+- El helper de tiempos relativos vive en el **admin** (fase 4), no en la API: la API devuelve ISO.
+  Son doce líneas y no necesitan más:
+  ```ts
+  const rtf = new Intl.RelativeTimeFormat('es-PE', { numeric: 'auto' });
+  const UNIDADES = [['year', 31536000], ['month', 2592000], ['day', 86400],
+                    ['hour', 3600], ['minute', 60], ['second', 1]] as const;
+
+  export function relativo(fecha: string | Date, ahora = Date.now()): string {
+    const s = Math.round((new Date(fecha).getTime() - ahora) / 1000);
+    for (const [unidad, seg] of UNIDADES) {
+      if (Math.abs(s) >= seg || unidad === 'second') return rtf.format(Math.round(s / seg), unidad);
+    }
+    return '';
+  }
+  ```
 - En `apps/api` todo import relativo lleva `.js` (ESM). El cliente de Prisma se importa de
   `src/generated/prisma/client.js`.
 - `Media.durationSec` es `Int`: `Math.round(video.duration)` en el cliente. `Media.orientation`
