@@ -179,6 +179,11 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **404, no 403, para recursos no publicados.** Un 403 confirma que ese slug existe.
 - `app.enableShutdownHooks()` y **límite de cuerpo de 256 kb**: el segundo convierte "nunca subas
   archivos por la API" de frase a imposibilidad.
+- **`canvas.toBlob('image/webp')` NO existe en Safari** — ni iOS ni macOS, ninguna versión — y la
+  spec obliga a caer a **PNG sin lanzar error**. Por eso **el poster es JPEG**: con WebP, en el
+  iPhone de James ningún reel tendría miniatura nunca, y en silencio. Y el `posterMimeType` que
+  se declara al presign es siempre `blob.type`, jamás una constante escrita a mano.
+- **`middleware.ts` está deprecado en Next 16**: se llama `proxy.ts`, con `export function proxy`.
 - **`server-only`** en todo módulo que toque el token: si se importa desde un componente cliente,
   el build falla. Es la regla de ESLint de §3 aplicada un nivel abajo.
 - **Estados de carga — un skeleton no vale para todo.** La señal va donde ocurrió la acción,
@@ -526,7 +531,9 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
 **Principio: lo más incierto primero.** No empieces por la landing. §18
 
 Planes: [fase 1 — base](docs/plans/2026-08-28-fase-1-base.md) ✅ ·
-[fase 2 — API mínima](docs/plans/2026-08-28-fase-2-api-minima.md)
+[fase 2 — API mínima](docs/plans/2026-08-28-fase-2-api-minima.md) ✅ ·
+[fase 3 — editor de galería](docs/plans/2026-08-28-fase-3-editor-galeria.md)
+([informe de revisión](docs/plans/2026-08-28-fase-3-revision.md))
 
 | # | Fase | Duración |
 |---|---|---|
