@@ -26,6 +26,15 @@ Además de todo lo de `CLAUDE.md`:
 - **Dos controllers por módulo.** El público filtra **siempre** `isPublished`, `isActive`,
   `deletedAt: null`, `hasConsent` en testimonios, y solo devuelve `Media` en `READY`. Nunca
   acepta un parámetro que lo desactive. **Con test.**
+- **El guard es global (`APP_GUARD`) y lo público se marca con `@Public()`.** Al revés —guard por
+  controller— un módulo nuevo al que se olvide `@AdminController` queda **abierto**. Global, el
+  olvido produce un 401, no una filtración. Fallar cerrado, no abierto.
+- **Los controllers públicos usan `select` explícito de Prisma, no `@Exclude()`.** `@Exclude()`
+  falla abierto: si olvidas marcarlo, el campo sale. `select` falla cerrado: si olvidas incluirlo,
+  falta un campo y **el tipo del DTO no compila**. El dato interno nunca sale de la base.
+- **Al hacer soft delete de una `Gallery`, se propaga `deletedAt` a sus `Media` en la misma
+  transacción.** Si no, sus archivos nunca entran en el barrido de huérfanos y se quedan en el
+  bucket para siempre — que es justo el bug que el soft delete venía a evitar.
 - **`UpdateDto` siempre `PartialType(CreateDto)`.** Nunca a mano.
 - **Los DTOs `implements` las interfaces de `@james-film/contracts`**: si divergen, no compila.
 - **`storageKey` en la base, nunca la URL.** Solo `MediaUrlInterceptor` conoce `CDN_BASE_URL`.
@@ -450,8 +459,19 @@ Un admin con un solo usuario y sin límite de intentos es fuerza bruta esperando
 @Post('login')
 ```
 ```bash
-cd apps/api && pnpm add @nestjs/jwt @nestjs/throttler @nestjs/passport passport passport-jwt
-pnpm add -D @types/passport-jwt
+cd apps/api && pnpm add @nestjs/jwt @nestjs/throttler
+```
+
+> **Sin Passport.** §16 no lo exige y `JwtAuthGuard` con `jwtService.verifyAsync()` son ~20
+> líneas. Passport añadiría tres dependencias y una capa de estrategias para un único método de
+> autenticación. Entra el día que haya OAuth o varias estrategias, no antes.
+
+Y el throttler **global** además del estricto del login: un endpoint público sin límite es una
+invitación, y `/track/whatsapp` de la fase 6 lo va a necesitar igual.
+
+```ts
+ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+{ provide: APP_GUARD, useClass: ThrottlerGuard },
 ```
 
 - [ ] **Step 7: Verificar y commitear**
@@ -497,7 +517,12 @@ código que se prueba aquí es exactamente el que correrá contra R2.
       retries: 10
 ```
 
-Más un `storage-init` de un solo uso que crea el bucket `jamesfilm` con `mc mb`.
+Más un `storage-init` de un solo uso que crea el bucket `jamesfilm` con `mc mb` **y le
+configura CORS** para el origen del admin.
+
+> **El CORS del bucket es lo que bloquea la fase 3, no el de la API.** Con la pasarela, la API ya
+> no necesita CORS; pero el `PUT` firmado sale del navegador al bucket, así que MinIO en local y
+> R2 en producción sí lo necesitan. Son dos CORS distintos y es justo el que se olvida.
 
 - [ ] **Step 2: Test del flujo firmado completo**
 
@@ -710,9 +735,225 @@ Claves con **UUID, nunca el nombre original** (colisiones y path traversal, §17
 
 ---
 
-## Task 6: Swagger y cierre
+## Task 6: Swagger por decoradores propios
 
-- [ ] **Step 1: Dos documentos, no uno**
+**La documentación no se escribe en el controller.** Cada endpoint lleva **un** decorador, y ese
+decorador vive fuera, junto a su módulo. Así el controller se lee como código y la documentación
+se cambia sin tocarlo.
+
+### Dónde va cada cosa
+
+```
+src/common/swagger/
+├── api-doc.decorator.ts        # el compositor genérico
+├── api-paginated.decorator.ts  # el envoltorio Paginated<T>
+├── api-errors.decorator.ts     # respuestas de error estándar
+└── fields.ts                   # decoradores de campo para DTOs
+
+src/modules/galleries/docs/
+└── galleries.docs.ts           # un decorador por endpoint de este módulo
+```
+
+> **Nota honesta sobre "en el service, en el DTO, etc.":** OpenAPI se genera del grafo de
+> **controllers y DTOs**. Un decorador en un service se puede escribir, pero no produce
+> documentación: Swagger no mira ahí. Donde sí rinde la composición es en **método de controller**,
+> **clase de controller** y **propiedad de DTO** — y ahí es donde está diseñado esto.
+
+### 1 · El compositor genérico
+
+- [ ] **Step 1: `common/swagger/api-doc.decorator.ts`**
+
+```ts
+import { applyDecorators, type Type } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiErrors, type CodigoError } from './api-errors.decorator.js';
+import { ApiPaginated } from './api-paginated.decorator.js';
+
+export interface ApiDocOptions {
+  summary: string;
+  description?: string;
+  /** Tipo de la respuesta 200/201. Usa `paginated` si va envuelto. */
+  ok?: Type<unknown>;
+  paginated?: Type<unknown>;
+  status?: number;
+  /** Errores esperados de ESTE endpoint. 401 lo añade `auth` solo. */
+  errors?: CodigoError[];
+  auth?: boolean;
+}
+
+export function ApiDoc(opts: ApiDocOptions): MethodDecorator {
+  const decoradores: MethodDecorator[] = [
+    ApiOperation({ summary: opts.summary, description: opts.description }),
+  ];
+
+  if (opts.paginated) decoradores.push(ApiPaginated(opts.paginated));
+  else if (opts.ok) {
+    decoradores.push(ApiResponse({ status: opts.status ?? 200, type: opts.ok }));
+  } else {
+    decoradores.push(ApiResponse({ status: opts.status ?? 204, description: 'Sin contenido' }));
+  }
+
+  if (opts.auth) decoradores.push(ApiBearerAuth());
+  decoradores.push(ApiErrors(...(opts.errors ?? []), ...(opts.auth ? [401 as const] : [])));
+
+  return applyDecorators(...decoradores);
+}
+```
+
+- [ ] **Step 2: `api-errors.decorator.ts` — las respuestas de error, una vez**
+
+Los mensajes salen del `PrismaExceptionFilter` y del `ValidationPipe`: **documentarlos aquí
+mantiene los docs y el filtro sincronizados**, en vez de repetir cadenas por endpoint.
+
+```ts
+export type CodigoError = 400 | 401 | 403 | 404 | 409 | 422 | 429;
+
+const CATALOGO: Record<CodigoError, string> = {
+  400: 'Petición inválida o referencia inexistente',
+  401: 'Falta el token o ya no es válido',
+  403: 'El rol no permite esta operación',
+  404: 'No encontrado',
+  409: 'Ya existe un registro con ese valor único',
+  422: 'La validación del DTO falló',
+  429: 'Demasiadas peticiones',
+};
+
+class RespuestaError {
+  statusCode!: number;
+  /** El ValidationPipe devuelve un array de frases; el resto, una sola. */
+  message!: string | string[];
+}
+
+export const ApiErrors = (...codigos: CodigoError[]): MethodDecorator =>
+  applyDecorators(
+    ...[...new Set(codigos)].map((c) =>
+      ApiResponse({ status: c, description: CATALOGO[c], type: RespuestaError }),
+    ),
+  );
+```
+
+- [ ] **Step 3: `api-paginated.decorator.ts` — donde el plugin no llega**
+
+El plugin de Swagger infiere tipos de TypeScript, **pero no genéricos**: `Paginated<GalleryDto>`
+sale como `object` vacío. Esta es la razón concreta por la que hace falta un decorador y no basta
+con la inferencia automática.
+
+```ts
+export const ApiPaginated = <T extends Type<unknown>>(modelo: T): MethodDecorator =>
+  applyDecorators(
+    ApiExtraModels(PaginatedDto, modelo),
+    ApiResponse({
+      status: 200,
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(PaginatedDto) },
+          { properties: { items: { type: 'array', items: { $ref: getSchemaPath(modelo) } } } },
+        ],
+      },
+    }),
+  );
+```
+
+- [ ] **Step 4: `fields.ts` — validación y documentación en un decorador**
+
+Hoy cada campo repite las reglas dos veces: una para `class-validator` y otra para Swagger. Un
+decorador de campo las declara **una vez**, y de paso hace imposible que se desincronicen.
+
+```ts
+export const StringField = (o: { min?: number; max?: number; optional?: boolean; example?: string } = {}) =>
+  applyDecorators(
+    ...(o.optional ? [IsOptional()] : []),
+    IsString(),
+    Length(o.min ?? 1, o.max ?? 255),
+    ApiProperty({ required: !o.optional, minLength: o.min, maxLength: o.max, example: o.example }),
+  );
+
+export const IntField = (o: { min?: number; max?: number; optional?: boolean } = {}) => ...;
+export const SlugField = () => ...;   // minúsculas, guiones, sin acentos
+export const CuidField = (o?: { optional?: boolean }) => ...;
+export const DateOnlyField = (o?: { optional?: boolean }) => ...;  // YYYY-MM-DD, para @db.Date
+```
+
+Un DTO queda así:
+
+```ts
+export class CreateGalleryDto implements CreateGalleryInput {
+  @StringField({ min: 2, max: 120, example: 'XV de Camila' })
+  title!: string;
+
+  @StringField({ optional: true, max: 2000 })
+  description?: string;
+
+  @CuidField()
+  categoryId!: string;
+
+  @DateOnlyField({ optional: true })
+  eventDate?: string;
+}
+```
+
+> **Seis tipos de campo, no un framework.** El día que haga falta el séptimo se añade; anticipar
+> veinte es construir una librería que nadie pidió.
+
+- [ ] **Step 5: Los decoradores por endpoint, junto a su módulo**
+
+```ts
+// src/modules/galleries/docs/galleries.docs.ts
+export const DocListarGalerias = () =>
+  ApiDoc({
+    summary: 'Lista las galerías publicadas',
+    description: 'Solo publicadas, sin borrar, y con sus medios en READY.',
+    paginated: GalleryEntity,
+  });
+
+export const DocCrearGaleria = () =>
+  ApiDoc({
+    summary: 'Crea una galería',
+    description: 'El slug se genera del título y NO se regenera al renombrar.',
+    ok: GalleryEntity,
+    status: 201,
+    errors: [409, 422],
+    auth: true,
+  });
+```
+
+Y el controller queda legible:
+
+```ts
+@AdminController('galleries')
+export class GalleriesAdminController {
+  @DocCrearGaleria()
+  @Post()
+  create(@Body() dto: CreateGalleryDto) {
+    return this.galleries.create(dto);
+  }
+}
+```
+
+- [ ] **Step 6: Test de que la documentación no miente**
+
+Un doc desactualizado es peor que ninguno, y esto se comprueba solo:
+
+```ts
+it('todo endpoint tiene summary: nada sin documentar', () => {
+  const doc = SwaggerModule.createDocument(app, config);
+  const sinDocumentar = Object.entries(doc.paths).flatMap(([ruta, ops]) =>
+    Object.entries(ops)
+      .filter(([, op]) => !(op as { summary?: string }).summary)
+      .map(([m]) => `${m.toUpperCase()} ${ruta}`),
+  );
+  expect(sinDocumentar).toEqual([]);
+});
+
+it('el doc público no contiene NINGUNA ruta de admin', () => {
+  const publico = SwaggerModule.createDocument(app, cfg, { include: [GalleriesModule] });
+  expect(Object.keys(publico.paths).filter((r) => r.includes('/admin'))).toEqual([]);
+});
+
+it('los endpoints con auth declaran 401', () => { ... });
+```
+
+- [ ] **Step 7: Dos documentos, no uno**
 
 ```ts
 const publico = SwaggerModule.createDocument(app, configPublica, {
@@ -727,11 +968,11 @@ El doc público es el contrato que consumirá Astro en la fase 5. El de admin ll
 Con el plugin `@nestjs/swagger/plugin` en `nest-cli.json`, los tipos y la opcionalidad se
 infieren de TypeScript y de class-validator: no hay que escribir `@ApiProperty()` por campo.
 
-- [ ] **Step 2: CI**
+- [ ] **Step 8: CI**
 
 Añadir el servicio de MinIO al workflow, con las mismas credenciales que el Docker local.
 
-- [ ] **Step 3: Verificación final de la fase**
+- [ ] **Step 9: Verificación final de la fase**
 
 ```bash
 pnpm db:reset && pnpm install --frozen-lockfile
@@ -750,6 +991,71 @@ pnpm lint && pnpm typecheck && pnpm test
 - [ ] El confirm de una subida truncada deja `FAILED` con motivo
 - [ ] Ningún DTO público expone `storageKey`, `sizeBytes` ni `status`
 - [ ] `/docs/public` no incluye ninguna ruta de admin
+
+## Librerías: qué entra y qué no
+
+Todas verificadas con `npm view <pkg> dist-tags`, ninguna en RC.
+
+| Librería | Versión | Por qué |
+|---|---|---|
+| `@nestjs/jwt` | 12.0.1 | Firmar y verificar el access token |
+| `@nestjs/throttler` | 6.5.0 | Global + estricto en login (§16) |
+| `@nestjs/swagger` | 12.0.1 | Con su plugin de inferencia |
+| `class-validator` + `class-transformer` | 0.15.1 / 0.5.1 | Lo que decidió §5 |
+| `@aws-sdk/client-s3` + `s3-request-presigner` | 3.1120.0 | El mismo SDK para MinIO y R2 |
+| `slugify` | 1.6.9 | Con `locale: 'es'` para la ñ y los acentos |
+
+**Para los decoradores de Swagger no hace falta ninguna librería.** `applyDecorators` viene en
+`@nestjs/common` y es exactamente para esto. Cualquier paquete de terceros aquí sería una capa
+sobre una función de doce caracteres.
+
+### La alternativa de fondo: `nestjs-zod` (5.5.0)
+
+Merece mención porque **ya usamos Zod en los dos lados**: la API valida el entorno con Zod 4 y el
+admin valida formularios con Zod 4. `nestjs-zod` haría del schema la única fuente de tipo,
+validación y OpenAPI, y eliminaría los decoradores de campo del Step 4.
+
+**Recomendación: seguir con class-validator.** Tres razones concretas:
+
+1. **`PartialType`, `PickType` y `OmitType` son idiomas de `@nestjs/swagger`** y `CLAUDE.md` los
+   exige (`UpdateDto` siempre `PartialType(CreateDto)`). Con Zod son `.partial()` y `.pick()`,
+   equivalentes pero obligan a reescribir esa regla.
+2. **La generación de OpenAPI del plugin oficial está más rodada** que la de cualquier puente
+   Zod→OpenAPI, y este proyecto publica el doc público como contrato para Astro.
+3. `whitelist` y `forbidNonWhitelisted` del `ValidationPipe` —que §5 llama seguridad, no
+   limpieza— tienen equivalente en Zod (`.strict()`), pero cambiarlos ahora toca la única línea
+   de defensa contra un `{ "isPublished": true }` inyectado.
+
+**Cuándo reconsiderarlo**: si algún día el contrato tiene que compartir validación *runtime* entre
+la API y el admin. Hoy no puede, porque `packages/contracts` es solo tipos a propósito.
+
+---
+
+## Mejoras aplicadas tras revisar el plan
+
+Seis cambios sobre la primera versión, todos por robustez:
+
+| Cambio | Qué evita |
+|---|---|
+| **Guard global con `@Public()`** en vez de guard por controller | Un módulo nuevo al que se olvide `@AdminController` quedaría **abierto**. Global, el olvido da 401. Fallar cerrado |
+| **`select` explícito en vez de `@Exclude()`** | `@Exclude()` falla abierto: se te olvida y el campo sale. `select` falla cerrado: se te olvida y **no compila** |
+| **El soft delete de `Gallery` propaga `deletedAt` a sus `Media`** | Sin eso, sus archivos nunca entran en el barrido de huérfanos y se quedan en el bucket para siempre — el bug que el soft delete venía a evitar |
+| **Sin Passport** | Tres dependencias y una capa de estrategias para un único método de auth. `verifyAsync` son 20 líneas |
+| **Throttler global**, no solo en login | Un endpoint público sin límite es una invitación, y `/track/whatsapp` lo necesitará igual |
+| **Test de que el doc público no tiene rutas de admin** | Es el contrato que consumirá Astro: una ruta de admin ahí filtra la superficie privada |
+
+### Dos decisiones que conviene dejar escritas
+
+**El contador de almacenamiento cuenta también lo borrado en blando.** Un `Media` con `deletedAt`
+sigue ocupando espacio en R2 hasta que el cron lo purga a los 30 días. Contar solo
+`deletedAt: null` haría que el indicador del dashboard mintiera a la baja justo cuando James
+acaba de borrar cosas para hacer sitio.
+
+**El poster también se valida al firmar.** El contrato devuelve `posterUploadUrl`, y ese objeto
+es un WebP que sale del canvas del navegador: su mime y su tamaño se validan igual que el vídeo.
+Si no, es una URL firmada sin restricción real.
+
+---
 
 ## Lo que la fase 3 necesita de ésta
 
