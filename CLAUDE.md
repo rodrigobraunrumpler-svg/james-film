@@ -132,6 +132,19 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Tipado estricto**: los DTOs vienen de `@james-film/contracts` y no se redeclaran — si la API
   cambia el contrato, el admin **no compila**. Cero `any`; `unknown` en las fronteras y de ahí a
   un tipo concreto vía zod o guard. Los tipos de formulario salen de `z.infer`, nunca al revés.
+- **`GET /galleries` NO devuelve los medios**, solo portada y `mediaCount`. El detalle por slug
+  sí. Si la lista los incluyera, el build de Astro se traería todos los reels de todas las
+  galerías en una respuesta que crece sin techo con cada evento.
+- **Los controllers públicos llevan `@SkipThrottle()`** o un límite muy alto. El build de Astro
+  hace decenas de peticiones desde una sola IP en segundos: con el throttler global las tumbaría,
+  y el modo de fallo es el peor — el build falla y la web se queda con la versión vieja.
+- **`requestId` desde la fase 2**, no la 6. Son cinco líneas de middleware y hace que cada error
+  de las fases 2 a 5 —justo donde más se depura— sea correlacionable con el log.
+- **Snapshot del OpenAPI público en CI.** `/docs/public` es el contrato que consume Astro: se
+  compara con `docs/openapi-public.json` commiteado y el CI falla si cambia sin querer. Mismo
+  mecanismo que el drift de Prisma, aplicado a la frontera con la landing.
+- **Nada de Fastify, cache-manager ni compression.** La carga es cero —un usuario y unos builds
+  a la semana— y el único cuello real es el arranque en frío de Neon, que ninguna librería arregla.
 - **Toda consulta paginada termina en `{ id: 'asc' }` como desempate.** `ORDER BY "order"` con
   filas empatadas no garantiza secuencia estable en Postgres: una fila aparece en dos páginas y
   otra en ninguna. Y ocho modelos tienen `order @default(0)`, o sea que empatan por defecto.

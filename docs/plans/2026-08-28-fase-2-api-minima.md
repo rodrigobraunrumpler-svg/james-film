@@ -1189,6 +1189,88 @@ dos líneas y cubre las cabeceras de seguridad básicas. Y **CORS con lista blan
 
 ---
 
+# Rendimiento: qué aplica aquí y qué sería de manual
+
+**El perfil de carga de esta API es prácticamente cero**: un usuario en el admin y unas cuantas
+consultas de Astro en build time, un par de veces por semana. No hay camino caliente. Eso invalida
+la mayoría de las recomendaciones de rendimiento que se dan por defecto, y hace que **el único
+cuello real sea el arranque en frío** — Neon con scale-to-zero a los 5 min y, si se elige Render
+gratis, el contenedor durmiéndose a los 15.
+
+Ninguna librería arregla un cold start. Así que:
+
+| Recomendación típica | Veredicto aquí |
+|---|---|
+| **Cambiar Express por Fastify** | **No.** Fastify es ~2× más rápido en peticiones/segundo, una métrica que a este volumen no significa nada. Y cambia el ecosistema de `helmet`, límites de cuerpo y middlewares. Churn puro |
+| **`@nestjs/cache-manager`** | **No.** No hay nada que cachear: los datos cambian cuando James los cambia, y quien los lee de verdad es un build de Astro que quiere lo último |
+| **`compression`** | **No de entrada.** Railway y Render comprimen en su proxy. Anotado: si el JSON público de la landing crece mucho, es una línea |
+| **Réplicas de lectura, colas, workers** | **No.** §22 ya documenta el worker y por qué no se construye |
+
+Lo que sí importa al rendimiento **percibido** son cuatro cosas de diseño, no de librería:
+
+### 1 · `GET /galleries` NO devuelve los medios 🔴
+
+La lista devuelve portada, título, fecha y **el número** de medios. El detalle
+(`GET /galleries/:slug`) devuelve el array completo.
+
+Si la lista incluyera los medios, el build de Astro se traería *todos los reels de todas las
+galerías* en una sola respuesta, y crecería sin techo con cada evento. Es la decisión de API que
+más peso tiene en esta fase, y no estaba escrita.
+
+> Se comprueba en el test: `GET /galleries` no trae la propiedad `media`, y sí trae `mediaCount`.
+
+### 2 · El throttler global puede tumbar el build de Astro 🔴
+
+`ThrottlerModule` a 120 peticiones/minuto, y un build que pide la lista más una llamada por
+galería, todo desde **una sola IP** en pocos segundos. Con 50 galerías más assets, se pasa.
+
+Y el modo de fallo es el peor posible: **el build falla, la web se queda con la versión vieja**,
+y `DeployState` marca fallo sin que nadie sepa por qué.
+
+> Los controllers públicos llevan **`@SkipThrottle()`** o un límite propio muy alto. El estricto
+> se queda donde importa: el login. Con test que hace 200 peticiones públicas seguidas.
+
+### 3 · Log de consultas de Prisma en desarrollo 🟠
+
+```ts
+new PrismaClient({ log: process.env.NODE_ENV === 'development' ? ['query'] : [] })
+```
+
+Es lo que hace visible un N+1 el día que se escribe, no seis meses después. Cuesta una línea y
+cero en producción.
+
+### 4 · `requestId` desde la fase 2, no desde la 6 🟠
+
+`ApiFailure` ya tiene el campo. Rellenarlo son cinco líneas de middleware con
+`crypto.randomUUID()`, y a partir de ahí **cada error que reporte James viene con un
+identificador** que se busca en los logs. Dejarlo `undefined` hasta la fase 6 significa que todos
+los errores de las fases 2 a 5 son incorrelacionables — que son justo las fases donde más se
+depura.
+
+---
+
+# La recomendación que más rinde: congelar el contrato público
+
+El doc de `/docs/public` es **el contrato que Astro consume en build time**. Si cambia sin querer,
+la landing se rompe en el siguiente deploy y el error aparece lejos de la causa.
+
+> **Snapshot del OpenAPI público en CI.** Se genera el documento, se compara con
+> `docs/openapi-public.json` commiteado, y **si difiere, el CI falla** pidiendo que se actualice a
+> propósito.
+
+Es exactamente el mismo mecanismo que el drift de Prisma de la fase 1 —que ya nos sirvió— pero
+para la frontera hacia la landing. Y sale gratis: el documento ya se genera en el Task 6.
+
+```ts
+it('el contrato público no ha cambiado sin querer', () => {
+  const actual = SwaggerModule.createDocument(app, cfg, { include: [GalleriesModule] });
+  const congelado = JSON.parse(readFileSync('docs/openapi-public.json', 'utf8'));
+  expect(actual.paths).toEqual(congelado.paths);
+});
+```
+
+---
+
 ## Librerías: qué entra y qué no
 
 Todas verificadas con `npm view <pkg> dist-tags`, ninguna en RC.
@@ -1201,6 +1283,7 @@ Todas verificadas con `npm view <pkg> dist-tags`, ninguna en RC.
 | `class-validator` + `class-transformer` | 0.15.1 / 0.5.1 | Lo que decidió §5 |
 | `@aws-sdk/client-s3` + `s3-request-presigner` | 3.1120.0 | El mismo SDK para MinIO y R2 |
 | `slugify` | 1.6.9 | Con `locale: 'es'` para la ñ y los acentos |
+| `helmet` | 8.3.0 | Cabeceras de seguridad. La API es alcanzable desde internet |
 
 **Para los decoradores de Swagger no hace falta ninguna librería.** `applyDecorators` viene en
 `@nestjs/common` y es exactamente para esto. Cualquier paquete de terceros aquí sería una capa
@@ -1225,6 +1308,19 @@ validación y OpenAPI, y eliminaría los decoradores de campo del Step 4.
 
 **Cuándo reconsiderarlo**: si algún día el contrato tiene que compartir validación *runtime* entre
 la API y el admin. Hoy no puede, porque `packages/contracts` es solo tipos a propósito.
+
+### La otra alternativa de fondo: generar el cliente con `openapi-typescript` (7.13.0)
+
+Con el doc público congelado (arriba), se podría **generar** los tipos y el cliente del admin en
+vez de escribirlos a mano en `packages/contracts` y `endpoints/`. Eso garantizaría la sincronía
+por construcción, no por disciplina.
+
+**Recomendación: no ahora.** `contracts` ya existe, son ~250 líneas, y su valor no es solo tipar:
+es que **exponer un campo sea un acto deliberado** (§3). Un cliente generado publica lo que haya
+en el doc, que es un paso más cerca de derivar el contrato del esquema — justo lo que §3 rechaza.
+
+**Cuándo entra**: si aparece un tercer consumidor de la API, o si el contrato empieza a divergir
+en la práctica pese al snapshot.
 
 ---
 
