@@ -85,7 +85,7 @@ Regla: **si Next ya lo trae, no se reimplementa.**
 | **Rutas tipadas** | Next 16 las genera solo: `href="/galerias/xyz"` mal escrito **no compila** |
 | **`instrumentation.ts`** | Sentry en la fase 6 |
 
-## La frontera de auth — la única decisión que falta
+## La frontera de auth — decidida
 
 Todo lo de arriba es independiente **salvo** `middleware`, `cookies()` y los Server Components
 con datos: los tres necesitan que el servidor de Next conozca la sesión. Y hoy la sesión vive en
@@ -258,7 +258,7 @@ apps/admin/src/
 │   │   ├── paquetes/page.tsx
 │   │   ├── testimonios/page.tsx
 │   │   └── configuracion/page.tsx
-│   ├── api/[...ruta]/route.ts    # la pasarela a NestJS (opción B)
+│   ├── api/[...ruta]/route.ts    # la pasarela a NestJS
 │   ├── manifest.ts
 │   ├── layout.tsx
 │   ├── loading.tsx · error.tsx · not-found.tsx
@@ -284,7 +284,8 @@ apps/admin/src/
 │   └── shared/                   # compartido entre features: EmptyState, DataList, ConfirmDialog
 │
 ├── lib/
-│   ├── api/                      # el cliente HTTP (abajo)
+│   ├── api/                      # cliente del navegador
+│   │   └── server/               # la pasarela — todo con `import 'server-only'`
 │   ├── query/                    # QueryClient, keys, provider
 │   └── format/                   # Intl: fechas, relativos, moneda
 │
@@ -330,35 +331,216 @@ apps/admin/src/
 
 ---
 
-# El cliente HTTP
+# La pasarela (servidor)
 
-Vive en `src/lib/api/`. **Con la opción B es más simple**: el navegador habla con su propio
-origen y no maneja tokens, así que `token-store.ts` y el single-flight de `session.ts` se mueven
-al Route Handler. Lo demás (config, errores, `http.ts`, claves, endpoints) es idéntico en las dos.
+Es la pieza que hace posible todo lo anterior. Vive en `src/lib/api/server/` y **todo el
+directorio empieza por `import 'server-only'`**: si algo de aquí acaba importado desde un
+componente cliente, el build falla en vez de filtrar el token.
 
-Se documentan las cuatro capas completas porque la opción A las necesita todas y la B reutiliza
-las mismas piezas del lado servidor.
+## Dónde vive la sesión — enmienda a §16
 
-Cuatro capas, cada una con una responsabilidad y testeable por separado:
+§16 diseñó el refresh como cookie `httpOnly` del **dominio de la API**, porque asumía que el
+navegador hablaba directamente con NestJS. Con la pasarela eso ya no ocurre: **el navegador nunca
+toca la API**. Así que:
+
+> `POST /auth/login` de NestJS devuelve `{ accessToken, refreshToken }` **en el cuerpo**.
+> La pasarela los guarda en **su propia cookie `httpOnly` del dominio del admin**.
+> Todo lo demás de §16 sigue igual: 15 min / 30 días, rotación, detección de reuso.
+
+**No hace falta cifrar la cookie.** Los dos valores son credenciales opacas que la API valida por
+su cuenta; es `httpOnly`, así que el JS no la lee, y manipularla desde devtools solo rompe la
+sesión propia. Añadir `iron-session` sería ceremonia sin garantía nueva.
+
+## `app/api/[...ruta]/route.ts`
+
+```ts
+import 'server-only';
+import { proxy } from '@/lib/api/server/proxy';
+
+// SIN ESTO Next puede cachear las respuestas GET y servir los datos de una sesión
+// a otra. En una pasarela autenticada eso es un fallo de seguridad, no una optimización.
+export const dynamic = 'force-dynamic';
+
+export const GET = proxy;
+export const POST = proxy;
+export const PATCH = proxy;
+export const PUT = proxy;
+export const DELETE = proxy;
+```
+
+## `lib/api/server/proxy.ts`
+
+```ts
+import 'server-only';
+import { NextResponse, type NextRequest } from 'next/server';
+import { serverConfig } from './config';
+import { borrarSesion, guardarSesion, leerSesion, refrescar } from './session';
+
+// Cabeceras de salto que no deben reenviarse: las gestiona cada conexión.
+const NO_REENVIAR = new Set(['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'host', 'cookie']);
+
+function cabeceras(origen: Headers, token?: string): Headers {
+  const h = new Headers();
+  origen.forEach((v, k) => {
+    if (!NO_REENVIAR.has(k.toLowerCase())) h.set(k, v);
+  });
+  if (token) h.set('Authorization', `Bearer ${token}`);
+  return h;
+}
+
+export async function proxy(
+  req: NextRequest,
+  ctx: { params: Promise<{ ruta: string[] }> },
+): Promise<NextResponse> {
+  const { ruta } = await ctx.params;
+  const destino = new URL(`${serverConfig.apiUrl}/${ruta.join('/')}`);
+  destino.search = req.nextUrl.search;
+
+  // Se lee a texto, no se reenvía el stream: el reintento tras el 401 necesita releerlo.
+  const cuerpo =
+    req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.text();
+
+  const sesion = await leerSesion();
+  const enviar = (token?: string) =>
+    fetch(destino, {
+      method: req.method,
+      headers: cabeceras(req.headers, token),
+      body: cuerpo,
+      signal: AbortSignal.timeout(serverConfig.timeoutMs),
+      cache: 'no-store',
+    });
+
+  let res = await enviar(sesion?.accessToken);
+
+  if (res.status === 401 && sesion?.refreshToken) {
+    const nueva = await refrescar(sesion.refreshToken);
+    if (!nueva) {
+      await borrarSesion();
+      return NextResponse.json({ message: 'Sesión expirada' }, { status: 401 });
+    }
+    await guardarSesion(nueva);
+    res = await enviar(nueva.accessToken);
+  }
+
+  // Se devuelve el estado tal cual: 409, 404 y 400 tienen que llegar al cliente
+  // para que ApiError los distinga. Una pasarela que lo aplana a 500 es inútil.
+  return new NextResponse(res.body, {
+    status: res.status,
+    headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' },
+  });
+}
+```
+
+## `lib/api/server/session.ts`
+
+```ts
+import 'server-only';
+import { cookies } from 'next/headers';
+import { serverConfig } from './config';
+
+const COOKIE = 'jf_sesion';
+
+export interface Sesion {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export async function leerSesion(): Promise<Sesion | null> {
+  const raw = (await cookies()).get(COOKIE)?.value;
+  if (!raw) return null;
+  try {
+    const s = JSON.parse(raw) as unknown;
+    return typeof s === 'object' && s !== null && 'accessToken' in s ? (s as Sesion) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function guardarSesion(s: Sesion): Promise<void> {
+  (await cookies()).set(COOKIE, JSON.stringify(s), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 30 * 24 * 60 * 60, // igual que el refresh de §16
+  });
+}
+
+export const borrarSesion = async (): Promise<void> => {
+  (await cookies()).delete(COOKIE);
+};
+
+export async function refrescar(refreshToken: string): Promise<Sesion | null> {
+  const res = await fetch(`${serverConfig.apiUrl}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+    signal: AbortSignal.timeout(serverConfig.timeoutMs),
+    cache: 'no-store',
+  });
+  return res.ok ? ((await res.json()) as Sesion) : null;
+}
+```
+
+> **`cookies().set()` solo funciona en Route Handlers y Server Actions**, nunca en un Server
+> Component. Por eso el refresh vive en la pasarela y no en un layout.
+
+## `middleware.ts`
+
+```ts
+import { NextResponse, type NextRequest } from 'next/server';
+
+export function middleware(req: NextRequest) {
+  // Solo comprueba presencia. La validez la decide la API: el middleware no debe
+  // hacer red ni verificar firmas, corre en cada navegación.
+  if (req.cookies.has('jf_sesion')) return NextResponse.next();
+
+  const login = new URL('/login', req.url);
+  login.searchParams.set('desde', req.nextUrl.pathname);
+  return NextResponse.redirect(login);
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|login|api/auth).*)'],
+};
+```
+
+Esto es lo que elimina el parpadeo de contenido protegido: la redirección ocurre **antes** de
+pintar nada.
+
+## Lo que la pasarela NO toca
+
+- **La subida a R2.** El `PUT` firmado va del navegador a R2 directamente. La pasarela solo
+  mueve el JSON del presign. §4 y §10 intactos.
+- **Por eso R2 sigue necesitando CORS** para el origen del admin, aunque la API ya no lo necesite.
+  Es fácil de olvidar al quitar el CORS de la API: no son el mismo CORS.
+
+---
+
+# El cliente del navegador
+
+Con la pasarela decidida, el cliente se queda en **cuatro piezas** y ninguna maneja credenciales:
 
 ```
 src/lib/api/
-├── config.ts       env validada al cargar el módulo — nada hardcodeado
-├── errors.ts       ApiError tipado + guards
-├── token-store.ts  access token EN MEMORIA, nunca localStorage
-├── session.ts      refresh con single-flight + evento de logout
-├── http.ts         request(): URL, cabeceras, abort, parseo, 401 → refresh → 1 reintento
-├── keys.ts         factoría de claves de TanStack Query
-└── endpoints/      funciones tipadas por recurso, con los DTOs de @james-film/contracts
+├── config.ts     env validada al cargar — nada hardcodeado
+├── errors.ts     ApiError tipado + guards
+├── http.ts       request(): URL, query, abort, parseo, mapeo de errores
+├── keys.ts       factoría de claves de TanStack Query
+└── endpoints/    funciones tipadas por recurso, con los DTOs del contrato
 ```
+
+**Lo que desapareció respecto a un cliente sin pasarela**: el almacén de tokens, la cabecera
+`Authorization`, el single-flight del refresh y el CORS con credenciales. El token nunca llega
+aquí, así que no hay nada que proteger ni que sincronizar.
 
 Reglas que sostienen el diseño:
 
 - **`http.ts` no sabe de negocio.** No conoce rutas, ni recursos, ni DTOs concretos.
-- **`endpoints/` no sabe de transporte.** No toca cabeceras, tokens ni reintentos.
-- **El wrapper NO reintenta** salvo el 401. Los reintentos por red son de TanStack Query;
-  hacerlo en los dos sitios multiplica los intentos sin que nadie lo note.
-- **Cero `any`.** Si algo no se puede tipar, se estrecha con un guard.
+- **`endpoints/` no sabe de transporte.** No toca cabeceras ni reintentos.
+- **El wrapper no reintenta.** Los reintentos son de TanStack Query; hacerlo en los dos sitios
+  los multiplica sin que nadie lo note.
+- **Cero `any`.** Lo que no se pueda tipar se estrecha con un guard.
 
 ## 1 · `config.ts` — nada hardcodeado
 
@@ -367,15 +549,15 @@ Mismo principio que §5 en la API: si falta una variable, revienta al cargar, no
 ```ts
 import { z } from 'zod';
 
-// En Next, las variables de cliente se inlinean en build: hay que nombrarlas enteras,
+// En Next las variables de cliente se inlinean en build: hay que nombrarlas enteras,
 // `process.env[nombre]` no funciona.
 const schema = z.object({
-  NEXT_PUBLIC_API_URL: z.url(),
+  NEXT_PUBLIC_API_BASE: z.string().startsWith('/').default('/api'),
   NEXT_PUBLIC_API_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
 });
 
 const parsed = schema.safeParse({
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE,
   NEXT_PUBLIC_API_TIMEOUT_MS: process.env.NEXT_PUBLIC_API_TIMEOUT_MS,
 });
 
@@ -387,16 +569,20 @@ if (!parsed.success) {
   );
 }
 
+// Mismo origen: la pasarela. La URL de NestJS solo la conoce el servidor.
 export const config = {
-  apiUrl: parsed.data.NEXT_PUBLIC_API_URL.replace(/\/$/, ''),
+  base: parsed.data.NEXT_PUBLIC_API_BASE,
   timeoutMs: parsed.data.NEXT_PUBLIC_API_TIMEOUT_MS,
 } as const;
 ```
 
+> `serverConfig` (en `lib/api/server/config.ts`, con `server-only`) valida aparte
+> `API_URL` — **sin** `NEXT_PUBLIC_`, para que no se inline en el bundle del navegador.
+
 ## 2 · `errors.ts` — errores que la UI puede leer
 
-Un `throw new Error('algo falló')` obliga a parsear cadenas en el componente. Un error tipado
-se consulta con un `switch`.
+Un `throw new Error('algo falló')` obliga a parsear cadenas en el componente. Un error tipado se
+consulta con un `switch`.
 
 ```ts
 export class ApiError extends Error {
@@ -414,7 +600,7 @@ export class ApiError extends Error {
   /** 400/422: el ValidationPipe rechazó el DTO */
   get isValidation() { return this.status === 400 || this.status === 422; }
   get isNotFound() { return this.status === 404; }
-  /** La sesión ya no sirve: hay que volver al login */
+  /** La pasarela ya intentó refrescar: si llega un 401, hay que volver al login */
   get isUnauthorized() { return this.status === 401; }
   /** 5xx o red caída: reintentar tiene sentido */
   get isRetryable() { return this.status >= 500 || this.status === 0; }
@@ -437,100 +623,22 @@ export class TimeoutError extends ApiError {
 export const isApiError = (e: unknown): e is ApiError => e instanceof ApiError;
 ```
 
-## 3 · `token-store.ts` — el access token nunca toca el disco
-
-§16: access token de 15 min **en memoria**, refresh de 30 días en cookie `httpOnly`. Un XSS no
-puede leer ninguno de los dos. Guardarlo en `localStorage` tira ese diseño por la ventana.
+## 3 · `http.ts` — el núcleo
 
 ```ts
-let accessToken: string | null = null;
-const listeners = new Set<() => void>();
-
-export const tokenStore = {
-  get: () => accessToken,
-  set(token: string | null) {
-    accessToken = token;
-    listeners.forEach((l) => l());
-  },
-  /** Para useSyncExternalStore: el layout reacciona al logout sin prop drilling. */
-  subscribe(listener: () => void) {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  },
-};
-```
-
-## 4 · `session.ts` — refresh con single-flight
-
-**El bug clásico**: cinco peticiones dan 401 a la vez, cinco refresh salen en paralelo. Con la
-rotación de §16 el primero invalida al anterior, así que los otros cuatro presentan un token ya
-usado — que es exactamente la señal de robo — y el servidor **revoca la sesión entera**. James
-se desloguea a mitad de una subida.
-
-La cura es una sola promesa compartida.
-
-```ts
-import { config } from './config.js';
-import { ApiError } from './errors.js';
-import { tokenStore } from './token-store.js';
-
-let inFlight: Promise<string> | null = null;
-const onLogout = new Set<() => void>();
-
-export const onSessionLost = (cb: () => void) => {
-  onLogout.add(cb);
-  return () => onLogout.delete(cb);
-};
-
-async function doRefresh(): Promise<string> {
-  // credentials: 'include' es lo que envía la cookie httpOnly del dominio de la API.
-  // Requiere CORS con Access-Control-Allow-Credentials y un origen explícito, nunca '*'.
-  const res = await fetch(`${config.apiUrl}/auth/refresh`, {
-    method: 'POST',
-    credentials: 'include',
-    signal: AbortSignal.timeout(config.timeoutMs),
-  });
-
-  if (!res.ok) {
-    tokenStore.set(null);
-    onLogout.forEach((cb) => cb());
-    throw new ApiError(res.status, 'Sesión expirada');
-  }
-
-  const { accessToken } = (await res.json()) as { accessToken: string };
-  tokenStore.set(accessToken);
-  return accessToken;
-}
-
-/** Todas las llamadas concurrentes esperan al mismo refresh. */
-export function refreshSession(): Promise<string> {
-  inFlight ??= doRefresh().finally(() => {
-    inFlight = null;
-  });
-  return inFlight;
-}
-```
-
-## 5 · `http.ts` — el núcleo
-
-```ts
-import { config } from './config.js';
-import { ApiError, NetworkError, TimeoutError } from './errors.js';
-import { refreshSession } from './session.js';
-import { tokenStore } from './token-store.js';
+import { config } from './config';
+import { ApiError, NetworkError, TimeoutError } from './errors';
 
 export interface RequestOptions {
   /** El signal que TanStack Query pasa a queryFn. Se combina con el timeout. */
   signal?: AbortSignal;
   /** Query string. Los undefined se omiten; no hay `?x=undefined`. */
   query?: Record<string, string | number | boolean | undefined | null>;
-  /** Para /auth/login y /auth/refresh, que no llevan Authorization. */
-  skipAuth?: boolean;
   timeoutMs?: number;
 }
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
-  const url = new URL(`${config.apiUrl}${path}`);
+  const url = new URL(`${config.base}${path}`, window.location.origin);
   for (const [k, v] of Object.entries(query ?? {})) {
     if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
   }
@@ -552,37 +660,9 @@ async function parse<T>(res: Response): Promise<T> {
 async function toError(res: Response): Promise<ApiError> {
   const body = await parse<{ message?: string | string[] }>(res).catch(() => undefined);
   const m = body?.message;
+  // El ValidationPipe de NestJS devuelve `message` como array de frases.
   const mensaje = Array.isArray(m) ? m.join('. ') : (m ?? `Error ${res.status}`);
   return new ApiError(res.status, mensaje, body);
-}
-
-async function send(
-  path: string,
-  init: RequestInit,
-  opts: RequestOptions,
-): Promise<Response> {
-  const timeout = AbortSignal.timeout(opts.timeoutMs ?? config.timeoutMs);
-  // AbortSignal.any es nativo: combina la cancelación de TanStack Query con el timeout
-  // sin cablear listeners a mano.
-  const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
-
-  const headers = new Headers(init.headers);
-  // Content-Type SOLO si hay cuerpo: en un GET provoca un preflight CORS innecesario.
-  if (init.body !== undefined && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-  if (!opts.skipAuth) {
-    const token = tokenStore.get();
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  try {
-    return await fetch(buildUrl(path, opts.query), { ...init, headers, signal });
-  } catch (e) {
-    if (timeout.aborted) throw new TimeoutError();
-    if (opts.signal?.aborted) throw e; // cancelación legítima: que la vea TanStack Query
-    throw new NetworkError(e);
-  }
 }
 
 async function request<T>(
@@ -590,22 +670,30 @@ async function request<T>(
   init: RequestInit = {},
   opts: RequestOptions = {},
 ): Promise<T> {
-  const res = await send(path, init, opts);
-  if (res.ok) return parse<T>(res);
+  const timeout = AbortSignal.timeout(opts.timeoutMs ?? config.timeoutMs);
+  // AbortSignal.any es nativo: combina la cancelación de TanStack Query con el
+  // timeout sin cablear listeners a mano.
+  const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
 
-  // Un único reintento tras refrescar. Nunca más: si el segundo también da 401,
-  // el problema no es el token.
-  if (res.status === 401 && !opts.skipAuth) {
-    await refreshSession(); // lanza y dispara el logout si el refresh no vale
-    const reintento = await send(path, init, opts);
-    if (reintento.ok) return parse<T>(reintento);
-    throw await toError(reintento);
+  const headers = new Headers(init.headers);
+  // Content-Type SOLO si hay cuerpo: en un GET provoca trabajo innecesario.
+  if (init.body !== undefined && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
   }
 
-  throw await toError(res);
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path, opts.query), { ...init, headers, signal });
+  } catch (e) {
+    if (timeout.aborted) throw new TimeoutError();
+    if (opts.signal?.aborted) throw e; // cancelación legítima: que la vea TanStack Query
+    throw new NetworkError(e);
+  }
+
+  if (!res.ok) throw await toError(res);
+  return parse<T>(res);
 }
 
-// El cuerpo se serializa a string, no a stream: así el reintento del 401 puede reusarlo.
 const json = (body: unknown): RequestInit =>
   body === undefined ? {} : { body: JSON.stringify(body) };
 
@@ -626,20 +714,19 @@ export const api = {
 
 | Decisión | Motivo |
 |---|---|
-| Cuerpo serializado a `string`, no a stream | Un `ReadableStream` se consume una vez: el reintento del 401 fallaría |
 | `AbortSignal.any([signal, timeout])` | Cancelación de TanStack Query **y** timeout, sin listeners a mano. Nativo |
 | Distinguir `TimeoutError` de `NetworkError` | La UI dice "el servidor tarda" o "no hay conexión", no "algo falló" |
-| Cancelación legítima se relanza tal cual | Si la envuelves, TanStack Query la trata como error y muestra un toast al navegar |
-| `Content-Type` solo con cuerpo | En un GET dispara un preflight CORS que no hace falta |
-| Un solo reintento | Si el segundo 401 llega, el token no es el problema |
-| Sin `Idempotency-Key` automático | No hay tabla de claves (ver `CLAUDE.md`): el `confirm` es idempotente por `WHERE status = PENDING` y el presign por `clientUploadId` |
+| La cancelación legítima se relanza tal cual | Si la envuelves, TanStack Query la trata como error y saca un toast al navegar |
+| `Content-Type` solo con cuerpo | En un GET no aporta nada |
 | Sin reintentos por red | Los hace TanStack Query. En los dos sitios se multiplican en silencio |
+| Sin `Idempotency-Key` automático | No hay tabla de claves: el `confirm` es idempotente por `WHERE status = PENDING` y el presign por `clientUploadId` |
+| El 401 no se maneja aquí | Ya lo intentó la pasarela. Si llega, la sesión murió: el `QueryClient` global redirige al login |
 
-## 6 · `keys.ts` — claves jerárquicas
+## 4 · `keys.ts` — claves jerárquicas
 
 Es la pieza que decide si invalidar la caché escala o se convierte en adivinanza. Con claves
 literales dispersas, `invalidateQueries(['galleries'])` acierta o falla según cómo se escribió
-cada `useQuery`. Con una factoría, invalidar por prefijo es exacto.
+cada `useQuery`.
 
 ```ts
 export const keys = {
@@ -649,15 +736,27 @@ export const keys = {
     list: (filtros: Record<string, unknown>) => [...keys.galleries.lists(), filtros] as const,
     detail: (id: string) => [...keys.galleries.all, 'detail', id] as const,
   },
+  categories: {
+    all: ['categories'] as const,
+    list: () => [...keys.categories.all, 'list'] as const,
+    detail: (id: string) => [...keys.categories.all, 'detail', id] as const,
+  },
   packages: {
     all: ['packages'] as const,
     list: () => [...keys.packages.all, 'list'] as const,
     detail: (id: string) => [...keys.packages.all, 'detail', id] as const,
   },
+  testimonials: {
+    all: ['testimonials'] as const,
+    list: (filtros: Record<string, unknown>) => [...keys.testimonials.all, 'list', filtros] as const,
+  },
+  settings: { all: ['settings'] as const },
+  publish: { state: ['publish', 'state'] as const },
   dashboard: {
     all: ['dashboard'] as const,
     whatsappClicks: (dias: number) => [...keys.dashboard.all, 'whatsapp', dias] as const,
     storage: () => [...keys.dashboard.all, 'storage'] as const,
+    alerts: () => [...keys.dashboard.all, 'alerts'] as const,
   },
 } as const;
 ```
@@ -665,15 +764,40 @@ export const keys = {
 Tras un `PATCH`: `invalidateQueries({ queryKey: keys.galleries.lists() })` refresca todas las
 listas y deja los detalles intactos.
 
-**El objeto de filtros que entra en `keys.galleries.list()` es exactamente el que gestiona
-nuqs.** Una fuente para la URL y para la caché.
+### nuqs y la clave son el mismo objeto
 
-## 7 · `endpoints/` — tipado con el contrato
+Esto es lo que hace que la URL y la caché no se desincronicen nunca:
+
+```ts
+'use client';
+import { useQueryStates, parseAsInteger, parseAsString } from 'nuqs';
+
+export function useFiltrosGalerias() {
+  const [filtros, setFiltros] = useQueryStates({
+    page: parseAsInteger.withDefault(1),
+    categoryId: parseAsString,
+    q: parseAsString,
+  });
+  return { filtros, setFiltros };
+}
+
+// En el componente:
+const { filtros } = useFiltrosGalerias();
+useQuery({
+  queryKey: keys.galleries.list(filtros),        // ← el MISMO objeto que la URL
+  queryFn: ({ signal }) => galleries.list(filtros, { signal }),
+  placeholderData: keepPreviousData,
+});
+```
+
+Cambiar un filtro reescribe la URL **y** la clave a la vez. El botón atrás vuelve a una vista que
+ya está en caché, así que es instantáneo.
+
+## 5 · `endpoints/` — tipado con el contrato
 
 ```ts
 import type { GalleryDto, Paginated } from '@james-film/contracts';
-import { api } from '../http.js';
-import type { RequestOptions } from '../http.js';
+import { api, type RequestOptions } from '../http';
 
 export const galleries = {
   list: (query: { page?: number; categoryId?: string }, opts?: RequestOptions) =>
@@ -687,34 +811,77 @@ export const galleries = {
 };
 ```
 
-Y en el componente, con el `signal` que da TanStack Query:
+## Server Components y TanStack Query
 
-```ts
-useQuery({
-  queryKey: keys.galleries.list(filtros),
-  queryFn: ({ signal }) => galleries.list(filtros, { signal }),
-});
-```
+El doc dice "Server Component por defecto" y también usa TanStack Query. Conviven así, y conviene
+no mezclarlos por capricho:
+
+| Caso | Quién trae los datos |
+|---|---|
+| Shell, layouts, navegación, textos | **Server Component**, sin datos |
+| Pantallas interactivas (todas las 8) | **Cliente + TanStack Query** |
+| Primera pintura de una lista larga | Opcional: prefetch en el servidor + `HydrationBoundary` |
+
+**Recomendación para el v1: no usar prefetch con hidratación.** Añade un `dehydrate` por pantalla
+para ahorrar un salto que, con un solo usuario y un `loading.tsx` con skeleton, no se nota. Es
+optimización sin problema medido — justo lo que §4 dice de no perseguir.
+
+Los Server Components sí traen algo importante gratis: **`loading.tsx` funciona por ruta sin que
+escribas estado**, que es la mitad de la sección de estados de carga.
 
 ## Lo que este cliente NO hace
 
-- **No sube archivos.** El `PUT` a R2 va con `XMLHttpRequest` porque `fetch` no emite progreso
-  de subida (§17), y además no lleva `Authorization`: la URL firmada ya autoriza.
-- **No cachea.** Eso es TanStack Query.
-- **No reintenta por red.** Eso es TanStack Query.
-- **No sabe rutas.** Eso es `endpoints/`.
+- **No sube archivos.** El `PUT` a R2 va con `XMLHttpRequest` porque `fetch` no emite progreso de
+  subida (§17), y no pasa por la pasarela: la URL firmada ya autoriza.
+- **No cachea, ni reintenta.** Eso es TanStack Query.
+- **No conoce rutas.** Eso es `endpoints/`.
+- **No maneja credenciales.** Eso es la pasarela.
 
 ## Qué se testea
 
-1. Cinco peticiones con 401 simultáneo disparan **un solo** `/auth/refresh`.
-2. Un refresh fallido limpia el token y emite el evento de logout.
-3. Un 401 tras el reintento no vuelve a refrescar.
-4. El timeout produce `TimeoutError`; una cancelación se relanza sin envolver.
-5. `query` omite los `undefined`: no aparece `?categoryId=undefined`.
-6. Un 204 no intenta parsear JSON.
-7. El array `message` del `ValidationPipe` se une en una frase legible.
+**De la pasarela** (donde vive el riesgo):
+
+1. Un 401 dispara **un** refresh y reintenta **una** vez; si el segundo también falla, borra la
+   cookie y devuelve 401.
+2. Los códigos de estado pasan sin aplanarse: un 409 de la API llega como 409 al navegador.
+3. La cookie de sesión **no** se reenvía a NestJS (va en `NO_REENVIAR`).
+4. La cookie es `httpOnly`, `sameSite=lax` y `secure` en producción.
+5. `dynamic = 'force-dynamic'`: dos sesiones distintas no comparten respuesta cacheada.
+
+**Del cliente:**
+
+6. El timeout produce `TimeoutError`; una cancelación se relanza sin envolver.
+7. `query` omite los `undefined`: no aparece `?categoryId=undefined`.
+8. Un 204 no intenta parsear JSON.
+9. El array `message` del `ValidationPipe` se une en una frase legible.
 
 ---
+
+# Accesibilidad
+
+§7 solo cubre los targets de 44px. Un admin con cola de subidas necesita algo más, y es barato:
+
+- **`aria-live="polite"`** en la región de estado de las subidas y en la barra de publicación:
+  un fallo que solo se ve como un icono rojo no existe para quien usa lector de pantalla.
+- **Foco gestionado en modales y hojas**: lo da Radix, pero hay que **devolver el foco** al
+  elemento que abrió el diálogo al cerrarlo.
+- **El drag & drop necesita alternativa por teclado.** `@dnd-kit` trae `KeyboardSensor`, y §10 ya
+  pide botones de mover por otra razón (el pulgar en el móvil): la misma solución cubre las dos.
+- **Contraste AA** sobre la base neutra. El latón `#C9A96A` sobre blanco **no** llega a 4.5:1,
+  así que sirve para bordes, iconos y acentos, **no para texto pequeño**.
+- **`prefers-reduced-motion`** respetado sin excepciones.
+
+# PWA
+
+§10 lo pide y son quince minutos:
+
+- **`app/manifest.ts`** tipado con `MetadataRoute.Manifest`, no un `manifest.json` a mano.
+- Iconos 192 y 512, `display: 'standalone'`, `theme_color` de la base neutra.
+- **`env(safe-area-inset-bottom)`** en la barra de publicación fija, o el notch se la come (§7).
+- **Sin service worker ni modo offline en el v1.** Subir requiere red por definición, y un SW mal
+  invalidado sirve una versión vieja del admin durante días. Se añade si algún día hay algo que
+  de verdad funcione sin conexión.
+
 
 # Animaciones
 

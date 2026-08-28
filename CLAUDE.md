@@ -108,6 +108,15 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   JS del navegador, la sesión vive en una cookie del dominio del admin (así `middleware` y
   `cookies()` funcionan), y se acaba el CORS con credenciales. Las subidas siguen yendo directas
   a R2: la pasarela solo mueve JSON.
+- **Enmienda a §16 por la pasarela**: `POST /auth/login` devuelve `{ accessToken, refreshToken }`
+  **en el cuerpo**, y la pasarela los guarda en su propia cookie `httpOnly` del dominio del admin.
+  Sin cifrar: son credenciales opacas que la API valida, la cookie no la lee el JS, y manipularla
+  solo rompe la sesión propia. Todo lo demás de §16 sigue igual.
+- **`export const dynamic = 'force-dynamic'` en la pasarela.** Sin eso Next puede cachear las
+  respuestas GET y **servir los datos de una sesión a otra**. Es un fallo de seguridad, no una
+  optimización perdida.
+- **Quitar el CORS de la API no quita el de R2.** El `PUT` firmado sigue saliendo del navegador
+  al bucket: R2 necesita CORS para el origen del admin aunque la API ya no.
 - **Ventana de gracia en el refresh (fase 2).** En serverless no hay single-flight posible: dos
   invocaciones concurrentes refrescarían a la vez y la rotación lo leería como reuso, revocando
   la sesión. Si el token presentado coincide con `prevHash` **y** `Session.updatedAt` es de hace
