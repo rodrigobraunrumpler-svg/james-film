@@ -10,6 +10,27 @@ export const envSchema = z.object({
   DATABASE_URL: z.url(),
   // Conexión directa. La usan las migraciones (ver prisma7.config.ts).
   DIRECT_URL: z.url(),
+
+  // --- Auth (fase 2) ---
+  JWT_SECRET: z.string().min(32),
+  /** En segundos. Un número no tiene la ambigüedad de parseo de "15m". */
+  JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  /**
+   * Ventana en la que un refresh ya rotado se acepta en vez de revocar la sesión.
+   * En serverless no hay single-flight posible entre invocaciones: dos peticiones
+   * concurrentes de la pasarela refrescarían a la vez y la rotación lo leería como
+   * reuso. Ver CLAUDE.md.
+   */
+  REFRESH_GRACE_SECONDS: z.coerce.number().int().nonnegative().default(30),
+
+  // --- Rate limiting ---
+  // OJO: `z.coerce.boolean()` convierte la cadena "false" en `true`. Es la misma
+  // trampa por la que no activamos enableImplicitConversion en el ValidationPipe.
+  RATE_LIMIT_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

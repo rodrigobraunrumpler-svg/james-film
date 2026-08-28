@@ -154,6 +154,14 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Toda consulta paginada termina en `{ id: 'asc' }` como desempate.** `ORDER BY "order"` con
   filas empatadas no garantiza secuencia estable en Postgres: una fila aparece en dos páginas y
   otra en ninguna. Y ocho modelos tienen `order @default(0)`, o sea que empatan por defecto.
+- **El `LoginDto` NO valida longitud de contraseña.** La política pertenece al registro; en el
+  login solo se verifica. Con un mínimo, una contraseña corta da **422 en vez de 401** — una
+  respuesta distinta según la longitud de lo que prueba el atacante. El máximo sí se queda:
+  argon2 sobre una cadena de 10 MB es una denegación de servicio gratis.
+- **`RATE_LIMIT_ENABLED` apaga el throttler en la suite de tests**, que si no se autobloquea al
+  hacer más de 5 logins. El comportamiento tiene su propio fichero de test con límites estáticos.
+  Y ojo: se valida con `z.enum(['true','false'])`, **no con `z.coerce.boolean()`**, que convierte
+  la cadena `"false"` en `true` — la misma trampa que `enableImplicitConversion`.
 - **El login ejecuta siempre una verificación argon2**, contra un hash señuelo si el usuario no
   existe. Sin eso el tiempo de respuesta delata qué emails existen aunque el mensaje sea idéntico.
 - **Los servicios anotan su retorno con el DTO** (`Promise<GalleryDto>`). Es lo que hace que
