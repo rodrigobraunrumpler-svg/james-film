@@ -574,6 +574,11 @@ CI en <5 min: lint + typecheck + unit por PR; integración solo en `main`.
 - Logo y firma manuscrita en **SVG**. (El logo no es un monograma "JM" como dice el comentario
   de §13: es una tira de película estilizada. Confirmado en `preview.webp`.)
 - ~~Handle de TikTok~~ — **resuelto con el flyer**: TikTok `@james_film`, Instagram `James_film30`.
+- **La versión de iOS de su iPhone.** Tres piezas de la fase 3 tienen suelos distintos:
+  `AbortSignal.any` pide **Safari 17.4+** y lo usa el cliente HTTP en *todas* las peticiones;
+  Wake Lock y `canvas.toBlob` piden 16.4+. Por debajo, el admin no falla al subir: falla en la
+  **primera petición**, con un `TypeError` que no menciona la versión del sistema. Va en la
+  sesión de 15 min que ya está pendiente.
 - Sesión de 15 min: preset de CapCut y uso del admin.
 - Google Business Profile — tarea suya, mayor retorno de todo el SEO. §20
 
