@@ -7,6 +7,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
 import { validateEnv } from './config/env.schema.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { GalleriesModule } from './modules/galleries/galleries.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { StorageModule } from './storage/storage.module.js';
 
@@ -30,6 +31,7 @@ import { StorageModule } from './storage/storage.module.js';
     CommonModule,
     StorageModule,
     AuthModule,
+    GalleriesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

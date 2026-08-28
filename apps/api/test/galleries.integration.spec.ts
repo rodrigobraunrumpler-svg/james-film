@@ -1,0 +1,250 @@
+import { execSync } from 'node:child_process';
+import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { Test } from '@nestjs/testing';
+import { PrismaPg } from '@prisma/adapter-pg';
+import request from 'supertest';
+import { AppModule } from '../src/app.module.js';
+import { configurarApp } from '../src/bootstrap.js';
+import { PrismaClient } from '../src/generated/prisma/client.js';
+
+let app: INestApplication;
+let prisma: PrismaClient;
+let token: string;
+let categoriaId: string;
+
+const http = () => request(app.getHttpServer());
+const auth = () => ({ Authorization: `Bearer ${token}` });
+
+const crear = async (body: Record<string, unknown>) => {
+  const { body: res } = await http()
+    .post('/admin/galleries')
+    .set(auth())
+    .send({ categoryId: categoriaId, ...body })
+    .expect(201);
+  return res.data as { id: string; slug: string };
+};
+
+beforeAll(async () => {
+  execSync('pnpm exec dotenv -e .env.test -- tsx prisma/seed.ts', {
+    cwd: new URL('..', import.meta.url).pathname,
+    stdio: 'pipe',
+  });
+  prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  });
+  await prisma.$connect();
+
+  const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  app = mod.createNestApplication<NestExpressApplication>();
+  configurarApp(app as NestExpressApplication);
+  await app.init();
+
+  const login = await http()
+    .post('/auth/login')
+    .send({ email: 'test@jamesfilm.local', password: 'test-password' });
+  token = login.body.data.accessToken;
+  categoriaId = (await prisma.category.findUniqueOrThrow({ where: { slug: 'bodas' } })).id;
+});
+
+afterAll(async () => {
+  await app.close();
+  await prisma.$disconnect();
+});
+
+beforeEach(async () => {
+  await prisma.media.deleteMany();
+  await prisma.gallery.deleteMany();
+});
+
+describe('controller público', () => {
+  it('no devuelve galerías sin publicar', async () => {
+    await crear({ title: 'Borrador' });
+    const { body } = await http().get('/galleries').expect(200);
+    expect(body.data).toHaveLength(0);
+  });
+
+  it('no devuelve galerías con soft delete', async () => {
+    const g = await crear({ title: 'Publicada' });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await http().delete(`/admin/galleries/${g.id}`).set(auth()).expect(204);
+
+    const { body } = await http().get('/galleries').expect(200);
+    expect(body.data).toHaveLength(0);
+  });
+
+  it('ignora cualquier parámetro que intente desactivar el filtro', async () => {
+    await crear({ title: 'Borrador' });
+    // `forbidNonWhitelisted` lo rechaza en vez de ignorarlo: aún mejor.
+    const res = await http().get('/galleries?isPublished=false');
+    expect([200, 422]).toContain(res.status);
+    if (res.status === 200) expect(res.body.data).toHaveLength(0);
+  });
+
+  it('la LISTA no trae los medios, solo cuántos hay', async () => {
+    const g = await crear({ title: 'Con medios' });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await prisma.media.createMany({
+      data: [
+        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/1.mp4', status: 'READY' },
+        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/2.mp4', status: 'PENDING' },
+      ],
+    });
+
+    const { body } = await http().get('/galleries').expect(200);
+    expect(body.data[0]).not.toHaveProperty('media');
+    // Solo cuenta los READY: un PENDING todavía no existe para el visitante.
+    expect(body.data[0].mediaCount).toBe(1);
+  });
+
+  it('el detalle solo devuelve Media en READY', async () => {
+    const g = await crear({ title: 'Detalle' });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await prisma.media.createMany({
+      data: [
+        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/ok.mp4', status: 'READY' },
+        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/no.mp4', status: 'FAILED' },
+      ],
+    });
+
+    const { body } = await http().get('/galleries/detalle').expect(200);
+    expect(body.data.media).toHaveLength(1);
+    expect(body.data.media[0].url).toContain('videos/ok.mp4');
+  });
+
+  it('no expone campos internos en el DTO', async () => {
+    const g = await crear({ title: 'Interna' });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await prisma.media.create({
+      data: { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 999, storageKey: 'videos/x.mp4', status: 'READY' },
+    });
+
+    const { body } = await http().get('/galleries/interna').expect(200);
+    for (const campo of ['storageKey', 'sizeBytes', 'status', 'error', 'attempts', 'clientUploadId', 'deletedAt']) {
+      expect(body.data.media[0]).not.toHaveProperty(campo);
+    }
+    expect(body.data).not.toHaveProperty('isPublished');
+  });
+
+  it('una galería sin publicar da 404, no 403: un 403 confirmaría que existe', async () => {
+    await crear({ title: 'Secreta' });
+    const res = await http().get('/galleries/secreta').expect(404);
+    expect(res.body.code).toBe('NOT_FOUND');
+  });
+
+  it('el orden es determinista aunque empaten: no repite ni pierde filas', async () => {
+    // Ocho modelos tienen `order @default(0)`, o sea que empatan por defecto.
+    // Sin desempate por id, Postgres puede devolverlas en distinto orden entre
+    // páginas: una sale dos veces y otra ninguna.
+    for (const t of ['Uno', 'Dos', 'Tres', 'Cuatro']) {
+      const g = await crear({ title: t });
+      await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    }
+
+    const p1 = await http().get('/galleries?page=1&pageSize=2').expect(200);
+    const p2 = await http().get('/galleries?page=2&pageSize=2').expect(200);
+    const ids = [...p1.body.data, ...p2.body.data].map((g: { id: string }) => g.id);
+
+    expect(new Set(ids).size).toBe(4);
+    expect(p1.body.meta.totalCount).toBe(4);
+  });
+});
+
+describe('slug', () => {
+  it('NO se regenera al renombrar: los links compartidos siguen vivos', async () => {
+    const g = await crear({ title: 'XV de Camila' });
+    expect(g.slug).toBe('xv-de-camila');
+
+    await http()
+      .patch(`/admin/galleries/${g.id}`)
+      .set(auth())
+      .send({ title: 'XV Años de Camila' })
+      .expect(200);
+
+    const { body } = await http().get(`/admin/galleries/${g.id}`).set(auth()).expect(200);
+    expect(body.data.slug).toBe('xv-de-camila');
+  });
+
+  it('una galería borrada mantiene su slug ocupado: la nueva es -2', async () => {
+    // Gallery_slug_key no es un índice parcial y el cron solo purga a los 30
+    // días: si el sondeo filtrara deletedAt diría "libre" y el create reventaría.
+    const g = await crear({ title: 'Boda Ana' });
+    await http().delete(`/admin/galleries/${g.id}`).set(auth()).expect(204);
+
+    const nueva = await crear({ title: 'Boda Ana' });
+    expect(nueva.slug).toBe('boda-ana-2');
+  });
+});
+
+describe('borrado', () => {
+  it('es soft, y propaga deletedAt a sus medios', async () => {
+    // Sin la propagación, el Cascade de Postgres borraría las filas sin que la
+    // app las vea y los objetos quedarían huérfanos en el bucket para siempre.
+    const g = await crear({ title: 'Con medios' });
+    await prisma.media.create({
+      data: { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/h.mp4' },
+    });
+
+    await http().delete(`/admin/galleries/${g.id}`).set(auth()).expect(204);
+
+    const galeria = await prisma.gallery.findUniqueOrThrow({ where: { id: g.id } });
+    expect(galeria.deletedAt).not.toBeNull();
+    const medio = await prisma.media.findFirstOrThrow({ where: { galleryId: g.id } });
+    expect(medio.deletedAt).not.toBeNull();
+  });
+});
+
+describe('admin', () => {
+  it('sin token da 401', async () => {
+    await http().get('/admin/galleries').expect(401);
+  });
+
+  it('el admin SÍ ve los borradores', async () => {
+    await crear({ title: 'Borrador' });
+    const { body } = await http().get('/admin/galleries').set(auth()).expect(200);
+    expect(body.data).toHaveLength(1);
+  });
+
+  it('la portada es exclusiva POR GALERÍA', async () => {
+    const a = await crear({ title: 'Boda Ana' });
+    const b = await crear({ title: 'XV Camila' });
+    const m = async (galleryId: string, key: string) =>
+      prisma.media.create({
+        data: { galleryId, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: key, status: 'READY' },
+      });
+
+    const a1 = await m(a.id, 'videos/a1.mp4');
+    const b1 = await m(b.id, 'videos/b1.mp4');
+
+    await http().patch(`/admin/galleries/${a.id}/media/${a1.id}/cover`).set(auth()).expect(200);
+    await http().patch(`/admin/galleries/${b.id}/media/${b1.id}/cover`).set(auth()).expect(200);
+
+    // Marcar la portada de una NO debe desmarcar la de la otra.
+    expect((await prisma.media.findUniqueOrThrow({ where: { id: a1.id } })).isFeatured).toBe(true);
+    expect((await prisma.media.findUniqueOrThrow({ where: { id: b1.id } })).isFeatured).toBe(true);
+  });
+
+  it('reordenar los medios persiste el orden', async () => {
+    const g = await crear({ title: 'Orden' });
+    const ids: string[] = [];
+    for (const k of ['a', 'b', 'c']) {
+      const m = await prisma.media.create({
+        data: { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: `videos/${k}.mp4`, status: 'READY' },
+      });
+      ids.push(m.id);
+    }
+
+    const invertido = [...ids].reverse();
+    await http()
+      .patch(`/admin/galleries/${g.id}/media/reorder`)
+      .set(auth())
+      .send({ ids: invertido })
+      .expect(200);
+
+    const medios = await prisma.media.findMany({
+      where: { galleryId: g.id },
+      orderBy: { order: 'asc' },
+    });
+    expect(medios.map((m) => m.id)).toEqual(invertido);
+  });
+});

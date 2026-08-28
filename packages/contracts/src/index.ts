@@ -61,6 +61,23 @@ export interface GalleryDto {
 }
 
 /** Categoría vista desde dentro de una galería: sin la lista de galerías, para no ciclar. */
+/**
+ * La lista NO devuelve los medios, solo cuántos hay. Si los incluyera, el build
+ * de Astro se traería todos los reels de todas las galerías en una respuesta que
+ * crece sin techo con cada evento. El detalle por slug sí los trae.
+ */
+export interface GalleryListItemDto {
+  id: string;
+  slug: string;
+  title: string;
+  eventDate: IsoDate | null;
+  location: string | null;
+  coverUrl: string | null;
+  isFeatured: boolean;
+  category: CategoryRefDto;
+  mediaCount: number;
+}
+
 export interface CategoryRefDto {
   id: string;
   slug: string;

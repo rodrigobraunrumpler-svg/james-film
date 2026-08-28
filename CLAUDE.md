@@ -29,7 +29,12 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   (Cloudflare re-comprime al servir; comprimir dos veces degrada). §4
 - **Tres anchos de imagen en todo el sitio: 400, 800, 1600.** §4 §17
 - Nombres de archivo UUID, nunca el del usuario. `storageKey` en la base, **nunca la URL**. §17
-- Solo `MediaUrlInterceptor` conoce `CDN_BASE_URL`. §5
+- **Solo `StorageService` conoce `CDN_BASE_URL`.** Los servicios construyen las URLs con
+  `storage.getPublicUrl(key)` dentro de su mapper al DTO; ninguno lee la variable.
+  **No hay `MediaUrlInterceptor`**: transformaba `storageKey`→`url` por convención de nombres
+  *después* del controller, lo que impedía anotar el retorno del servicio con el DTO — y esa
+  anotación es lo que hace que `select` falle cerrado. Dos mecanismos para lo mismo es peor que
+  cualquiera de los dos; gana la garantía tipada.
 
 **Diseño**
 - Paleta cerrada: `void #0A0908` · `surface #141210` · `elevated #1E1B18` · `line #2E2A26` ·
