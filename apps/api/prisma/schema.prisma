@@ -288,7 +288,7 @@ model Testimonial {
   gallery   Gallery? @relation(fields: [galleryId], references: [id], onDelete: SetNull)
 
   hasConsent Boolean @default(false) // NO publicar si es false — Ley 29733
-  isActive   Boolean @default(true)
+  isActive   Boolean @default(false) // nace borrador: nunca publicable sin consentimiento explícito
   isFeatured Boolean @default(false)
   order      Int     @default(0)
 

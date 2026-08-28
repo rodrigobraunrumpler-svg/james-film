@@ -259,7 +259,9 @@ model Testimonial {
 
 - **Borrar = `deletedAt`, nunca `DELETE`.** `Media.galleryId` tiene `onDelete: Cascade`, así que
   Postgres borra las filas sin que la app las vea y **los objetos de R2 quedan huérfanos para siempre**.
-  Un único cron diario limpia R2: `Media` con `deletedAt` >30 días **y** `PENDING` huérfanos >24h.
+  Un único cron diario limpia R2: `Media` con `deletedAt` >30 días, `PENDING` huérfanos >24h,
+  y por último **las filas `Gallery` con `deletedAt` >30 días** — si no, su slug queda ocupado
+  para siempre.
 - Todo repositorio y controller público filtra `deletedAt: null`.
 
 ---
@@ -305,12 +307,25 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
 - Los DTOs de NestJS hacen `implements` de las interfaces de `packages/contracts`.
   **Si divergen, no compila.** Swagger se genera, no se mantiene.
 - Env validada con Zod al arrancar. Si falta una variable, la app no levanta. §5
-- `PrismaExceptionFilter`: P2002→409, P2025→404, P2003→400. §5
+- `PrismaExceptionFilter`: P2002→409, P2025→404, P2003→400, con **mapa estático por código**
+  como el de §5 del doc. **Nunca leer `err.meta.target`:** en Prisma 7 con driver adapter ya no
+  existe (`meta = { driverAdapterError, table, modelName }`), y leerlo lanza un TypeError que
+  convierte el 409 en un 500. El nombre del índice está en
+  `meta.driverAdapterError.cause.constraint.index`, pero con mensaje genérico no hace falta.
 - **Los controllers públicos filtran siempre** `isPublished: true`, `isActive: true`,
-  `deletedAt: null`, y solo devuelven `Media` con `status: READY`. Nunca aceptan un parámetro
-  que lo desactive. Con test.
+  `deletedAt: null`, **`hasConsent: true` en testimonios**, y solo devuelven `Media` con
+  `status: READY`. Nunca aceptan un parámetro que lo desactive. Con test.
+- **`Testimonial.isActive` nace en `false`.** Es el único `isActive` del schema que no arranca
+  en `true`: con el default contrario, un testimonio recién creado sería publicable y **sin
+  consentimiento**, que es justo lo que la Ley 29733 prohíbe (§19). Nace borrador, como
+  `Gallery.isPublished`.
 - **El slug se genera al crear y NO se regenera al renombrar.** James comparte links por WhatsApp
   veinte veces al día; regenerarlo los rompe todos en silencio. Editable a mano, con aviso.
+- **El `exists()` que `SlugService.unique()` recibe para `Gallery` NO filtra `deletedAt`.**
+  `Gallery_slug_key` no es un índice parcial: el slug de una galería con soft delete sigue
+  ocupado. Si el sondeo filtrara `deletedAt: null` diría "libre" y el `create` reventaría con
+  P2002. Es un sondeo contra un índice físico, no un repositorio: la regla general no aplica ahí.
+  `Category` y `Package` no tienen soft delete, su `exists()` es el normal.
 - **El build de Astro aborta con error ante cualquier respuesta no-2xx.** Un deploy fallido es
   mejor que uno vacío.
 - Íconos (`Package.icon`, `Differentiator.icon`, `SocialLink.icon`): **lista cerrada de ~15 nombres
