@@ -50,7 +50,7 @@ function podar(doc: OpenAPIObject): OpenAPIObject {
   let anterior = 0;
   while (referenciados.size !== anterior) {
     anterior = referenciados.size;
-    for (const nombre of [...referenciados]) recorrer(todos[nombre]);
+    for (const nombre of Array.from(referenciados)) recorrer(todos[nombre]);
   }
 
   return {

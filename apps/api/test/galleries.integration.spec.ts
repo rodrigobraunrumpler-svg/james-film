@@ -318,3 +318,61 @@ describe('admin', () => {
     expect(medios.map((m) => m.id)).toEqual(invertido);
   });
 });
+
+describe('actualizar: null borra, undefined no toca', () => {
+  it('vaciar la fecha la borra de verdad', async () => {
+    const g = await crear({ title: 'Con fecha', eventDate: '2026-03-15' });
+
+    const { body } = await http()
+      .patch(`/admin/galleries/${g.id}`)
+      .set(auth())
+      .send({ eventDate: null })
+      .expect(200);
+
+    // Con `dto.eventDate ? … : undefined` esto devolvía '2026-03-15': el
+    // autoguardado decía Guardado y la fecha reaparecía al recargar.
+    expect(body.data.eventDate).toBeNull();
+  });
+
+  it('no mandar la fecha la deja como estaba', async () => {
+    const g = await crear({ title: 'Intacta', eventDate: '2026-03-15' });
+
+    const { body } = await http()
+      .patch(`/admin/galleries/${g.id}`)
+      .set(auth())
+      .send({ title: 'Intacta editada' })
+      .expect(200);
+
+    expect(body.data.eventDate).toBe('2026-03-15');
+  });
+
+  it('vaciar descripción y lugar los borra', async () => {
+    const g = await crear({ title: 'Con datos', description: 'algo', location: 'Ayacucho' });
+
+    const { body } = await http()
+      .patch(`/admin/galleries/${g.id}`)
+      .set(auth())
+      .send({ description: null, location: null })
+      .expect(200);
+
+    expect(body.data.description).toBeNull();
+    expect(body.data.location).toBeNull();
+  });
+});
+
+describe('categorías para el selector del editor', () => {
+  it('las lista con id, slug y nombre', async () => {
+    const { body } = await http().get('/admin/categories').set(auth()).expect(200);
+
+    expect(body.data.length).toBeGreaterThanOrEqual(4);
+    expect(body.data[0]).toEqual({
+      id: expect.any(String),
+      slug: expect.any(String),
+      name: expect.any(String),
+    });
+  });
+
+  it('exige sesión', async () => {
+    await http().get('/admin/categories').expect(401);
+  });
+});

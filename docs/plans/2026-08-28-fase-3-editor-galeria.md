@@ -305,7 +305,7 @@ export const viewport: Viewport = {
 
 ## Task 4 · El editor: datos y autoguardado
 
-- [ ] **Step 0: Reconciliar al montar.**  🔴 Por cada medio que llegue en `PENDING`,
+- [x] **Step 0: Reconciliar al montar.**  🔴 Por cada medio que llegue en `PENDING`,
   `POST /admin/media/:id/confirm`. Es idempotente y hace HEAD: lo que llegó entero pasa a READY
   **sin volver a subir un byte**, y lo que no, a FAILED con el mensaje que la API ya redacta.
 
@@ -316,11 +316,11 @@ export const viewport: Viewport = {
   Es la red de seguridad real ante la suspensión de pestaña de iOS — el Wake Lock solo es una
   mitigación parcial.
 
-- [ ] **Step 1: Formulario** con `react-hook-form` + zod: título, descripción, categoría, fecha
+- [x] **Step 1: Formulario** con `react-hook-form` + zod: título, descripción, categoría, fecha
   (`<input type="date">` nativo, que en el iPhone abre el selector de iOS) y lugar.
-- [ ] **Step 2: Autoguardado con debounce de 2 s.** Ni spinner ni toast: una línea discreta
+- [x] **Step 2: Autoguardado con debounce de 2 s.** Ni spinner ni toast: una línea discreta
   `Guardando…` → `Guardado hace un momento`.
-- [ ] **Step 3: Los errores del servidor se atan por campo** con `details[].field` →
+- [x] **Step 3: Los errores del servidor se atan por campo** con `details[].field` →
   `setError(field, { message })`. Sin parsear nada.
 
 ---

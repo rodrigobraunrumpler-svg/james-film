@@ -64,7 +64,10 @@ beforeEach(() => {
 
 describe('lista de galerías', () => {
   it('sin galerías muestra el estado vacío CON acción, no una tabla vacía', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(envuelto([], meta({ totalCount: 0, pageCount: 0 })))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(envuelto([], meta({ totalCount: 0, pageCount: 0 })))),
+    );
 
     render(<ListaGalerias />, { wrapper: Envoltorio });
 
@@ -77,7 +80,9 @@ describe('lista de galerías', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() =>
-        Promise.resolve(envuelto([galeria('g1', 'XV de Camila'), galeria('g2', 'Boda Ana')], meta())),
+        Promise.resolve(
+          envuelto([galeria('g1', 'XV de Camila'), galeria('g2', 'Boda Ana')], meta()),
+        ),
       ),
     );
 
@@ -94,7 +99,13 @@ describe('lista de galerías', () => {
       vi.fn(() =>
         Promise.resolve(
           new Response(
-            JSON.stringify({ success: false, statusCode: 500, code: 'INTERNAL', message: 'Error interno', timestamp: 'x' }),
+            JSON.stringify({
+              success: false,
+              statusCode: 500,
+              code: 'INTERNAL',
+              message: 'Error interno',
+              timestamp: 'x',
+            }),
             { status: 500, headers: { 'content-type': 'application/json' } },
           ),
         ),
@@ -114,10 +125,18 @@ describe('lista de galerías', () => {
       'fetch',
       vi.fn(() =>
         Promise.resolve(
-          envuelto([galeria('g1', 'XV de Camila')], meta({
-            totalCount: 45, pageCount: 3, currentPage: 2,
-            isFirstPage: false, isLastPage: false, previousPage: 1, nextPage: 3,
-          })),
+          envuelto(
+            [galeria('g1', 'XV de Camila')],
+            meta({
+              totalCount: 45,
+              pageCount: 3,
+              currentPage: 2,
+              isFirstPage: false,
+              isLastPage: false,
+              previousPage: 1,
+              nextPage: 3,
+            }),
+          ),
         ),
       ),
     );
@@ -137,10 +156,17 @@ describe('lista de galerías', () => {
       'fetch',
       vi.fn(() =>
         Promise.resolve(
-          envuelto([galeria('g1', 'XV de Camila')], meta({
-            pageCount: 2, currentPage: 2, isFirstPage: false, isLastPage: true,
-            previousPage: 1, nextPage: null,
-          })),
+          envuelto(
+            [galeria('g1', 'XV de Camila')],
+            meta({
+              pageCount: 2,
+              currentPage: 2,
+              isFirstPage: false,
+              isLastPage: true,
+              previousPage: 1,
+              nextPage: null,
+            }),
+          ),
         ),
       ),
     );
@@ -158,9 +184,15 @@ describe('lista de galerías', () => {
       'fetch',
       vi.fn(() =>
         Promise.resolve(
-          envuelto([galeria('g1', 'XV de Camila')], meta({
-            pageCount: 3, currentPage: 1, isLastPage: false, nextPage: 2,
-          })),
+          envuelto(
+            [galeria('g1', 'XV de Camila')],
+            meta({
+              pageCount: 3,
+              currentPage: 1,
+              isLastPage: false,
+              nextPage: 2,
+            }),
+          ),
         ),
       ),
     );

@@ -13,3 +13,4 @@ coverage/
 # en un proyecto independiente y rompe la resolución del catálogo.
 apps/*/pnpm-workspace.yaml
 apps/*/pnpm-lock.yaml
+*.tsbuildinfo

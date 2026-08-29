@@ -1,5 +1,11 @@
 import { applyDecorators, type Type } from '@nestjs/common';
-import { ApiBearerAuth, ApiExtraModels, ApiOperation, ApiResponse, getSchemaPath } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiExtraModels,
+  ApiOperation,
+  ApiResponse,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { ApiErrors, type CodigoError } from './api-errors.decorator.js';
 import { ApiSuccessEntity, PaginationMetaEntity } from './envelope.entities.js';
 
@@ -8,6 +14,8 @@ export interface ApiDocOptions {
   description?: string;
   /** Tipo dentro de `data`. Usa `paginated` si la respuesta es una lista. */
   ok?: Type<unknown>;
+  /** Lista SIN paginar: array en `data`, sin `meta`. */
+  okArray?: Type<unknown>;
   paginated?: Type<unknown>;
   status?: number;
   /** Errores esperados de ESTE endpoint. El 401 lo añade `auth` solo. */
@@ -21,9 +29,13 @@ export interface ApiDocOptions {
  * de la respuesta.
  */
 export function ApiDoc(opts: ApiDocOptions): MethodDecorator {
-  const modelos = [ApiSuccessEntity, PaginationMetaEntity, opts.ok, opts.paginated].filter(
-    (m): m is Type<unknown> => m !== undefined,
-  );
+  const modelos = [
+    ApiSuccessEntity,
+    PaginationMetaEntity,
+    opts.ok,
+    opts.okArray,
+    opts.paginated,
+  ].filter((m): m is Type<unknown> => m !== undefined);
 
   const respuesta = opts.paginated
     ? {
@@ -40,17 +52,31 @@ export function ApiDoc(opts: ApiDocOptions): MethodDecorator {
           ],
         },
       }
-    : opts.ok
+    : opts.okArray
       ? {
           status: opts.status ?? 200,
           schema: {
             allOf: [
               { $ref: getSchemaPath(ApiSuccessEntity) },
-              { properties: { data: { $ref: getSchemaPath(opts.ok) } } },
+              {
+                properties: {
+                  data: { type: 'array', items: { $ref: getSchemaPath(opts.okArray) } },
+                },
+              },
             ],
           },
         }
-      : { status: opts.status ?? 204, description: 'Sin contenido' };
+      : opts.ok
+        ? {
+            status: opts.status ?? 200,
+            schema: {
+              allOf: [
+                { $ref: getSchemaPath(ApiSuccessEntity) },
+                { properties: { data: { $ref: getSchemaPath(opts.ok) } } },
+              ],
+            },
+          }
+        : { status: opts.status ?? 204, description: 'Sin contenido' };
 
   return applyDecorators(
     ApiOperation({ summary: opts.summary, description: opts.description }),

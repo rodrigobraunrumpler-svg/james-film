@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { AdminGalleryDto, GalleryDto, GalleryListItemDto } from '@james-film/contracts';
+import type {
+  AdminGalleryDto,
+  CategoryRefDto,
+  GalleryDto,
+  GalleryListItemDto,
+} from '@james-film/contracts';
 import type { ListaPaginada } from '../../common/interceptors/response-envelope.interceptor.js';
 import { paginar } from '../../common/pagination.js';
 import { ExclusiveFlagService } from '../../common/services/exclusive-flag.service.js';
@@ -10,6 +15,7 @@ import { StorageService } from '../../storage/storage.service.js';
 import type { CreateGalleryDto } from './dto/create-gallery.dto.js';
 import type { UpdateGalleryDto } from './dto/update-gallery.dto.js';
 import {
+  SELECT_CATEGORIA,
   SELECT_GALERIA,
   SELECT_MEDIA,
   SELECT_MEDIA_ADMIN,
@@ -17,6 +23,13 @@ import {
   mapGaleriaAdmin,
   mapGaleriaLista,
 } from './galleries.mapper.js';
+
+/**
+ * `YYYY-MM-DD` → medianoche UTC, que es lo que @db.Date guarda sin desfase.
+ * Distingue los tres casos que el editor necesita: sin cambio, borrar, y fijar.
+ */
+const fechaDeCalendario = (v: string | null | undefined): Date | null | undefined =>
+  v === undefined || v === null ? (v as null | undefined) : new Date(v);
 
 /** Lo que la landing puede ver: publicada, no borrada. */
 const VISIBLE = { isPublished: true, deletedAt: null } as const;
@@ -32,6 +45,18 @@ export class GalleriesService {
     private readonly reorder: ReorderService,
     private readonly exclusiveFlag: ExclusiveFlagService,
   ) {}
+
+  /**
+   * Las opciones del `<select>` de categoría del editor. Vive aquí y no en un
+   * módulo propio porque hasta la fase 4 esto es lo único que se necesita de
+   * `Category`: un módulo con un solo `findMany` sería un archivo de más.
+   */
+  async listarCategorias(): Promise<CategoryRefDto[]> {
+    return this.prisma.category.findMany({
+      select: SELECT_CATEGORIA,
+      orderBy: [{ order: 'asc' }, { id: 'asc' }],
+    });
+  }
 
   async listarPublicas(page: number, pageSize: number): Promise<ListaPaginada<GalleryListItemDto>> {
     const [filas, total] = await this.prisma.$transaction([
@@ -147,7 +172,7 @@ export class GalleriesService {
         title: dto.title,
         description: dto.description,
         categoryId: dto.categoryId,
-        eventDate: dto.eventDate ? new Date(dto.eventDate) : null,
+        eventDate: fechaDeCalendario(dto.eventDate) ?? null,
         location: dto.location,
       },
       select: { id: true },
@@ -167,7 +192,9 @@ export class GalleriesService {
         title: dto.title,
         description: dto.description,
         categoryId: dto.categoryId,
-        eventDate: dto.eventDate ? new Date(dto.eventDate) : undefined,
+        // null BORRA, undefined NO TOCA. Con `dto.eventDate ? … : undefined`,
+        // vaciar el campo se perdía en silencio y reaparecía al recargar.
+        eventDate: fechaDeCalendario(dto.eventDate),
         location: dto.location,
         isPublished: dto.isPublished,
         isFeatured: dto.isFeatured,
@@ -185,7 +212,10 @@ export class GalleriesService {
     // Postgres borraría sus filas sin que la app las vea y los objetos quedarían
     // huérfanos en el bucket para siempre.
     await this.prisma.$transaction([
-      this.prisma.media.updateMany({ where: { galleryId: id, deletedAt: null }, data: { deletedAt } }),
+      this.prisma.media.updateMany({
+        where: { galleryId: id, deletedAt: null },
+        data: { deletedAt },
+      }),
       this.prisma.gallery.update({ where: { id }, data: { deletedAt } }),
     ]);
   }
