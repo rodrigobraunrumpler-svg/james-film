@@ -67,9 +67,11 @@ export function Hoja({
 
           {/* El scroll vive AQUÍ, no en la página: la cabecera con el título y
               el botón de cerrar se quedan fijos mientras el formulario sube. */}
-          <div className="overflow-y-auto px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            {children}
-          </div>
+          {/* SIN `padding-bottom`: `sticky bottom-0` se ancla a la caja de
+              CONTENIDO, así que un padding aquí deja al pie pegado flotando por
+              encima de ese hueco y el formulario se ve pasar por debajo. El
+              respiro y el área segura los pone quien va al final. */}
+          <div className="overflow-y-auto px-4">{children}</div>
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

@@ -216,7 +216,7 @@ export function HojaTestimonio({
 
       {/* Pegado abajo, como la cabecera arriba: con un formulario largo,
           Guardar quedaba a un scroll entero de distancia. */}
-      <div className="bg-chrome border-line sticky bottom-0 -mx-4 -mb-[calc(1.5rem+env(safe-area-inset-bottom))] flex gap-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div className="bg-chrome border-line sticky bottom-0 -mx-4 mt-2 flex gap-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <button type="button" onClick={onCerrar} className={clasesBoton('secundario', 'flex-1')}>
           Cancelar
         </button>

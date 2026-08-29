@@ -48,10 +48,10 @@ export function NuevaGaleria({ abierta, onCerrar }: { abierta: boolean; onCerrar
       descripcion="Una galería es un evento: los reels de una boda, unos XV, un cumpleaños."
     >
       {isPending ? (
-        <p className="text-ash pb-2">Cargando categorías…</p>
+        <p className="text-ash pb-[calc(1rem+env(safe-area-inset-bottom))]">Cargando categorías…</p>
       ) : activas.length === 0 ? (
         // Sin categorías no hay galería posible: se dice qué hacer, no «error».
-        <p role="alert" className="text-ash pb-2">
+        <p role="alert" className="text-ash pb-[calc(1rem+env(safe-area-inset-bottom))]">
           Antes de crear una galería necesitas al menos una categoría activa. Créala en{' '}
           <a href="/categorias" className="text-brass underline">
             Categorías
@@ -65,7 +65,7 @@ export function NuevaGaleria({ abierta, onCerrar }: { abierta: boolean; onCerrar
             void enviar();
           }}
           noValidate
-          className="flex flex-col gap-4 pb-2"
+          className="flex flex-col gap-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
         >
           <div className="flex flex-col gap-1.25">
             <label htmlFor="nueva-title" className="text-muted text-xs">
@@ -97,7 +97,7 @@ export function NuevaGaleria({ abierta, onCerrar }: { abierta: boolean; onCerrar
             />
           </div>
 
-          <div className="bg-chrome border-line sticky bottom-0 -mx-4 -mb-[calc(1.5rem+env(safe-area-inset-bottom))] flex gap-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="bg-chrome border-line sticky bottom-0 -mx-4 mt-2 flex gap-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Boton className="flex-1" onClick={onCerrar}>
               Cancelar
             </Boton>

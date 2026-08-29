@@ -352,7 +352,7 @@ export function TarjetaMedio({
         titulo={datos.nombre}
         descripcion="Qué hacer con este archivo"
       >
-        <ul className="flex flex-col gap-1 pb-2">
+        <ul className="flex flex-col gap-1 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           {puedeSerPortada && !medio.isFeatured && (
             <FilaAccion
               Icono={Star}
@@ -424,7 +424,7 @@ export function TarjetaMedio({
               });
               setEditando(false);
             }}
-            className="flex flex-col gap-4 pb-2"
+            className="flex flex-col gap-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
           >
             <div className="flex flex-col gap-1.25">
               <label htmlFor={`alt-${medio.id}`} className="text-muted text-xs">

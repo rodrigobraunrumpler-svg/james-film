@@ -334,7 +334,7 @@ export function ListaPaquetes() {
         descripcion="Qué hacer con este paquete"
       >
         {acciones && (
-          <ul className="flex flex-col gap-1 pb-2">
+          <ul className="flex flex-col gap-1 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <FilaAccion
               Icono={acciones.isActive ? EyeOff : Eye}
               etiqueta={`${acciones.isActive ? 'Ocultar' : 'Mostrar'} ${acciones.name}`}
@@ -371,7 +371,7 @@ export function ListaPaquetes() {
         descripcion="Es el paquete destacado. Si lo ocultas, la web no destacará ninguno: la sección sale plana."
       >
         {ocultando && (
-          <div className="flex gap-2 pb-2">
+          <div className="flex gap-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Boton className="flex-1" onClick={() => setOcultando(null)}>
               Cancelar
             </Boton>
@@ -398,7 +398,7 @@ export function ListaPaquetes() {
         descripcion="Se borran también sus puntos. No se puede deshacer."
       >
         {borrando && (
-          <div className="flex gap-2 pb-2">
+          <div className="flex gap-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Boton className="flex-1" onClick={() => setBorrando(null)}>
               Cancelar
             </Boton>

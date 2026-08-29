@@ -35,7 +35,7 @@ export function ConfirmarBorrado({
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="confirmar-titulo"
-      className="flex flex-col gap-4 pb-2"
+      className="flex flex-col gap-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
     >
       <div className="flex flex-col gap-1">
         <p id="confirmar-titulo" className="text-danger font-medium">

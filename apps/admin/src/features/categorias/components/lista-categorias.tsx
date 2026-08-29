@@ -200,7 +200,7 @@ export function ListaCategorias() {
         descripcion="No se puede deshacer. Está vacía, así que no arrastra ninguna galería."
       >
         {borrando && (
-          <div className="flex gap-2 pb-2">
+          <div className="flex gap-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Boton className="flex-1" onClick={() => setBorrando(null)}>
               Cancelar
             </Boton>
