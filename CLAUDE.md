@@ -517,7 +517,14 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
 - Íconos (`Package.icon`, `Differentiator.icon`, `SocialLink.icon`): **lista cerrada de ~15 nombres
   lucide** en `copy.ts` con `<select>` en el admin. `astro-icon` no hace tree-shaking de nombres
   dinámicos, y un typo deja un hueco en la web. Fallback `?? 'link'`.
-- Seed **idempotente**: `upsert` por slug. Se ejecuta en local, en cada branch de CI y en producción.
+- Seed **idempotente**: `upsert` por clave natural. Se ejecuta en local, en cada branch de CI y
+  en producción.
+- **El seed CREA el estado inicial, no lo mantiene sincronizado: `update: {}` en todo el
+  contenido.** Con el objeto entero en `update` —y corriendo también en producción— el siguiente
+  despliegue le devolvía a James los precios, las redes, el `aboutText` y **el número de
+  WhatsApp** a los valores del flyer. Sin error y sin log. Es el mismo principio que ya protegía
+  la contraseña del usuario, extendido al contenido. `SEED_RESET=true` restaura los valores del
+  flyer; es explícito, para local, y nunca va en el comando de producción. Con cinco tests.
 
 **Fechas y zona horaria — sin librería**
 

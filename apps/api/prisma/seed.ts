@@ -124,6 +124,24 @@ const AJUSTES = {
   metaDescription: 'Reels y aftermovies para bodas, XV años y eventos en Ayacucho.',
 };
 
+/**
+ * `update: {}` en todo el CONTENIDO, y no es un descuido: el trabajo del seed es
+ * **crear** el estado inicial, no mantenerlo sincronizado. Desde que existe el
+ * admin, la fuente de verdad del contenido es lo que escribe James.
+ *
+ * Con el objeto entero en `update`, y sabiendo que este seed corre también en
+ * producción, el siguiente despliegue le devolvía los precios, las redes, el
+ * `aboutText` y **el número de WhatsApp** a los valores del flyer. Sin error y
+ * sin log: nada lo habría relacionado con el deploy.
+ *
+ * Es el mismo principio que ya se aplicaba al usuario más abajo —el seed no
+ * debe poder degradar una credencial real— extendido al contenido.
+ *
+ * `SEED_RESET=true` restaura los valores del flyer. Explícito y para local:
+ * nunca en el comando de producción.
+ */
+const RESET = process.env.SEED_RESET === 'true';
+
 async function main(): Promise<void> {
   const email = process.env.SEED_ADMIN_EMAIL;
   const password = process.env.SEED_ADMIN_PASSWORD;
@@ -132,23 +150,27 @@ async function main(): Promise<void> {
   }
 
   for (const c of CATEGORIAS) {
-    await prisma.category.upsert({ where: { slug: c.slug }, update: c, create: c });
+    await prisma.category.upsert({ where: { slug: c.slug }, update: RESET ? c : {}, create: c });
   }
 
   for (const p of PAQUETES) {
     const { items, categorias, ...datos } = p;
     const paquete = await prisma.package.upsert({
       where: { slug: datos.slug },
-      update: datos,
+      update: RESET ? datos : {},
       create: datos,
+      select: { id: true, _count: { select: { items: true } } },
     });
 
-    // Los bullets son texto libre y no tienen clave natural: se reemplazan enteros.
-    // Cualquier otra estrategia acumula duplicados o deja filas huérfanas.
-    await prisma.packageItem.deleteMany({ where: { packageId: paquete.id } });
-    await prisma.packageItem.createMany({
-      data: items.map((text, order) => ({ packageId: paquete.id, text, order })),
-    });
+    // Los bullets son texto libre y no tienen clave natural, así que se
+    // reemplazan enteros — pero SOLO si el paquete no tiene ninguno. Hacerlo
+    // siempre borraba los que hubiera editado James.
+    if (paquete._count.items === 0 || RESET) {
+      await prisma.packageItem.deleteMany({ where: { packageId: paquete.id } });
+      await prisma.packageItem.createMany({
+        data: items.map((text, order) => ({ packageId: paquete.id, text, order })),
+      });
+    }
 
     for (const slug of categorias) {
       const categoria = await prisma.category.findUniqueOrThrow({ where: { slug } });
@@ -161,16 +183,24 @@ async function main(): Promise<void> {
   }
 
   for (const d of DIFERENCIADORES) {
-    await prisma.differentiator.upsert({ where: { title: d.title }, update: d, create: d });
+    await prisma.differentiator.upsert({
+      where: { title: d.title },
+      update: RESET ? d : {},
+      create: d,
+    });
   }
 
   for (const r of REDES) {
-    await prisma.socialLink.upsert({ where: { platform: r.platform }, update: r, create: r });
+    await prisma.socialLink.upsert({
+      where: { platform: r.platform },
+      update: RESET ? r : {},
+      create: r,
+    });
   }
 
   await prisma.siteSettings.upsert({
     where: { id: 'singleton' },
-    update: AJUSTES,
+    update: RESET ? AJUSTES : {},
     create: { id: 'singleton', ...AJUSTES },
   });
 
@@ -194,7 +224,7 @@ async function main(): Promise<void> {
     },
   });
 
-  console.log('Seed listo.');
+  console.log(RESET ? 'Seed listo (RESET: contenido restaurado).' : 'Seed listo.');
 }
 
 main()

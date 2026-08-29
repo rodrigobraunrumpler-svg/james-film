@@ -87,3 +87,80 @@ describe('seed', () => {
     expect(d.status).toBe('IDLE');
   });
 });
+
+describe('el seed NO pisa lo que escribe James', () => {
+  /**
+   * El fallo que este bloque existe para que no vuelva: con el objeto entero en
+   * `update`, y sabiendo que el seed corre también en producción, el siguiente
+   * despliegue le devolvía los precios, las redes y el número de WhatsApp a los
+   * valores del flyer. Sin error y sin log.
+   */
+  it('conserva un precio editado a mano', async () => {
+    correrSeed();
+    const antes = await prisma.package.findFirstOrThrow({ select: { id: true, slug: true } });
+    await prisma.package.update({ where: { id: antes.id }, data: { priceAmount: 99_900 } });
+
+    correrSeed();
+
+    const despues = await prisma.package.findUniqueOrThrow({ where: { id: antes.id } });
+    expect(despues.priceAmount).toBe(99_900);
+  });
+
+  it('conserva los ajustes del sitio, incluido el número de WhatsApp', async () => {
+    correrSeed();
+    await prisma.siteSettings.update({
+      where: { id: 'singleton' },
+      data: { whatsappNumber: '51999888777', aboutText: 'Lo reescribió James' },
+    });
+
+    correrSeed();
+
+    const ajustes = await prisma.siteSettings.findUniqueOrThrow({ where: { id: 'singleton' } });
+    expect(ajustes.whatsappNumber).toBe('51999888777');
+    expect(ajustes.aboutText).toBe('Lo reescribió James');
+  });
+
+  it('conserva los bullets de un paquete, y no los duplica', async () => {
+    correrSeed();
+    const paquete = await prisma.package.findFirstOrThrow({
+      select: { id: true, _count: { select: { items: true } } },
+    });
+    const item = await prisma.packageItem.findFirstOrThrow({ where: { packageId: paquete.id } });
+    await prisma.packageItem.update({ where: { id: item.id }, data: { text: 'Texto de James' } });
+
+    correrSeed();
+
+    const despues = await prisma.packageItem.findUniqueOrThrow({ where: { id: item.id } });
+    expect(despues.text).toBe('Texto de James');
+    // Y sin duplicar: el reemplazo entero solo corre cuando no había ninguno.
+    const cuantos = await prisma.packageItem.count({ where: { packageId: paquete.id } });
+    expect(cuantos).toBe(paquete._count.items);
+  });
+
+  it('conserva una red social editada', async () => {
+    correrSeed();
+    await prisma.socialLink.updateMany({ where: {}, data: { handle: 'otro_handle' } });
+
+    correrSeed();
+
+    const redes = await prisma.socialLink.findMany({ select: { handle: true } });
+    expect(redes.every((r) => r.handle === 'otro_handle')).toBe(true);
+  });
+
+  it('SEED_RESET=true sí restaura los valores del flyer', async () => {
+    correrSeed();
+    await prisma.siteSettings.update({
+      where: { id: 'singleton' },
+      data: { whatsappNumber: '51000000000' },
+    });
+
+    execSync('pnpm exec dotenv -e .env.test -- tsx prisma/seed.ts', {
+      cwd: new URL('..', import.meta.url).pathname,
+      stdio: 'pipe',
+      env: { ...process.env, SEED_RESET: 'true' },
+    });
+
+    const ajustes = await prisma.siteSettings.findUniqueOrThrow({ where: { id: 'singleton' } });
+    expect(ajustes.whatsappNumber).not.toBe('51000000000');
+  });
+});
