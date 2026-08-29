@@ -80,7 +80,7 @@ darles galería, orden, estado y portada que no tienen.
   | `PORTADA_CATEGORIA`, `IMAGEN_PAQUETE` | `covers/` | jpeg, png, webp | `MAX_IMAGE_MB` |
   | `AVATAR_TESTIMONIO` | `avatars/` | jpeg, png, webp | `MAX_IMAGE_MB` |
   | `CAPTURA_TESTIMONIO` | `screenshots/` | jpeg, png, webp | `MAX_IMAGE_MB` |
-  | `LOGO`, `FIRMA` | `brand/` | jpeg, png, **svg** | 1 MB |
+  | `LOGO`, `FIRMA` | `brand/` | **svg**, png, jpeg | 1 MB · el SVG no se normaliza |
   | `OG` | `og/` | jpeg, png | `MAX_IMAGE_MB` |
   | `HERO_VIDEO` | `videos/` | mp4 | **1.5 MB** (§4) |
   | `HERO_POSTER` | `posters/` | jpeg | `MAX_IMAGE_MB` |
@@ -90,11 +90,25 @@ darles galería, orden, estado y portada que no tienen.
       tienen sitio. **Se añaden `covers/`, `avatars/` y `brand/`** a esa lista en el mismo commit
       que el endpoint, o el próximo que la lea creerá que está completa.
 
-- [ ] 🔶 **El SVG del logo y la firma es la única entrada de SVG del proyecto.** Un SVG es un
-      documento ejecutable: si el CDN lo sirve como `image/svg+xml`, un `<script>` dentro corre
-      con el origen del que lo sirve. Solo lo sube James, pero el fallo no depende de quién sube
-      sino de qué se sirve. **Decisión: se acepta**, y queda como requisito escrito para el
-      `_headers` de la fase 6, no como recordatorio.
+- [ ] ✅ **Decidido (Javier): el logo va en SVG.** Deja de ser hipótesis, así que hay tres cosas
+      que hacer de verdad y no anotar:
+
+  - [ ] 🔶 **El SVG NO pasa por `normalizarImagen`.** Ese módulo decodifica a bitmap y dibuja en
+        un canvas: convertiría el vector en un PNG del tamaño que tuviera el `viewBox`, y el
+        logo perdería lo único que lo hace SVG. `CampoImagen` **salta la normalización** cuando
+        el tipo es `image/svg+xml` y sube el archivo tal cual. Con test, porque el síntoma sería
+        "el logo se ve borroso en pantallas grandes" y nadie lo ataría a esto.
+  - [ ] 🔶 **Un SVG es un documento ejecutable.** Un `<script>` dentro corre con el origen que lo
+        sirve. La mitigación real **no es sanear el archivo, es el origen**: R2 se sirve desde
+        el subdominio `media.` (ya previsto en los pendientes de `CLAUDE.md`), que es un origen
+        distinto al de la landing. Aun con un SVG malicioso, no toca ni las cookies ni el DOM
+        del sitio. **Queda como requisito del dominio, no como recordatorio del `_headers`.**
+  - [ ] Comprobación barata en el navegador antes de subir: rechazar si el texto contiene
+        `<script`, `onload=` o `javascript:`. **No es una frontera de seguridad** —es trivial de
+        esquivar— y el comentario lo dice: sirve para el caso accidental, un export de Figma con
+        metadatos raros. La frontera es el origen.
+  - [ ] `MIMES_MARCA = ['image/svg+xml', 'image/png', 'image/jpeg']`: PNG se acepta igual,
+        porque la firma manuscrita puede llegar escaneada.
 
 **Los huérfanos, y hay que resolverlos en este mismo Task.** Si James sube una imagen y cierra
 sin guardar, el objeto queda en R2 **sin que ninguna fila lo referencie**. El cron diario de la
@@ -272,14 +286,27 @@ Tres paquetes, dieciséis bullets, un destacado. Es donde está el precio, o sea
       que la landing (§8), **nunca `grid-cols-3`** — con el destacado marcado. La edición abre
       una hoja con: nombre, subtítulo, precio, nota de precio, ideal para, ícono, imagen, badge,
       mensaje de WhatsApp, categorías y **la lista de bullets con reorden y toggle de incluido**.
-- [ ] **Step 5: el precio.** `<input type="number" step="0.01">` en soles, conversión a céntimos
-      en el `onSubmit` **y en un solo sitio** (`aSoles` / `aCentimos` en `lib/format`), con
-      pruebas de redondeo: `30.1` debe dar `3010`, no `3009.9999`.
+- [ ] **Step 5: el precio, SOLO ENTEROS.** ✅ **Decidido (Javier).**
+      `<input type="number" step="1" min="0">` en soles, y `soles * 100` a céntimos en
+      `lib/format` (`aSoles` / `aCentimos`), en un solo sitio.
+
+  **Lo que esto elimina:** el redondeo. Con enteros, `300 * 100` es exacto y no hay
+  `3009.9999999` que corregir. Se borra esa prueba del Task 7 y se queda una más simple: que
+  `300` guarde `30000` y que la pantalla lo devuelva como `S/ 300.00`.
+
+  - [ ] 🔶 **El `step="1"` no basta como validación.** El usuario puede escribir `300.5` a mano
+        y el navegador lo acepta igual; `type="number"` solo valida al enviar un formulario
+        nativo, y aquí no hay submit nativo. Se valida en zod (`z.number().int()`) **y en la
+        API** (`@IsInt()` sobre los céntimos, que ya está). El admin puede equivocarse, la API
+        no debe poder.
+  - [ ] La visualización sigue con dos decimales (`S/ 300.00`): lo dice `CLAUDE.md` y es lo que
+        el flyer enseña. Enteros es cómo se **edita**, no cómo se **muestra**.
 - [ ] **Step 6: destacar es un radio.** Marcar uno desmarca el otro en la caché al instante
       (optimista, exclusivo), igual que la portada de la fase 3.
 - [ ] **Step 7: tests.** Que dos paquetes no puedan estar destacados a la vez ni siquiera
       mandando dos `PATCH` seguidos; que los ids de los bullets sobrevivan a un guardado; que
-      quitar un bullet lo borre y renumere el resto; el redondeo del precio.
+      quitar un bullet lo borre y renumere el resto; que `300` guarde `30000` y que un
+      `300.5` a mano sea rechazado.
 
 ---
 
@@ -296,12 +323,28 @@ real a James.** Hay menores en los XV años.
     builds de Astro, moviendo la sección sin que nadie haya tocado nada.
   - `hasConsent` **no sale en el DTO público**: es una condición para publicar, no un dato del
     visitante. Si un testimonio llega al contrato, es que lo tenía.
-  - Admin: CRUD y reorden.
-  - [ ] 🔶 **`Testimonial.isFeatured` NO se marca como exclusivo.** Lo di por hecho en el primer
-        borrador y no lo dice nadie: `CLAUDE.md` limita `ExclusiveFlagService` a
-        `Package.isHighlighted`, `Gallery.isFeatured` y `Media.isFeatured`, y el doc no habla de
-        un testimonio destacado. Se deja como booleano simple. **Pregunta abierta para Javier:**
-        ¿la landing enseña un testimonio destacado, o los enseña todos por orden?
+  - Admin: CRUD, reorden, y `isFeatured` con `ExclusiveFlagService` **sin scope**.
+  - [ ] ✅ **Decidido (Javier): uno destacado Y el resto por orden.** El destacado es **exclusivo
+        —uno solo—** y los demás salen ordenados detrás. `ExclusiveFlagService` sin scope, igual
+        que `Package.isHighlighted`.
+
+        **Consecuencia en el orden público:**
+        `orderBy: [{ isFeatured: 'desc' }, { order: 'asc' }, { id: 'asc' }]`, exactamente el
+        mismo patrón que ya usa `listarPublicas` de galerías. El destacado sale primero **sin
+        salirse de la lista**: no es una consulta aparte, es la misma con el flag arriba. Así la
+        landing decide cómo pintarlo (grande el primero, o todos iguales) sin que la API
+        prejuzgue el diseño de la fase 5.
+
+  - [ ] **En el admin es un radio**, no un checkbox, por la misma razón que el paquete
+        destacado: un checkbox invita a marcar dos y luego a preguntarse por qué se desmarcó el
+        otro solo. Optimista y exclusivo en la caché, como la portada de la fase 3.
+  - [ ] 🔶 **Un destacado sin consentimiento no puede llegar a la landing.** `isFeatured` y
+        `isActive` son flags distintos: marcar destacado un testimonio **no** lo publica. El
+        filtro público sigue siendo `isActive && hasConsent`, y el `orderBy` no lo salta. Con
+        test, porque es justo la combinación que parece publicada en el admin y no lo está.
+  - [ ] 🔶 **Añadir `Testimonial.isFeatured` a la lista de `ExclusiveFlagService` en
+        `CLAUDE.md`**, que hoy nombra solo tres campos. Si no, el próximo que la lea creerá que
+        está completa — que es exactamente el error que cometí en el primer borrador.
 - [ ] **Step 2: la puerta del consentimiento, en el servidor.** 🔴 `PATCH` con
       `isActive: true` sobre una fila con `hasConsent: false` → **422 con
       `code: 'CONSENT_REQUIRED'`**. No es una comprobación de formulario: el admin puede
@@ -396,7 +439,7 @@ borrado + toggle de activo.
 
 - [ ] **Step 1: cobertura donde importa.** Alta en servicios, baja en controllers (§15). Lo
       irrenunciable: la puerta del consentimiento, el destacado exclusivo, el reorden, el
-      redondeo del precio y la validación del número de WhatsApp.
+      precio entero y la validación del número de WhatsApp.
 - [ ] **Step 2: ampliar el documento público a mano.** 🔶 `construirDocPublico` hoy lleva
       `include: [GalleriesModule]` **escrito a mano**. Los cuatro módulos nuevos NO aparecen
       solos: hay que añadirlos ahí o los endpoints públicos de esta fase no existirán en el
@@ -443,7 +486,7 @@ Diez, marcados con 🔶 en el cuerpo. **Cuatro eran fallos del primer borrador**
 | 1 | Los prefijos de R2 de `CLAUDE.md` no cubren siete de las nueve claves nuevas. El borrador inventó `uploads/` para todo, sacando de su sitio a `screenshots/` y `og/`, que **ya estaban documentados** | fallo del plan |
 | 2 | El `prefijo` lo mandaba el cliente. Es dejarle elegir dónde escribe en el bucket: ahora manda un `proposito` de lista cerrada y **el servidor decide** | fallo del plan |
 | 3 | El techo del hero era `MAX_IMAGE_MB`. Es un **vídeo**: colarían 15 MB de autoplay en la portada de la landing | fallo del plan |
-| 4 | `Testimonial.isFeatured` como exclusivo **me lo inventé**: no lo dice el schema, ni `CLAUDE.md`, ni el doc. Queda como booleano simple y como pregunta abierta | fallo del plan |
+| 4 | `Testimonial.isFeatured` como exclusivo **me lo inventé**: no lo decía el schema, ni `CLAUDE.md`, ni el doc. Preguntado en vez de asumido — y Javier confirmó que sí lo es, pero la respuesta correcta por el motivo correcto | fallo del plan |
 | 5 | `GET /icons` público movería el contrato congelado por una ruta que **solo usa el admin**. Pasa a `/admin/icons` | corrección |
 | 6 | `PATCH /admin/categories/reorder` lo captura `:id` si se declara antes — la misma trampa de la fase 3, pero ahí no chocaba porque el reorden colgaba más hondo | corrección |
 | 7 | El `upsert` de bullets aceptaría un `id` de **otro paquete** y movería el bullet: no hay índice que lo impida | corrección |
@@ -456,13 +499,13 @@ barrido de huérfanos.** Ahí vive el trabajo de James, y un barrido que se equi
 referencias lo borra. El hero viejo se queda en el bucket; borrarlo a mano una vez al año es más
 barato que el riesgo.
 
-## Preguntas abiertas para Javier
+## Decisiones de Javier (cerradas)
 
-1. **¿Hay testimonio destacado en la landing**, o se muestran todos por orden? (hallazgo 4)
-2. **El logo y la firma en SVG**: ¿los tendrá James en SVG de verdad, o habrá que aceptar PNG?
-   Cambia el `proposito` `LOGO`/`FIRMA` y la nota de seguridad de D1.
-3. **¿El precio se edita en soles con decimales** (S/ 300.50) o solo enteros? Si son enteros, el
-   redondeo del Task 3 Step 5 sobra.
+| # | Pregunta | Respuesta | Qué cambia en el plan |
+|---|---|---|---|
+| 1 | ¿Testimonio destacado, o todos por orden? | **Los dos**: uno destacado y el resto ordenado detrás | `ExclusiveFlagService` sin scope, `orderBy` con `isFeatured` primero, radio en el admin, y `isFeatured` añadido a la lista de `CLAUDE.md` |
+| 2 | ¿Logo en SVG? | **Sí, y la imagen ya existe** | El SVG salta `normalizarImagen` (o el vector acaba en PNG); el origen `media.` pasa de pendiente a requisito; `MIMES_MARCA` con svg + png |
+| 3 | ¿Precios con decimales? | **Solo enteros** | `step="1"`, `z.number().int()`, y fuera la prueba de redondeo. Se sigue **mostrando** `S/ 300.00` |
 
 ## Riesgos
 
@@ -473,3 +516,4 @@ barato que el riesgo.
 | Cuatro pantallas divergentes | la tercera se escribe distinta a la primera | Task 6, y hacerlo con tres, no con una |
 | El número de WhatsApp queda mal guardado | **ninguna: no falla, nadie escribe** | validación en la API + botón de probar |
 | Borrar un paquete pierde los clics | ninguna hasta el dashboard de la fase 6 | desactivar es la acción principal (D4) |
+| El logo SVG se sube normalizado y sale rasterizado | «se ve borroso en pantallas grandes», y nadie lo ata a la subida | `CampoImagen` salta la normalización para `image/svg+xml`, con test |
