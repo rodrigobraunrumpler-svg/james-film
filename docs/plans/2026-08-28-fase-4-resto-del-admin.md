@@ -184,8 +184,9 @@ Verificado en el schema, no supuesto:
 
 Sale primero porque las cuatro pantallas lo necesitan y porque es lo único con riesgo real.
 
-- [ ] **Step 1: `POST /admin/uploads/presign`** según D1. Valida mime y tamaño, genera clave
-      UUID bajo `uploads/`, firma con `signableHeaders`. **No toca la base.**
+- [ ] **Step 1: `POST /admin/uploads/presign`** según D1. Valida el `proposito`, el mime y el
+      tamaño contra la tabla, genera clave UUID **bajo el prefijo que decide el servidor**, y
+      firma con `signableHeaders`. **No toca la base.**
 - [ ] **Step 2: mover `validacion/` y `cola/` a `src/lib/media/`** (D2), con los 109 tests.
       `pnpm --filter admin test` en verde antes de seguir. Si algo se rompe aquí, se arregla
       aquí: arrastrarlo a las pantallas hace que parezca un fallo de las pantallas.
@@ -410,7 +411,8 @@ borrado + toggle de activo.
       caracteres que no rompa la tarjeta del paquete.
 - [ ] **Step 5: `pnpm outdated` y `pnpm audit`**, como al cerrar cada fase.
 - [ ] **Step 6: actualizar `CLAUDE.md`** con lo que se aprenda, especialmente la regla del cron
-      para los huérfanos de `uploads/` (D1) y la ubicación nueva de `lib/media` (D2).
+      para los huérfanos de `covers/`, `avatars/` y `brand/` (D1), los tres prefijos nuevos, y
+      la ubicación nueva de `lib/media` (D2).
 
 ---
 
