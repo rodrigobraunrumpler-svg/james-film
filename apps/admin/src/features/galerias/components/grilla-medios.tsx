@@ -2,6 +2,7 @@
 
 import type { AdminGalleryDto } from '@james-film/contracts';
 import { useCola } from '../cola/store';
+import { useMarcarPortada, useOrdenMedios } from '../hooks/use-orden-medios';
 import { TarjetaMedio, type DatosTarjeta } from './tarjeta-medio';
 
 /**
@@ -18,6 +19,9 @@ export function GrillaMedios({ galeria }: { galeria: AdminGalleryDto }) {
   // array nuevo, useSyncExternalStore lo leería como estado distinto y React
   // entraría en bucle. Verificado: «Maximum update depth exceeded».
   const items = useCola((e) => e.items);
+  const { reordenar, fallo } = useOrdenMedios(galeria.id);
+  const portada = useMarcarPortada(galeria.id);
+
   const deLaGaleria = Object.values(items).filter((i) => i.galleryId === galeria.id);
   const porMediaId = new Map(deLaGaleria.filter((i) => i.mediaId).map((i) => [i.mediaId, i]));
 
@@ -49,11 +53,30 @@ export function GrillaMedios({ galeria }: { galeria: AdminGalleryDto }) {
   }
 
   return (
-    // minmax(0,1fr) y no grid-cols-N: con un nombre largo, 1fr desborda (§7).
-    <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(140px,100%),1fr))] gap-3">
-      {tarjetas.map((datos) => (
-        <TarjetaMedio key={datos.clave} datos={datos} />
-      ))}
-    </ul>
+    <div className="flex flex-col gap-2">
+      {fallo && (
+        <p role="alert" className="text-sm text-red-600">
+          No se pudo guardar el orden. Se ha dejado como estaba.
+        </p>
+      )}
+
+      {/* minmax(0,1fr) y no grid-cols-N: con un nombre largo, 1fr desborda (§7). */}
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(140px,100%),1fr))] gap-3">
+        {tarjetas.map((datos, i) => (
+          <TarjetaMedio
+            key={datos.clave}
+            datos={datos}
+            acciones={{
+              posicion: i,
+              // Solo se reordena lo que el servidor conoce: una tarjeta local
+              // todavía no tiene fila que numerar.
+              total: galeria.media.length,
+              onMover: reordenar,
+              onPortada: (mediaId) => portada.mutate(mediaId),
+            }}
+          />
+        ))}
+      </ul>
+    </div>
   );
 }

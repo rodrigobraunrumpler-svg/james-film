@@ -596,11 +596,23 @@ document.addEventListener('visibilitychange', () => {
 
 ## Task 7 · Ordenar y portada
 
-- [ ] **Step 1: `@dnd-kit` con `TouchSensor` y `activationConstraint: { delay: 200, tolerance: 5 }`.**
-  Sin ese delay, cualquier toque inicia un arrastre y **la página deja de poder scrollear**.
-- [ ] **Step 2: Botones de mover además del arrastre.** Redundante a propósito: en el móvil es lo
+- [x] **Step 1: arrastre — SIN `@dnd-kit`.** 🔶 **Desvío, con motivo.** La regla de dependencias
+  de CLAUDE.md pide release en los últimos 12 meses: `@dnd-kit/core` estable (6.3.1) lleva
+  **21 meses sin publicar**, y su línea nueva (`@dnd-kit/react` 0.5.0) va en `beta` pre-1.0, que
+  choca con "nada en preview ni experimental". Ninguna de las dos entra.
+
+  En su lugar: **arrastre nativo HTML5 en escritorio** (`draggable` + `dataTransfer`, ~15 líneas)
+  y **botones de mover en táctil**, que es lo que el propio plan dice que se usa de verdad con
+  más de ocho elementos y lo que ya obligaba §10. Se pierde el arrastre táctil, que era además
+  el camino menos probado (dnd-kit no es testeable en happy-dom).
+
+  **Si se prefiere el arrastre táctil**, la salida es aceptar la excepción a la regla e instalar
+  `@dnd-kit/core` + `sortable` + `utilities`, con `TouchSensor` y
+  `activationConstraint: { delay: 200, tolerance: 5 }` — sin ese delay, cualquier toque inicia un
+  arrastre y **la página deja de poder scrollear**. El resto de la Task 7 no cambia.
+- [x] **Step 2: Botones de mover además del arrastre.** Redundante a propósito: en el móvil es lo
   que de verdad se usa con más de 8 elementos.
-- [ ] **Step 3: Reorden optimista** con `PATCH` debounced a 800 ms. Si falla, revierte y avisa.
+- [x] **Step 3: Reorden optimista** con `PATCH` debounced a 800 ms. Si falla, revierte y avisa.
 
   **Los ids se construyen al enviar, no al arrastrar.** `ReorderService` numera 0..n-1 **solo los
   ids que recibe** y no toca al resto: un medio que se confirma dentro de la ventana de 800 ms y
@@ -621,7 +633,7 @@ ahorra el refetch y elimina la ventana en que caché y servidor discrepan.
   > son obligatorios por el pulgar (§10), y en móvil son lo que James usa. El arrastre se verifica
   > en Playwright y el táctil en el iPhone.
 
-- [ ] **Step 4: Portada.** Solo sobre un medio **READY**. Optimista sobre `isFeatured`, y
+- [x] **Step 4: Portada.** Solo sobre un medio **READY**. Optimista sobre `isFeatured`, y
   `invalidateQueries(keys.galleries.lists())` en `onSettled` porque `coverUrl` se deriva de ahí
   (Task 0 Step 3).
 

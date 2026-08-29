@@ -72,3 +72,17 @@ export const medios = {
   /** Soft delete. Cancelar sin esto deja una tarjeta muerta hasta el cron. */
   borrar: (mediaId: string) => api.delete<void>(`/admin/media/${mediaId}`),
 };
+
+export const orden = {
+  /**
+   * Se mandan TODOS los ids, PENDING incluidos: `ReorderService` numera 0..n-1
+   * solo los que recibe y no toca al resto, así que un medio que se confirme
+   * dentro de la ventana del debounce y no vaya en el array conservaría su
+   * `order` y quedaría descolocado, sin ningún error.
+   */
+  reordenarMedios: (galleryId: string, ids: string[]) =>
+    api.patch<AdminGalleryDto>(`/admin/galleries/${galleryId}/media/reorder`, { ids }),
+
+  marcarPortada: (galleryId: string, mediaId: string) =>
+    api.patch<AdminGalleryDto>(`/admin/galleries/${galleryId}/media/${mediaId}/cover`),
+};
