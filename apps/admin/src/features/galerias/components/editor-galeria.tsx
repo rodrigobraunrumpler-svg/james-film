@@ -3,6 +3,8 @@
 import { esApiError } from '@/lib/api/errors';
 import { useCategorias, useGaleria, useReconciliarPendientes } from '../hooks/use-galeria';
 import { FormularioGaleria } from './formulario-galeria';
+import { GrillaMedios } from './grilla-medios';
+import { ZonaSoltar } from './zona-soltar';
 import { SkeletonEditor } from './skeleton-editor';
 
 export function EditorGaleria({ id }: { id: string }) {
@@ -51,6 +53,12 @@ export function EditorGaleria({ id }: { id: string }) {
         galeria={galeria.data}
         categorias={categorias.data}
       />
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold">Reels y fotos</h2>
+        <ZonaSoltar galleryId={galeria.data.id} />
+        <GrillaMedios galeria={galeria.data} />
+      </section>
     </div>
   );
 }

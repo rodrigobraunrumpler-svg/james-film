@@ -3,6 +3,8 @@ import type {
   CategoryRefDto,
   GalleryListItemDto,
   MediaConfirmResult,
+  PresignItemInput,
+  PresignItemResult,
 } from '@james-film/contracts';
 import { api, type RequestOptions } from '@/lib/api/http';
 
@@ -50,4 +52,23 @@ export interface DatosGaleria {
  */
 export const categorias = {
   listar: (opts?: RequestOptions) => api.get<CategoryRefDto[]>('/admin/categories', opts),
+};
+
+export const medios = {
+  /**
+   * La API acepta un lote, pero la cola firma de UNO EN UNO a propósito: la
+   * preparación (decodificar el vídeo) va en serie, así que esperar a tener los
+   * ocho preparados para firmarlos juntos retrasaría la primera subida hasta
+   * después del último decode. Además es el MISMO camino que la re-firma del
+   * reintento — un solo código, no dos.
+   */
+  firmar: (galleryId: string, item: PresignItemInput) =>
+    api.post<PresignItemResult[]>(`/admin/galleries/${galleryId}/media/presign`, {
+      items: [item],
+    }),
+
+  confirmar: (mediaId: string) => api.post<MediaConfirmResult>(`/admin/media/${mediaId}/confirm`),
+
+  /** Soft delete. Cancelar sin esto deja una tarjeta muerta hasta el cron. */
+  borrar: (mediaId: string) => api.delete<void>(`/admin/media/${mediaId}`),
 };

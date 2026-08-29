@@ -46,14 +46,18 @@ export async function prepararArchivo(
   archivo: File,
   tipo: MediaType,
   deps: DepsPreparar = depsReales(),
+  /** Para que la tarjeta diga «Comprobando…» y luego «Sacando la miniatura…». */
+  onEtapa: (etapa: 'VALIDANDO' | 'EXTRAYENDO_POSTER') => void = () => {},
 ): Promise<Preparado> {
   const rechazo = (motivo: string): Preparado => ({ ok: false, archivo, motivo });
 
+  onEtapa('VALIDANDO');
   const barato = validarArchivo(archivo);
   if (barato) return rechazo(barato);
 
   try {
     if (!esVideo(archivo)) {
+      onEtapa('EXTRAYENDO_POSTER');
       const imagen = await deps.normalizarImagen(archivo);
       return {
         ok: true,
@@ -69,6 +73,7 @@ export async function prepararArchivo(
     const problema = validarMp4(archivo, cabecera);
     if (problema) return rechazo(problema);
 
+    onEtapa('EXTRAYENDO_POSTER');
     const { poster, width, height, durationSec } = await deps.extraerPoster(archivo);
 
     const metadatos = validarMetadatosVideo(archivo, { width, height, durationSec });

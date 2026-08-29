@@ -31,6 +31,19 @@ export function useReconciliarPendientes(galeria: AdminGalleryDto | undefined) {
 
   const { mutateAsync } = useMutation({ mutationFn: galerias.confirmar });
 
+  // Volver a la pestaña tras una suspensión de iOS es el otro momento en que
+  // los PENDING pueden haber terminado sin que nadie lo sepa. Se limpia el
+  // registro de intentos —solo entonces— para que el efecto vuelva a mirar:
+  // sin ese candado, cada confirm invalidaría la query, la query dispararía el
+  // efecto y el efecto volvería a confirmar, en bucle.
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') yaHecho.current.clear();
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => document.removeEventListener('visibilitychange', alVolver);
+  }, []);
+
   useEffect(() => {
     if (!galeria) return;
 

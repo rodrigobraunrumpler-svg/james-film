@@ -437,7 +437,7 @@ if (poster.type !== 'image/jpeg') throw new Error('El navegador no pudo generar 
 
 ## Task 6 · La cola de subidas  🔴 el riesgo
 
-- [ ] **Step 1: Máquina de estados POR ARCHIVO**, no global: si James suelta ocho reels y el
+- [x] **Step 1: Máquina de estados POR ARCHIVO**, no global: si James suelta ocho reels y el
   tercero está en HEVC, los otros siete siguen subiendo.
 
 ```
@@ -451,7 +451,7 @@ normalizar y extraer poster se ejecutan **una sola vez por item**, y el `Blob` r
 guarda junto a él: la firma incluye `content-length`, así que un `canvas.toBlob` que devuelva
 unos bytes distintos deja el item en un 403 permanente que no converge.
 
-- [ ] **Step 1 bis: Identidad y quién pinta la grilla.**
+- [x] **Step 1 bis: Identidad y quién pinta la grilla.**
 
 ```ts
 // Se genera UNA vez, al entrar en la cola, y sobrevive a los reintentos. El nombre del
@@ -468,10 +468,17 @@ existe desde el presign, así que la cola **no pinta tarjeta propia** para lo qu
 tienen se pintan como tarjetas locales con clave `clientUploadId` y se funden con la del servidor
 en cuanto el presign responde. **Sin esto, cada archivo en vuelo aparece dos veces.**
 
-- [ ] **Step 2: `zustand` como singleton de módulo**, no creado dentro de un componente. Con
+> **Dos desvíos, con su motivo.** (1) La firma va de UNO EN UNO, no en lote: la preparación
+> es serie (un `<video>` decodificando a la vez), así que esperar a tener los ocho preparados
+> para firmarlos juntos retrasaría la PRIMERA subida hasta después del último decode. Y es el
+> mismo camino que la re-firma del reintento — un código, no dos. (2) Tras un `confirm` con
+> `FAILED`, lo que se renueva es la identidad que viaja al presign, **no la clave de React**:
+> remontar la tarjeta en mitad de un reintento le borraría el progreso a la vista de James.
+
+- [x] **Step 2: `zustand` como singleton de módulo**, no creado dentro de un componente. Con
   Context, cada tick de progreso re-renderiza a todos los consumidores.
 
-- [ ] **Step 3: `XMLHttpRequest` con progreso** y `xhr.abort()` para cancelar. Se manda **solo**
+- [x] **Step 3: `XMLHttpRequest` con progreso** y `xhr.abort()` para cancelar. Se manda **solo**
   el `Content-Type` firmado y ninguna cabecera más, o el bucket responde 403.
 
   **Vigilante de estancamiento.** XHR no tiene timeout por defecto, y uno global no sirve: 115 MB
@@ -489,7 +496,7 @@ const vigilante = setInterval(() => {
 xhr.onloadend = () => clearInterval(vigilante);
 ```
 
-- [ ] **Step 3 bis: Cancelar, rendirse y borrar pasan por `DELETE /admin/media/:id`.**  🔴
+- [x] **Step 3 bis: Cancelar, rendirse y borrar pasan por `DELETE /admin/media/:id`.**  🔴
 
 El `Media` nace `PENDING` **en el presign**, no en la subida: `xhr.abort()` a secas deja una
 tarjeta muerta en la grilla hasta el cron de la fase 6. Orden: `xhr.abort()` → si hay `mediaId`,
@@ -512,13 +519,13 @@ if (resultado.status === 'FAILED') {
 Solo se reintenta el confirm cuando falla el **transporte**. Un cuerpo con `FAILED` es una
 respuesta correcta.
 
-- [ ] **Step 4: Concurrencia 3.** Ocho simultáneas por datos móviles saturan y todas van lentas.
+- [x] **Step 4: Concurrencia 3.** Ocho simultáneas por datos móviles saturan y todas van lentas.
   Y **el total del lote antes de empezar**: `9 archivos · 230 MB` en la confirmación, y
   `Subiendo 3 de 9 · 120 MB de 230 MB` en la cabecera. El dato ya está calculado. Sin aviso
   condicional por tipo de red: `navigator.connection` no existe en Safari y una heurística
   inventada mentiría.
 
-- [ ] **Step 5: Reintento con presupuesto temporal, no con un contador.**
+- [x] **Step 5: Reintento con presupuesto temporal, no con un contador.**
 
 Backoff 1s/2s/4s/8s mientras el tiempo total del item sea **< 5 min**. "Tres intentos" son 7
 segundos de presupuesto, y en Ayacucho una caída de señal dura 20-60 s: el plan trataría como
@@ -538,7 +545,7 @@ reintentarlo cinco veces es gratis. `confirmar` escribe `posterKey: null` si el 
 primera rama corta para todo lo que no sea PENDING: un poster que llega tarde deja el reel sin
 miniatura **para siempre**, y sin autoplay en la grilla la tarjeta pública queda en negro.
 
-- [ ] **Step 5 bis: Tests de la cola.** Era el único Task sin ninguno. En el proyecto `dom`, con
+- [x] **Step 5 bis: Tests de la cola.** Era el único Task sin ninguno. En el proyecto `dom`, con
   msw (que intercepta XHR, así que se prueba el código real) y `vi.useFakeTimers()`:
 
 ```ts
@@ -554,7 +561,7 @@ it('cancelar a mitad de subida no deja un Media PENDING huérfano', async () => 
 });
 ```
 
-- [ ] **Step 6: La cola y el Wake Lock viven en el LAYOUT del panel**, no en el editor. Atados al
+- [x] **Step 6: La cola y el Wake Lock viven en el LAYOUT del panel**, no en el editor. Atados al
   editor, tocar "Galerías" en el sidebar libera el lock y borra toda señal de progreso. James ve
   `Subiendo 3 de 8 · 61%` desde cualquier pantalla.
 
@@ -580,7 +587,7 @@ document.addEventListener('visibilitychange', () => {
 > nada ante el botón de encendido, un cambio de app o una llamada. La red de seguridad real es la
 > reconciliación del Task 4 Step 0.
 
-- [ ] **Step 7: `beforeunload` solo para escritorio.** En Safari de iOS no produce diálogo, en
+- [x] **Step 7: `beforeunload` solo para escritorio.** En Safari de iOS no produce diálogo, en
   modo standalone tampoco, y no se dispara en una navegación del App Router. En el iPhone la
   señal es la fila de progreso visible: *"Subiendo 3 de 9 · 120 MB de 230 MB. No bloquees la
   pantalla ni cambies de app."*
