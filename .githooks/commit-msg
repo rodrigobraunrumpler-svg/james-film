@@ -1,0 +1,3 @@
+#!/bin/sh
+# Conventional commits en inglés, asunto <= 100. Ver commitlint.config.mjs.
+exec pnpm exec commitlint --edit "$1"

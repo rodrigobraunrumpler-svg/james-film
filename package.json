@@ -7,6 +7,7 @@
     "pnpm": ">=11"
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && pnpm db:up",
@@ -19,6 +20,8 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
+    "@commitlint/cli": "21.2.2",
+    "@commitlint/config-conventional": "21.2.2",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1"
   }
