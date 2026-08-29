@@ -1,8 +1,8 @@
 'use client';
 
 import type { AdminMediaDto } from '@james-film/contracts';
-import { cola } from '../cola/store';
-import type { ItemCola } from '../cola/tipos';
+import { cola } from '@/lib/media/cola/store';
+import type { ItemCola } from '@/lib/media/cola/tipos';
 
 const ETIQUETAS: Record<ItemCola['estado'], string> = {
   SELECCIONADO: 'En cola',

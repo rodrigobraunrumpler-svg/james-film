@@ -5,21 +5,11 @@ import type { AdminGalleryDto, AdminMediaDto } from '@james-film/contracts';
 import { useRef } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { keys } from '@/lib/api/keys';
+import { mover } from '@/lib/listas/mover';
 import type { Respuesta } from '@/lib/api/http';
 import { orden } from '../services/galerias';
 
 type Cache = Respuesta<AdminGalleryDto>;
-
-/** Mueve un elemento de una posición a otra sin mutar el array original. */
-export function mover<T>(lista: T[], desde: number, hasta: number): T[] {
-  if (desde === hasta || desde < 0 || hasta < 0 || desde >= lista.length || hasta >= lista.length) {
-    return lista;
-  }
-  const copia = [...lista];
-  const [elemento] = copia.splice(desde, 1);
-  copia.splice(hasta, 0, elemento);
-  return copia;
-}
 
 /**
  * Reorden optimista con `PATCH` a los 800 ms. Arrastrar y esperar a la red en

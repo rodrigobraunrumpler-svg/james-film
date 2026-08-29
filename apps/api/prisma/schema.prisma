@@ -56,7 +56,6 @@ model Gallery {
 
   eventDate DateTime? @db.Date // una fecha, no un instante. Formatear con timeZone: 'UTC'
   location  String?
-  coverKey  String?
 
   isPublished Boolean @default(false)
   isFeatured  Boolean @default(false)

@@ -1,6 +1,43 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/categories": {
+      "get": {
+        "description": "Solo las activas, ordenadas. Sin paginar: son cuatro.",
+        "operationId": "CategoriesController_listar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEntity"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/CategoryEntity"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lista las categorías activas",
+        "tags": [
+          "categorías"
+        ]
+      }
+    },
     "/galleries": {
       "get": {
         "description": "Solo publicadas y sin borrar. **No devuelve los medios**, solo `mediaCount`: incluirlos haría que el build de Astro se trajera todos los reels de todas las galerías en una respuesta que crece sin techo. Usa el detalle por slug.",
@@ -115,6 +152,195 @@
           "galerías"
         ]
       }
+    },
+    "/packages": {
+      "get": {
+        "description": "El destacado sale primero, **sin salirse de la lista**: la landing decide cómo pintarlo.",
+        "operationId": "PackagesController_listar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEntity"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PackageEntity"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lista los paquetes activos",
+        "tags": [
+          "paquetes"
+        ]
+      }
+    },
+    "/testimonials": {
+      "get": {
+        "description": "Solo `isActive` **Y `hasConsent`**. `hasConsent` no sale en el contrato: si un testimonio llega aquí, es que ya lo tenía. Ningún parámetro desactiva ese filtro.",
+        "operationId": "TestimonialsController_listar",
+        "parameters": [
+          {
+            "name": "galleryId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEntity"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/TestimonialEntity"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lista los testimonios publicables",
+        "tags": [
+          "testimonios"
+        ]
+      }
+    },
+    "/settings": {
+      "get": {
+        "description": "Registro único. Si no existiera, se crea vacío en vez de devolver 404.",
+        "operationId": "SettingsController_leer",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEntity"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SiteSettingsEntity"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Devuelve los ajustes del sitio",
+        "tags": [
+          "configuración"
+        ]
+      }
+    },
+    "/differentiators": {
+      "get": {
+        "operationId": "SettingsController_diferenciadores",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEntity"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/DifferentiatorEntity"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lista los diferenciadores activos",
+        "tags": [
+          "configuración"
+        ]
+      }
+    },
+    "/social-links": {
+      "get": {
+        "operationId": "SettingsController_redes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiSuccessEntity"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/SocialLinkEntity"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lista las redes activas",
+        "tags": [
+          "configuración"
+        ]
+      }
     }
   },
   "info": {
@@ -194,6 +420,125 @@
           "isLastPage",
           "previousPage",
           "nextPage"
+        ]
+      },
+      "CategoryEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "example": "bodas"
+          },
+          "name": {
+            "type": "string",
+            "example": "Bodas"
+          },
+          "tagline": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "tagline",
+          "description",
+          "coverUrl"
+        ]
+      },
+      "FieldErrorEntity": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "items.0.text"
+          },
+          "code": {
+            "type": "string",
+            "example": "isNotEmpty"
+          },
+          "message": {
+            "type": "string",
+            "example": "No puede estar vacío"
+          }
+        },
+        "required": [
+          "field",
+          "code",
+          "message"
+        ]
+      },
+      "ApiFailureEntity": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "statusCode": {
+            "type": "number",
+            "example": 409
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_FAILED",
+              "UNAUTHORIZED",
+              "FORBIDDEN",
+              "NOT_FOUND",
+              "CONFLICT",
+              "RATE_LIMITED",
+              "INTERNAL",
+              "INVALID_CREDENTIALS",
+              "SESSION_EXPIRED",
+              "SESSION_REVOKED",
+              "SLUG_TAKEN",
+              "CATEGORY_IN_USE",
+              "CONSENT_REQUIRED",
+              "UNSUPPORTED_MEDIA_TYPE",
+              "FILE_TOO_LARGE",
+              "UPLOAD_SIZE_MISMATCH"
+            ],
+            "example": "SLUG_TAKEN",
+            "description": "El contrato. El mensaje puede cambiar; esto no."
+          },
+          "message": {
+            "type": "string",
+            "example": "Ya existe una galería con ese enlace"
+          },
+          "details": {
+            "description": "Solo en VALIDATION_FAILED",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorEntity"
+            }
+          },
+          "requestId": {
+            "type": "string",
+            "example": "01JD4X…"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "statusCode",
+          "code",
+          "message",
+          "timestamp"
         ]
       },
       "CategoryRefEntity": {
@@ -399,86 +744,346 @@
           "media"
         ]
       },
-      "FieldErrorEntity": {
+      "PackageItemEntity": {
         "type": "object",
         "properties": {
-          "field": {
-            "type": "string",
-            "example": "items.0.text"
+          "id": {
+            "type": "string"
           },
-          "code": {
+          "text": {
             "type": "string",
-            "example": "isNotEmpty"
+            "example": "7 reels editados"
           },
-          "message": {
-            "type": "string",
-            "example": "No puede estar vacío"
+          "included": {
+            "type": "boolean",
+            "description": "false = se muestra tachado."
           }
         },
         "required": [
-          "field",
-          "code",
-          "message"
+          "id",
+          "text",
+          "included"
         ]
       },
-      "ApiFailureEntity": {
+      "PackageEntity": {
         "type": "object",
         "properties": {
-          "success": {
-            "type": "boolean",
-            "example": false
+          "id": {
+            "type": "string"
           },
-          "statusCode": {
+          "slug": {
+            "type": "string",
+            "example": "pro"
+          },
+          "name": {
+            "type": "string",
+            "example": "Pro"
+          },
+          "subtitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceAmount": {
             "type": "number",
-            "example": 409
+            "nullable": true,
+            "example": 30000,
+            "description": "CÉNTIMOS. S/ 300 son 30000. Formatear con Intl.NumberFormat."
           },
-          "code": {
+          "currency": {
             "type": "string",
-            "enum": [
-              "VALIDATION_FAILED",
-              "UNAUTHORIZED",
-              "FORBIDDEN",
-              "NOT_FOUND",
-              "CONFLICT",
-              "RATE_LIMITED",
-              "INTERNAL",
-              "INVALID_CREDENTIALS",
-              "SESSION_EXPIRED",
-              "SESSION_REVOKED",
-              "SLUG_TAKEN",
-              "CONSENT_REQUIRED",
-              "UNSUPPORTED_MEDIA_TYPE",
-              "FILE_TOO_LARGE",
-              "UPLOAD_SIZE_MISMATCH"
-            ],
-            "example": "SLUG_TAKEN",
-            "description": "El contrato. El mensaje puede cambiar; esto no."
+            "example": "PEN"
           },
-          "message": {
+          "priceNote": {
             "type": "string",
-            "example": "Ya existe una galería con ese enlace"
+            "nullable": true
           },
-          "details": {
-            "description": "Solo en VALIDATION_FAILED",
+          "idealFor": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true,
+            "description": "Nombre lucide de lista cerrada."
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "badgeText": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsappMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "isHighlighted": {
+            "type": "boolean",
+            "description": "Solo uno puede estar en true. Lo fuerza la API."
+          },
+          "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/FieldErrorEntity"
+              "$ref": "#/components/schemas/PackageItemEntity"
             }
-          },
-          "requestId": {
-            "type": "string",
-            "example": "01JD4X…"
-          },
-          "timestamp": {
-            "type": "string"
           }
         },
         "required": [
-          "success",
-          "statusCode",
-          "code",
-          "message",
-          "timestamp"
+          "id",
+          "slug",
+          "name",
+          "subtitle",
+          "priceAmount",
+          "currency",
+          "priceNote",
+          "idealFor",
+          "icon",
+          "imageUrl",
+          "badgeText",
+          "whatsappMessage",
+          "isHighlighted",
+          "items"
+        ]
+      },
+      "TestimonialEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "SCREENSHOT"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "WHATSAPP",
+              "INSTAGRAM",
+              "TIKTOK",
+              "DIRECTO"
+            ]
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "authorHandle": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventType": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-03-15",
+            "description": "Fecha de calendario. Formatear con timeZone UTC."
+          },
+          "quote": {
+            "type": "string",
+            "nullable": true
+          },
+          "screenshotUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "externalUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "rating": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1,
+            "maximum": 5
+          },
+          "galleryId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "format",
+          "source",
+          "authorName",
+          "authorHandle",
+          "avatarUrl",
+          "eventType",
+          "eventDate",
+          "quote",
+          "screenshotUrl",
+          "externalUrl",
+          "rating",
+          "galleryId"
+        ]
+      },
+      "SiteSettingsEntity": {
+        "type": "object",
+        "properties": {
+          "brandName": {
+            "type": "string",
+            "example": "James Film"
+          },
+          "role": {
+            "type": "string",
+            "nullable": true
+          },
+          "tagline": {
+            "type": "string",
+            "nullable": true
+          },
+          "slogan": {
+            "type": "string",
+            "nullable": true
+          },
+          "aboutText": {
+            "type": "string",
+            "nullable": true,
+            "description": "Markdown con SOLO negrita. Se renderiza en build time."
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "signatureUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsappNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "51994724944",
+            "description": "Internacional SIN el «+», listo para wa.me/."
+          },
+          "whatsappDisplay": {
+            "type": "string",
+            "nullable": true,
+            "example": "994 724 944"
+          },
+          "whatsappMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "ctaText": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "heroMediaUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "heroPosterUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "footerTagline": {
+            "type": "string",
+            "nullable": true
+          },
+          "metaTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "metaDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "ogImageUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "brandName",
+          "role",
+          "tagline",
+          "slogan",
+          "aboutText",
+          "logoUrl",
+          "signatureUrl",
+          "whatsappNumber",
+          "whatsappDisplay",
+          "whatsappMessage",
+          "ctaText",
+          "email",
+          "heroMediaUrl",
+          "heroPosterUrl",
+          "footerTagline",
+          "metaTitle",
+          "metaDescription",
+          "ogImageUrl"
+        ]
+      },
+      "DifferentiatorEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "example": "ENTREGA RÁPIDA"
+          },
+          "subtitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "description": "Nombre lucide de la lista cerrada."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subtitle",
+          "icon"
+        ]
+      },
+      "SocialLinkEntity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "example": "instagram"
+          },
+          "handle": {
+            "type": "string",
+            "example": "James_film30"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL completa; no se arma desde el handle."
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "handle",
+          "url",
+          "icon"
         ]
       }
     }

@@ -65,3 +65,14 @@ export function tamano(bytes: number): string {
   if (mb < 1024) return `${Math.round(mb)} MB`;
   return `${(mb / 1024).toFixed(1)} GB`;
 }
+
+/**
+ * Soles ENTEROS → céntimos. Con enteros `300 * 100` es exacto y no hay
+ * `3009.9999` que redondear; el `Math.round` está por si llega un decimal
+ * desde un `<input type="number">`, que acepta lo que le teclees.
+ */
+export const aCentimos = (soles: number): number => Math.round(soles * 100);
+
+/** Céntimos → soles enteros, para rellenar el formulario. */
+export const aSoles = (centimos: number | null | undefined): number | undefined =>
+  centimos === null || centimos === undefined ? undefined : Math.round(centimos / 100);

@@ -25,6 +25,19 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - Validación en el navegador antes de firmar: formato reproducible, lado largo ≤2160px,
   bitrate ≤15 Mbps, faststart presente. **Los mensajes de error dicen qué hacer**, no "formato inválido". §4
 - **Nunca subir archivos a través de la API.** Presigned PUT directo a R2. §4
+- **`POST /admin/uploads/presign` para las nueve claves `*Key` que NO son filas `Media`**
+  (portadas de categoría y paquete, avatar y captura de testimonio, logo, firma, OG, hero y su
+  poster). El cliente manda un **`proposito` de lista cerrada** y el **servidor decide** prefijo,
+  tipos y techo — mandar el prefijo sería dejarle elegir dónde escribe en el bucket. **No escribe
+  en la base**: la clave se guarda cuando el `PATCH` de la entidad la incluye.
+- **Huérfanos de ese endpoint**: un objeto bajo `covers/`, `avatars/`, `brand/` u `og/` con más
+  de 24 h que no aparezca en ninguna columna `*Key` lo borra el cron de la fase 6. **`videos/` y
+  `posters/` quedan FUERA de ese barrido**: ahí vive el trabajo de James y un barrido que se
+  equivoque leyendo referencias lo borraría. El hero viejo se queda en el bucket.
+- **El SVG entra solo en `brand/`** (logo y firma) y **no pasa por `normalizarImagen`**:
+  decodificarlo a bitmap lo devolvería como un PNG del tamaño del `viewBox`. Es la única entrada
+  de un documento ejecutable del proyecto, y la mitigación es **el origen** —`media.` es un
+  subdominio distinto al de la landing—, no sanear el archivo.
 - Fotos: solo se tocan si son HEIC o si el lado largo supera 2560px → **JPEG q95**. Nunca WebP/AVIF
   (Cloudflare re-comprime al servir; comprimir dos veces degrada). §4
 - **Tres anchos de imagen en todo el sitio: 400, 800, 1600.** §4 §17
@@ -242,6 +255,28 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   landing. Aun así, animaciones solo con `transform` y `opacity`, y `prefers-reduced-motion`
   respetado sin excepciones.
 
+**Fase 4 — lo aprendido construyéndola**
+- **La lista de íconos sale de lo que el seed ya usa, no de la imaginación.** El primer borrador
+  la inventó y no incluía `trending-up`, `crown` ni `bar-chart-3`: con `@IsIn(ICONOS)` puesto,
+  James habría abierto un paquete, guardado sin tocar el ícono y recibido un **422 sobre un campo
+  que no envió**. Hay un test que compara ambas.
+- **`lucide-react` ya no exporta `Instagram`** — quitaron las marcas. Por eso el admin usa un
+  **mapa estático** de nombre a componente: con resolución dinámica habría caído al ícono de
+  reserva en silencio; así no compiló.
+- **Lo que comparten dos features sube a `lib`, no se importa de la otra.** La lista de
+  categorías la necesitan tres pantallas: vive en `lib/catalogo` **con una sola clave de caché**,
+  para que el CRUD y los selectores no puedan discrepar.
+- **El número de WhatsApp exige 10 dígitos, no 8.** Un móvil peruano son 9 (`994724944`) y con el
+  suelo anterior pasaba tal cual — justo el fallo que la validación existe para impedir. No es un
+  validador E.164 general: es la comprobación de que lleva prefijo de país.
+- **Un `useForm` por pestaña en Configuración.** Con uno global, guardar SEO mandaría también el
+  número de WhatsApp y pisaría un cambio hecho desde el móvil.
+- **`Gallery.coverKey` borrada** (migración `quitar_gallery_coverkey`). Era una columna muerta con
+  lectura viva: el mapper la respetaba, no la escribía nadie y ningún DTO la exponía. Verificada
+  vacía antes de borrarla. La portada se deriva del medio destacado, siempre.
+- **`RolesGuard` no protegía nada** hasta que existió `@AdminController`: devuelve `true` cuando
+  no hay metadatos de `@Roles()`, y ningún controller los declaraba.
+
 **Estabilidad — nada deprecado, nada experimental**
 - **Ninguna API deprecada.** Si TypeScript, el linter o el runtime avisan de una deprecación,
   se arregla; **nunca se silencia** con un `eslint-disable` ni con `@ts-ignore`.
@@ -345,7 +380,7 @@ El `.md` se contradice en estos puntos. Resueltos así:
 | `accentColor` | Se guarda y se edita, **la web no lo consume en v1** | §8 lo describe como funcional |
 | Categorías del v1 | **Bodas · XV Años · Cumpleaños · Eventos** (4) | §1 lista "XV Años" y "Quinceañeras" por separado |
 | Región | **`us-east-1` (Virginia)** para Neon y para el host de la API, la misma para ambos | §4 deja "Virginia o São Paulo" |
-| Prefijos en R2 | `videos/` `photos/` `posters/` `screenshots/` `og/` `backups/`. Sin año en la ruta | §13 mezcla `media/2026/`, `fotos/`, `masters/` |
+| Prefijos en R2 | `videos/` `photos/` `posters/` `screenshots/` `og/` **`covers/` `avatars/` `brand/`** `backups/`. Sin año en la ruta | §13 mezcla `media/2026/`, `fotos/`, `masters/` |
 | Idempotency-Key | **No existe tabla.** `confirm` es idempotente por `WHERE status = PENDING`; el presign por `clientUploadId` | §17 lo declara convención global |
 | Descartar avisos del dashboard | `localStorage` del admin, sin tabla | §9 no define persistencia |
 | Repository pattern | **No se usa.** Servicios → `PrismaService` directo | §5 y §21 lo definen en detalle |
@@ -473,7 +508,17 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
 - **Sí se abstraen los comportamientos repetidos**, no las entidades:
   `ReorderService` (8 modelos con `order`), `ExclusiveFlagService` (con `scope`, para
   `Media.isFeatured` único por galería), `SlugService`. §5
-- `@AdminController('path')` = decorador compuesto con guards, interceptors y Swagger. §5
+- **`@AdminController('ruta', { tag })`** = decorador compuesto: `@Controller` + `@ApiTags` +
+  `@ApiBearerAuth` + **`@Roles('ADMIN')` por defecto**. Un solo sitio donde entrará el
+  `TriggerDeployInterceptor` de la fase 6: con siete controllers de admin, es la diferencia
+  entre un fichero y siete — y al que se le olvide **no fallará**, esa pantalla dejará de marcar
+  cambios sin publicar y James verá «0 cambios» tras editar. §5
+- **`RolesGuard` no protegía nada hasta que existió ese decorador**: está registrado como guard
+  global desde la fase 2, pero devuelve `true` cuando no hay metadatos de `@Roles()` y **ningún
+  controller los declaraba**. Cualquier usuario autenticado entraba en todo el admin. El rol se
+  aplica ahora una vez por controller y no se puede olvidar.
+- **El rol `EDITOR` está en el enum y NO está definido en el doc.** Nadie lo tiene y el seed no
+  lo crea; queda cerrado por defecto hasta que signifique algo.
 - `ValidationPipe` con `whitelist: true` + `forbidNonWhitelisted: true`. **Sin `enableImplicitConversion`**
   (`"false"` → `true`). `whitelist` es seguridad, no limpieza. §5
 - Los DTOs de NestJS hacen `implements` de las interfaces de `packages/contracts`.

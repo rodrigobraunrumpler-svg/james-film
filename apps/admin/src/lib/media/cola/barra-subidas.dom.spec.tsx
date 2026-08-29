@@ -20,7 +20,10 @@ const Envoltorio = ({ children }: { children: ReactNode }) => (
 beforeEach(() => {
   cliente = crearQueryClient(() => {});
   cola.store.setState({ items: {} });
-  vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => new Promise(() => {})),
+  );
 });
 
 /** Un item ya en vuelo, sin arrancar la máquina: aquí se prueba la BARRA. */

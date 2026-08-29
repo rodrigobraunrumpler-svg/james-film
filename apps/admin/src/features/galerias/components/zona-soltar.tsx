@@ -3,7 +3,7 @@
 import type { MediaType } from '@james-film/contracts';
 import { useRef, useState } from 'react';
 import { tamano } from '@/lib/format';
-import { cola } from '../cola/store';
+import { cola } from '@/lib/media/cola/store';
 
 interface Elegido {
   archivo: File;

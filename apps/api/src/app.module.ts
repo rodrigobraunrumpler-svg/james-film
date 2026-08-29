@@ -7,8 +7,14 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
 import { validateEnv } from './config/env.schema.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { CategoriesModule } from './modules/categories/categories.module.js';
 import { GalleriesModule } from './modules/galleries/galleries.module.js';
+import { IconsModule } from './modules/icons/icons.module.js';
 import { MediaModule } from './modules/media/media.module.js';
+import { PackagesModule } from './modules/packages/packages.module.js';
+import { SettingsModule } from './modules/settings/settings.module.js';
+import { TestimonialsModule } from './modules/testimonials/testimonials.module.js';
+import { UploadsModule } from './modules/uploads/uploads.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { StorageModule } from './storage/storage.module.js';
 
@@ -32,8 +38,14 @@ import { StorageModule } from './storage/storage.module.js';
     CommonModule,
     StorageModule,
     AuthModule,
+    CategoriesModule,
     GalleriesModule,
     MediaModule,
+    PackagesModule,
+    TestimonialsModule,
+    SettingsModule,
+    IconsModule,
+    UploadsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

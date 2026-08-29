@@ -41,7 +41,6 @@ export const SELECT_GALERIA = {
   description: true,
   eventDate: true,
   location: true,
-  coverKey: true,
   isFeatured: true,
   isPublished: true,
   category: { select: SELECT_CATEGORIA },
@@ -75,7 +74,6 @@ interface FilaGaleria {
   description: string | null;
   eventDate: Date | null;
   location: string | null;
-  coverKey: string | null;
   isFeatured: boolean;
   isPublished: boolean;
   category: FilaCategoria;
@@ -106,7 +104,11 @@ export function mapMedia(m: FilaMedia, storage: StorageService): MediaDto {
 }
 
 /**
- * La portada se DERIVA, no se guarda. Escribir `coverKey` metería un `.mp4` en el
+ * La portada se DERIVA, siempre. `Gallery.coverKey` existía como override manual
+ * y **no la escribía nadie**: ningún DTO la exponía y el mapper solo la leía, así
+ * que era una columna muerta con lectura viva — justo lo que alguien «arregla»
+ * cableándola sin saber que derivarla es deliberado. Borrada en la fase 4,
+ * verificada vacía antes. Escribir una clave metería un `.mp4` en el
  * campo de portada cuando el vídeo no tiene poster —y `confirmar` anula el posterKey
  * justo cuando el poster falla—, además de duplicar estado que se puede calcular.
  */
@@ -135,7 +137,7 @@ export function mapGaleriaAdmin(
   g: FilaGaleria & { media: (FilaMedia & { status: MediaStatus; error: string | null })[] },
   storage: StorageService,
 ): AdminGalleryDto {
-  const clave = g.coverKey ?? claveDePortada(g.media);
+  const clave = claveDePortada(g.media);
   return {
     id: g.id,
     slug: g.slug,
@@ -163,7 +165,7 @@ export function mapGaleria(
     eventDate: aFecha(g.eventDate),
     location: g.location,
     coverUrl: (() => {
-      const clave = g.coverKey ?? claveDePortada(g.media);
+      const clave = claveDePortada(g.media);
       return clave ? storage.getPublicUrl(clave) : null;
     })(),
     isFeatured: g.isFeatured,
@@ -190,7 +192,7 @@ export function mapGaleriaLista(
     eventDate: aFecha(g.eventDate),
     location: g.location,
     coverUrl: (() => {
-      const clave = g.coverKey ?? claveDePortada(g.media);
+      const clave = claveDePortada(g.media);
       return clave ? storage.getPublicUrl(clave) : null;
     })(),
     isFeatured: g.isFeatured,

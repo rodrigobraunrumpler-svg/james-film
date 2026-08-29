@@ -1,7 +1,7 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import { AdminController } from '../../common/decorators/admin-controller.decorator.js';
 import { PaginationDto } from '../../common/dto/pagination.dto.js';
 import { ReorderDto } from '../../common/dto/reorder.dto.js';
-import { ApiTags } from '@nestjs/swagger';
 import {
   DocActualizarGaleria,
   DocBorrarGaleria,
@@ -15,8 +15,7 @@ import { CreateGalleryDto } from './dto/create-gallery.dto.js';
 import { UpdateGalleryDto } from './dto/update-gallery.dto.js';
 import { GalleriesService } from './galleries.service.js';
 
-@ApiTags('admin/galerías')
-@Controller('admin/galleries')
+@AdminController('admin/galleries', { tag: 'admin/galerías' })
 export class GalleriesAdminController {
   constructor(private readonly galleries: GalleriesService) {}
 

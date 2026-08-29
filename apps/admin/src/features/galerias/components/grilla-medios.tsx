@@ -1,7 +1,7 @@
 'use client';
 
 import type { AdminGalleryDto } from '@james-film/contracts';
-import { useCola } from '../cola/store';
+import { useCola } from '@/lib/media/cola/store';
 import { useMarcarPortada, useOrdenMedios } from '../hooks/use-orden-medios';
 import { TarjetaMedio, type DatosTarjeta } from './tarjeta-medio';
 

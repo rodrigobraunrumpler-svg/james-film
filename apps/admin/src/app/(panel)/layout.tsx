@@ -1,6 +1,6 @@
 import { ProveedorQuery } from '@/lib/query/proveedor';
 import { Navegacion } from '@/components/shared/navegacion';
-import { BarraSubidas } from '@/features/galerias/cola/barra-subidas';
+import { BarraSubidas } from '@/lib/media/cola/barra-subidas';
 
 /**
  * Server Component: no lleva estado. Los hijos que sí lo necesitan marcan

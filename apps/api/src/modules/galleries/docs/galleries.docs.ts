@@ -1,7 +1,6 @@
 import { ApiDoc } from '../../../common/swagger/api-doc.decorator.js';
 import {
   AdminGalleryListItemEntity,
-  CategoryRefEntity,
   GalleryEntity,
   GalleryListItemEntity,
 } from './galleries.entities.js';
@@ -89,12 +88,5 @@ export const DocMarcarPortada = (): MethodDecorator =>
     description: 'Exclusiva **por galería**: no afecta a la portada de otras.',
     ok: GalleryEntity,
     errors: [404],
-    auth: true,
-  });
-
-export const DocListarCategorias = (): MethodDecorator =>
-  ApiDoc({
-    summary: 'Lista las categorías para el selector del editor',
-    okArray: CategoryRefEntity,
     auth: true,
   });

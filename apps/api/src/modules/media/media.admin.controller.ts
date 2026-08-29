@@ -1,11 +1,10 @@
-import { Body, Controller, Delete, HttpCode, Param, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Delete, HttpCode, Param, Post } from '@nestjs/common';
+import { AdminController } from '../../common/decorators/admin-controller.decorator.js';
 import { DocBorrarMedia, DocConfirmar, DocPresign } from './docs/media.docs.js';
 import { PresignDto } from './dto/presign.dto.js';
 import { MediaService } from './media.service.js';
 
-@ApiTags('admin/media')
-@Controller('admin')
+@AdminController('admin', { tag: 'admin/media' })
 export class MediaAdminController {
   constructor(private readonly media: MediaService) {}
 

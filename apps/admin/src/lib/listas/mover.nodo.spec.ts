@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mover } from './use-orden-medios';
+import { mover } from './mover';
 
 describe('mover', () => {
   const lista = ['a', 'b', 'c', 'd'];

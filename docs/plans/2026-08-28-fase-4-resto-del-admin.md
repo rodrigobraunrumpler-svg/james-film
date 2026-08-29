@@ -295,6 +295,19 @@ Es exactamente el mismo principio, aplicado a la credencial y no al contenido.
       publicar, y James verá «0 cambios» tras editar sus precios.
 - [ ] Se construye ahora y **se migran los tres existentes** en el mismo commit. Después son
       siete migraciones en vez de tres.
+- [x] 🔶 **Hallazgo 37, al construirlo: `RolesGuard` no hacía nada.** Está registrado como guard
+      global desde la fase 2, pero **ningún controller declaraba `@Roles()`**, y el guard
+      devuelve `true` cuando no encuentra metadatos. Era maquinaria muerta con aspecto de
+      protección: cualquier usuario autenticado entraba en todo el admin. `@AdminController`
+      aplica `@Roles('ADMIN')` por defecto —fail-closed, en la misma dirección que el guard
+      global— y ahora no se puede olvidar. Verificado quitando el `Roles(...)` del decorador: los
+      tests se ponen rojos.
+- [ ] ❓ **Pregunta abierta para Javier: ¿qué es un `EDITOR`?** El enum `Role` del schema lo
+      tiene desde la fase 1 y **el doc no dice en ningún sitio qué puede hacer**. Hoy no existe
+      ningún usuario con ese rol y el seed solo crea el ADMIN, así que cerrarlo no rompe nada.
+      Si en algún momento significa algo —por ejemplo, alguien que sube reels pero no toca
+      precios—, el decorador ya acepta `roles: ['ADMIN', 'EDITOR']` por controller. Mientras no
+      esté definido, queda cerrado.
 
 ### 1C · Subidas fuera de la galería
 
@@ -571,7 +584,22 @@ WhatsApp: **el campo más importante de todo el producto.**
 
 ---
 
-## Task 6 · Extraer lo repetido — DESPUÉS, no antes
+## Task 6 · Extraer lo repetido — **PENDIENTE, saltado a propósito**
+
+> 🔶 **Javier pidió pasar directo al Task 7.** Queda como deuda conocida, no como olvido: el
+> hook de reorden optimista está escrito **cuatro veces** (categorías, paquetes, testimonios, y
+> en `use-listas` para diferenciadores y redes). Cada copia carga con la clave de caché, el
+> debounce de 800 ms y la reversión desde la foto del primer movimiento.
+>
+> Lo que SÍ se extrajo por el camino, porque eran funciones puras y no adivinanzas:
+> `mover()` en `lib/listas`, `limpiar()` en `lib/forms`, `useCategoriasComoOpciones` en
+> `lib/catalogo` y `CampoImagen` en `components/shared`.
+>
+> **Cuándo duele:** cuando haya que cambiar el comportamiento del reorden —por ejemplo, pasar de
+> mandar la lista entera a un endpoint de intercambio si testimonios crece— habrá que tocarlo en
+> cuatro sitios y el que se olvide no dará error.
+
+
 
 Las cuatro pantallas tienen la misma forma: lista ordenable + hoja de crear/editar + confirmar
 borrado + toggle de activo.
@@ -598,44 +626,44 @@ borrado + toggle de activo.
 
 ## Task 7 · Cierre de la fase
 
-- [ ] **Step 1: cobertura donde importa.** Alta en servicios, baja en controllers (§15). Lo
+- [x] **Step 1: cobertura donde importa.** Alta en servicios, baja en controllers (§15). Lo
       irrenunciable: la puerta del consentimiento, el destacado exclusivo, el reorden, el
       precio entero y la validación del número de WhatsApp.
-- [ ] **Step 2: ampliar el documento público a mano.** 🔶 `construirDocPublico` hoy lleva
+- [x] **Step 2: ampliar el documento público a mano.** 🔶 `construirDocPublico` hoy lleva
       `include: [GalleriesModule]` **escrito a mano**. Los cuatro módulos nuevos NO aparecen
       solos: hay que añadirlos ahí o los endpoints públicos de esta fase no existirán en el
       contrato que consume Astro, y la fase 5 no los verá. El `podar()` por ruta sigue quitando
       lo de `/admin`.
-- [ ] **Step 2 bis: el snapshot pasa de 2 rutas a ~6, y el diff se revisa a mano** antes de
+- [x] **Step 2 bis: el snapshot pasa de 2 rutas a ~6, y el diff se revisa a mano** antes de
       commitearlo. Que el CI falle aquí es lo correcto: es la frontera con la landing.
-- [ ] 🔶 **Step 2 quinquies: faltan ~7 clases de entidad de Swagger.** Hoy solo existe
+- [x] 🔶 **Step 2 quinquies: faltan ~7 clases de entidad de Swagger.** Hoy solo existe
       `galleries.entities.ts`. Cada DTO público nuevo (`CategoryDto`, `PackageDto`,
       `PackageItemDto`, `TestimonialDto`, `SiteSettingsDto`, `DifferentiatorDto`,
       `SocialLinkDto`) necesita su clase con `implements`: es lo que hace que el contrato sea
       **tipado** y que el snapshot signifique algo. Sin ellas el documento sale con `data: {}`.
-- [ ] 🔶 **Step 2 ter: `@SkipThrottle()` en los cuatro controllers públicos nuevos.** El build
+- [x] 🔶 **Step 2 ter: `@SkipThrottle()` en los cuatro controllers públicos nuevos.** El build
       de Astro va a pedir `/categories`, `/packages`, `/testimonials` y `/settings` además de
       las galerías, todo desde una IP y en segundos. El throttler global es de 120/min: hoy
       sobra, pero el modo de fallo es el peor —el build falla y la web se queda en la versión
       vieja— y la regla de `CLAUDE.md` ya lo exige.
-- [ ] 🔶 **Step 2 quater: un helper de tests de integración.** Cuatro CRUD casi idénticos son
+- [x] 🔶 **Step 2 quater: un helper de tests de integración.** Cuatro CRUD casi idénticos son
       cuatro suites casi idénticas. Un `probarCrud({ ruta, crear, actualizar })` cubre el camino
       común (401 sin sesión, 404 inexistente, 409 duplicado, borrado de opcionales) y cada
       módulo añade solo lo suyo. Se escribe **con el segundo módulo**, no con el primero.
-- [ ] **Step 3: E2E, dos flujos más.** Editar un paquete y ver el precio formateado; intentar
+- [x] **Step 3: E2E, dos flujos más.** Editar un paquete y ver el precio formateado; intentar
       publicar un testimonio sin consentimiento y que no deje.
-- [ ] **Step 4: responsive.** Extender `responsive.spec.ts` a las cuatro pantallas nuevas: 320
+- [x] **Step 4: responsive.** Extender `responsive.spec.ts` a las cuatro pantallas nuevas: 320
       px sin scroll horizontal, tarjetas bajo `md`, targets de 44 px, y un texto de bullet de 80
       caracteres que no rompa la tarjeta del paquete.
-- [ ] **Step 5: `pnpm outdated` y `pnpm audit`**, como al cerrar cada fase.
-- [ ] 🔶 **Step 5 bis: decidir qué pasa con `Gallery.coverKey`.** Verificado: el mapper la
+- [x] **Step 5: `pnpm outdated` y `pnpm audit`**, como al cerrar cada fase.
+- [x] 🔶 **Step 5 bis: decidir qué pasa con `Gallery.coverKey`.** Verificado: el mapper la
       respeta (`g.coverKey ?? claveDePortada(...)`) pero **no la escribe nadie y ningún DTO la
       expone**. Es una columna muerta con una lectura viva — el tipo de cosa que alguien
       «arregla» cableándola sin saber que la portada se deriva a propósito (fase 3, Task 0).
       O se cablea de verdad —y entonces entra en el barrido de huérfanos de D1— o se borra.
       **Recomendación: borrarla**, porque `claveDePortada` ya cubre el caso y una portada manual
       no está pedida en ningún sitio.
-- [ ] **Step 6: actualizar `CLAUDE.md`** con lo que se aprenda, especialmente la regla del cron
+- [x] **Step 6: actualizar `CLAUDE.md`** con lo que se aprenda, especialmente la regla del cron
       para los huérfanos de `covers/`, `avatars/` y `brand/` (D1), los tres prefijos nuevos, y
       la ubicación nueva de `lib/media` (D2).
 

@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AdminGalleryDto,
   AdminGalleryListItemDto,
-  CategoryRefDto,
   GalleryDto,
   GalleryListItemDto,
 } from '@james-film/contracts';
@@ -17,7 +16,6 @@ import { StorageService } from '../../storage/storage.service.js';
 import type { CreateGalleryDto } from './dto/create-gallery.dto.js';
 import type { UpdateGalleryDto } from './dto/update-gallery.dto.js';
 import {
-  SELECT_CATEGORIA,
   SELECT_GALERIA,
   SELECT_MEDIA,
   SELECT_MEDIA_ADMIN,
@@ -40,18 +38,6 @@ export class GalleriesService {
     private readonly reorder: ReorderService,
     private readonly exclusiveFlag: ExclusiveFlagService,
   ) {}
-
-  /**
-   * Las opciones del `<select>` de categoría del editor. Vive aquí y no en un
-   * módulo propio porque hasta la fase 4 esto es lo único que se necesita de
-   * `Category`: un módulo con un solo `findMany` sería un archivo de más.
-   */
-  async listarCategorias(): Promise<CategoryRefDto[]> {
-    return this.prisma.category.findMany({
-      select: SELECT_CATEGORIA,
-      orderBy: [{ order: 'asc' }, { id: 'asc' }],
-    });
-  }
 
   async listarPublicas(page: number, pageSize: number): Promise<ListaPaginada<GalleryListItemDto>> {
     const [filas, total] = await this.prisma.$transaction([

@@ -80,6 +80,39 @@ export interface MediaConfirmResult {
 }
 
 // ------------------------------------------------------------
+//  Subidas que NO son Media
+// ------------------------------------------------------------
+
+/**
+ * Nueve columnas `*Key` repartidas en cuatro modelos que **no** son filas
+ * `Media`: son claves sueltas. El cliente declara PARA QUÉ sube, y el servidor
+ * decide prefijo, tipos permitidos y techo — nunca al revés, o sería dejarle
+ * elegir dónde escribe dentro del bucket.
+ */
+export type UploadPurpose =
+  | 'PORTADA_CATEGORIA'
+  | 'IMAGEN_PAQUETE'
+  | 'AVATAR_TESTIMONIO'
+  | 'CAPTURA_TESTIMONIO'
+  | 'LOGO'
+  | 'FIRMA'
+  | 'OG'
+  | 'HERO_VIDEO'
+  | 'HERO_POSTER';
+
+export interface PresignUploadInput {
+  proposito: UploadPurpose;
+  mimeType: string;
+  sizeBytes: number;
+}
+
+export interface PresignUploadResult {
+  /** Lo que se guarda en la columna. NUNCA la URL. */
+  key: string;
+  uploadUrl: string;
+}
+
+// ------------------------------------------------------------
 //  Galerías y categorías
 // ------------------------------------------------------------
 
@@ -160,6 +193,21 @@ export interface CategoryDto extends CategoryRefDto {
   coverUrl: string | null;
 }
 
+/**
+ * Lo que ve el admin. Los recuentos viajan con la fila para que el aviso de
+ * borrado pueda decir **cuántas** galerías la usan antes de que James pulse,
+ * en vez de después. El 409 del servidor sigue existiendo: la API no puede
+ * confiar en que la interfaz haya avisado.
+ */
+export interface AdminCategoryDto extends CategoryDto {
+  isActive: boolean;
+  order: number;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  galleryCount: number;
+  packageCount: number;
+}
+
 // ------------------------------------------------------------
 //  Paquetes
 // ------------------------------------------------------------
@@ -192,6 +240,26 @@ export interface PackageDto {
   items: PackageItemDto[];
 }
 
+/** Lo que ve el admin de un bullet: además, su posición. */
+export interface AdminPackageItemDto extends PackageItemDto {
+  order: number;
+}
+
+export interface AdminPackageDto extends Omit<PackageDto, 'items'> {
+  items: AdminPackageItemDto[];
+  isActive: boolean;
+  order: number;
+  /** Se guarda y se edita; la web v1 NO lo consume. */
+  accentColor: string | null;
+  categoryIds: string[];
+  /**
+   * Clics a WhatsApp atribuidos a este paquete. Viaja con la fila porque
+   * borrarlo pone su `packageId` a `null` en cada uno: son la única métrica de
+   * negocio del proyecto, así que el borrado solo se ofrece si esto es 0.
+   */
+  whatsappClickCount: number;
+}
+
 // ------------------------------------------------------------
 //  Testimonios
 // ------------------------------------------------------------
@@ -219,6 +287,18 @@ export interface TestimonialDto {
   galleryId: string | null;
 }
 
+/**
+ * Lo que ve el admin. `hasConsent` SÍ aparece aquí —es lo que hay que
+ * gestionar— pero nunca en el DTO público: allí, si un testimonio llega, es
+ * que ya lo tenía.
+ */
+export interface AdminTestimonialDto extends TestimonialDto {
+  hasConsent: boolean;
+  isActive: boolean;
+  isFeatured: boolean;
+  order: number;
+}
+
 // ------------------------------------------------------------
 //  Diferenciadores y redes
 // ------------------------------------------------------------
@@ -230,6 +310,12 @@ export interface DifferentiatorDto {
   icon: string;
 }
 
+/** Lo que ve el admin: además, si está activo y su posición. */
+export interface AdminDifferentiatorDto extends DifferentiatorDto {
+  isActive: boolean;
+  order: number;
+}
+
 export interface SocialLinkDto {
   id: string;
   /** String libre, no enum: una red nueva no debe obligar a migrar. */
@@ -238,6 +324,11 @@ export interface SocialLinkDto {
   /** URL completa. No se arma desde el handle: cada red tiene su formato. */
   url: string;
   icon: string | null;
+}
+
+export interface AdminSocialLinkDto extends SocialLinkDto {
+  isActive: boolean;
+  order: number;
 }
 
 // ------------------------------------------------------------
@@ -319,6 +410,8 @@ export type ErrorCode =
   // Contenido
   | 'SLUG_TAKEN'
   | 'CONSENT_REQUIRED'
+  /** Borrar una categoría que aún usan galerías o paquetes. Lleva el número. */
+  | 'CATEGORY_IN_USE'
   // Subidas
   | 'UNSUPPORTED_MEDIA_TYPE'
   | 'FILE_TOO_LARGE'

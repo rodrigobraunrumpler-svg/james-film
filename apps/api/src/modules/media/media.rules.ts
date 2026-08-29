@@ -23,6 +23,7 @@ const EXTENSIONES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
+  'image/svg+xml': 'svg',
 };
 
 export const esVideo = (t: MediaType): boolean => t === 'REEL' || t === 'AFTERMOVIE';

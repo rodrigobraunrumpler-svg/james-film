@@ -4,7 +4,7 @@ import { useStore } from 'zustand';
 import type { QueryClient } from '@tanstack/react-query';
 import { keys } from '@/lib/api/keys';
 import { prepararArchivo } from '../validacion/preparar';
-import { galerias, medios } from '../services/galerias';
+import { medios } from '../servicios';
 import { crearCola, type EstadoCola } from './motor';
 import { subir } from './subir';
 import type { ItemCola } from './tipos';
@@ -50,5 +50,3 @@ export const useCola = <T>(selector: (estado: EstadoCola) => T): T =>
 /** Selector por item: solo re-renderiza la tarjeta que cambió, no la grilla. */
 export const useItemCola = (clientUploadId: string | null): ItemCola | undefined =>
   useCola((e) => (clientUploadId ? e.items[clientUploadId] : undefined));
-
-export { galerias };

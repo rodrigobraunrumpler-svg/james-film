@@ -17,6 +17,18 @@ export const keys = {
     all: ['categories'] as const,
     list: () => [...keys.categories.all, 'list'] as const,
   },
+  packages: {
+    all: ['packages'] as const,
+    list: () => [...keys.packages.all, 'list'] as const,
+  },
+  testimonials: {
+    all: ['testimonials'] as const,
+    list: (filtros: object = {}) => [...keys.testimonials.all, 'list', filtros] as const,
+  },
+  settings: {
+    all: ['settings'] as const,
+    detail: () => [...keys.settings.all, 'detail'] as const,
+  },
   auth: {
     me: ['auth', 'me'] as const,
   },

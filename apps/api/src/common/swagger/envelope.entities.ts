@@ -40,6 +40,7 @@ const TODOS_LOS_CODIGOS: Record<ErrorCode, true> = {
   SESSION_EXPIRED: true,
   SESSION_REVOKED: true,
   SLUG_TAKEN: true,
+  CATEGORY_IN_USE: true,
   CONSENT_REQUIRED: true,
   UNSUPPORTED_MEDIA_TYPE: true,
   FILE_TOO_LARGE: true,

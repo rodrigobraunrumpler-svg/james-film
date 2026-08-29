@@ -360,22 +360,6 @@ describe('actualizar: null borra, undefined no toca', () => {
   });
 });
 
-describe('categorías para el selector del editor', () => {
-  it('las lista con id, slug y nombre', async () => {
-    const { body } = await http().get('/admin/categories').set(auth()).expect(200);
-
-    expect(body.data.length).toBeGreaterThanOrEqual(4);
-    expect(body.data[0]).toEqual({
-      id: expect.any(String),
-      slug: expect.any(String),
-      name: expect.any(String),
-    });
-  });
-
-  it('exige sesión', async () => {
-    await http().get('/admin/categories').expect(401);
-  });
-});
 
 describe('isPublished: lo ve el admin, no la landing', () => {
   it('el detalle de admin lo trae', async () => {

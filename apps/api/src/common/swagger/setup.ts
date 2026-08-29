@@ -1,6 +1,10 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, type OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
+import { CategoriesModule } from '../../modules/categories/categories.module.js';
 import { GalleriesModule } from '../../modules/galleries/galleries.module.js';
+import { PackagesModule } from '../../modules/packages/packages.module.js';
+import { SettingsModule } from '../../modules/settings/settings.module.js';
+import { TestimonialsModule } from '../../modules/testimonials/testimonials.module.js';
 
 /**
  * DOS documentos, no uno. El público es el contrato que consume Astro en build
@@ -17,7 +21,18 @@ export function construirDocPublico(app: INestApplication): OpenAPIObject {
     .setVersion('1.0')
     .build();
 
-  const doc = SwaggerModule.createDocument(app, config, { include: [GalleriesModule] });
+  // Los módulos se listan A MANO: uno nuevo NO aparece solo, así que sus
+  // endpoints públicos no llegarían al contrato que consume Astro y la fase 5
+  // no los vería. `podar()` sigue quitando lo de /admin, que es la frontera real.
+  const doc = SwaggerModule.createDocument(app, config, {
+    include: [
+      GalleriesModule,
+      CategoriesModule,
+      PackagesModule,
+      TestimonialsModule,
+      SettingsModule,
+    ],
+  });
 
   // `include` mete el MÓDULO entero, y GalleriesModule tiene los dos controllers:
   // sin este filtro el contrato que consume Astro documentaría la superficie

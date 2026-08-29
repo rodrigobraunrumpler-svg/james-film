@@ -1,6 +1,15 @@
 'use client';
 
-import { Film, Images, LogOut, Menu, Settings } from 'lucide-react';
+import {
+  Film,
+  Images,
+  LogOut,
+  Menu,
+  MessageSquareQuote,
+  Package,
+  Settings,
+  Tags,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -9,6 +18,9 @@ import { cn } from '@/lib/utils/cn';
 
 const ENLACES = [
   { href: '/', etiqueta: 'Galerías', Icono: Images },
+  { href: '/categorias', etiqueta: 'Categorías', Icono: Tags },
+  { href: '/paquetes', etiqueta: 'Paquetes', Icono: Package },
+  { href: '/testimonios', etiqueta: 'Testimonios', Icono: MessageSquareQuote },
   { href: '/configuracion', etiqueta: 'Configuración', Icono: Settings },
 ] as const;
 
