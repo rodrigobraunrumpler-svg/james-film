@@ -2,6 +2,7 @@
 
 import type { UploadPurpose } from '@james-film/contracts';
 import { useRef, useState } from 'react';
+import { Image as ImageIcon } from 'lucide-react';
 import { clasesBoton } from './boton';
 import { subirImagen } from '@/lib/media/subir-imagen';
 import { ErrorValidacion } from '@/lib/media/validacion/errores';
@@ -64,13 +65,21 @@ export function CampoImagen({
       <span className="text-muted text-xs">{etiqueta}</span>
 
       <div
-        className="border-line bg-well rounded-control relative overflow-hidden border"
+        className="border-line bg-well rounded-control relative max-h-56 overflow-hidden border"
         // `aspect-ratio` SIEMPRE reservado: sin él, la miniatura al llegar
-        // empuja el formulario entero y el salto se ve.
+        // empuja el formulario entero y el salto se ve. Con techo, eso sí: una
+        // caja 16:9 a ancho completo se comía media hoja estando vacía.
         style={{ aspectRatio: proporcion }}
       >
-        {mostrada && (
+        {mostrada ? (
           <img src={mostrada} alt="" className="h-full w-full object-contain" loading="lazy" />
+        ) : (
+          // Vacía dice qué se espera. Un rectángulo negro sin nada no distingue
+          // «no hay imagen» de «no ha cargado».
+          <span className="text-muted absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-xs">
+            <ImageIcon className="size-5" aria-hidden />
+            Sin imagen
+          </span>
         )}
 
         {progreso !== null && (

@@ -106,7 +106,10 @@ describe('lista de paquetes', () => {
 
     // 45050 céntimos son S/ 450.50. Enteros es cómo se EDITA, no cómo se ve — y
     // el formateador normaliza el espacio DURO que mete Intl.
-    expect(await screen.findByText('S/ 450.50')).toBeInTheDocument();
+    // El precio va en DOS nodos: `S/ 450` grande y `.50` pequeño, porque los
+    // céntimos no pueden pesar lo mismo que la cifra que se compara.
+    expect(await screen.findByText('S/ 450')).toBeInTheDocument();
+    expect(screen.getByText('.50')).toBeInTheDocument();
   });
 
   it('sin precio pone un guion, no «S/ 0.00»', async () => {
@@ -121,8 +124,10 @@ describe('lista de paquetes', () => {
     servidor({ lista: [paquete('p1', 'Básico', { items: [item('i1', 'Sin drone', false)] })] });
     render(<ListaPaquetes />, { wrapper: Envoltorio });
 
+    // El tachado vive en el <li>, no en el <span> del texto: el bullet `·` que
+    // hay al lado también tiene que ir tachado.
     const punto = await screen.findByText('Sin drone');
-    expect(punto.className).toContain('line-through');
+    expect(punto.closest('li')?.className).toContain('line-through');
   });
 
   it('destacar es un RADIO y es exclusivo al instante', async () => {
@@ -152,7 +157,11 @@ describe('lista de paquetes', () => {
     render(<ListaPaquetes />, { wrapper: Envoltorio });
     await screen.findByText('Pro');
 
-    await usuario.click(screen.getByRole('button', { name: 'Ocultar Pro' }));
+    // Ocultar, Editar y Borrar viven en el menú de la tarjeta: en la propia
+    // tarjeta ocupaban media altura y competían con el precio, que es lo único
+    // que hay que leer ahí.
+    await usuario.click(screen.getByRole('button', { name: 'Acciones de Pro' }));
+    await usuario.click(await screen.findByRole('button', { name: 'Ocultar Pro' }));
 
     // Ya no es el `confirm()` del navegador: en iOS ese sale como un diálogo
     // del SISTEMA y se acepta con el pulgar sin leerlo.
@@ -165,7 +174,8 @@ describe('lista de paquetes', () => {
     render(<ListaPaquetes />, { wrapper: Envoltorio });
     await screen.findByText('Básico');
 
-    await usuario.click(screen.getByRole('button', { name: 'Ocultar Básico' }));
+    await usuario.click(screen.getByRole('button', { name: 'Acciones de Básico' }));
+    await usuario.click(await screen.findByRole('button', { name: 'Ocultar Básico' }));
 
     expect(globalThis.confirm).not.toHaveBeenCalled();
   });
@@ -178,7 +188,8 @@ describe('lista de paquetes', () => {
     render(<ListaPaquetes />, { wrapper: Envoltorio });
     await screen.findByText('Básico');
 
-    await usuario.click(screen.getByRole('button', { name: 'Borrar' }));
+    await usuario.click(screen.getByRole('button', { name: /^Acciones de / }));
+    await usuario.click(await screen.findByRole('button', { name: 'Borrar' }));
 
     expect(api.de('DELETE', '/admin/packages')).toHaveLength(0);
     expect(await screen.findByText(/12 clics registrados/)).toBeInTheDocument();
@@ -190,7 +201,8 @@ describe('lista de paquetes', () => {
     render(<ListaPaquetes />, { wrapper: Envoltorio });
     await screen.findByText('Sin clics');
 
-    await usuario.click(screen.getByRole('button', { name: 'Borrar' }));
+    await usuario.click(screen.getByRole('button', { name: /^Acciones de / }));
+    await usuario.click(await screen.findByRole('button', { name: 'Borrar' }));
 
     expect(api.de('DELETE', '/admin/packages/p1')).toHaveLength(0);
     await usuario.click(await screen.findByRole('button', { name: 'Borrar para siempre' }));

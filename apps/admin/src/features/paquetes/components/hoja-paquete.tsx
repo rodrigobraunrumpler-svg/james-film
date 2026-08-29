@@ -3,10 +3,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { AdminCategoryDto, AdminPackageDto } from '@james-film/contracts';
 import { useState } from 'react';
-import { useForm, type Path } from 'react-hook-form';
+import { Controller, useForm, type Path } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CampoImagen } from '@/components/shared/campo-imagen';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 import { clasesBoton } from '@/components/shared/boton';
+import { SelectorIcono } from '@/components/shared/selector-icono';
 import { esApiError } from '@/lib/api/errors';
 import { aCentimos, aSoles } from '@/lib/format';
 import { limpiar } from '@/lib/forms/limpiar';
@@ -43,7 +46,7 @@ export function HojaPaquete({
       categoryIds: paquete?.categoryIds ?? [],
     },
   });
-  const { register, handleSubmit, setError, formState, watch, setValue } = form;
+  const { register, handleSubmit, setError, formState, watch, setValue, control } = form;
   const errores = formState.errors;
   const seleccionadas = watch('categoryIds');
 
@@ -89,7 +92,7 @@ export function HojaPaquete({
         <label htmlFor="name" className="text-muted text-xs">
           Nombre
         </label>
-        <input id="name" {...register('name')} className="campo bg-well border-line" />
+        <input id="name" {...register('name')} className="campo border-line" />
         {errores.name && (
           <p role="alert" className="text-danger text-sm">
             {errores.name.message}
@@ -110,7 +113,7 @@ export function HojaPaquete({
             min="0"
             inputMode="numeric"
             {...register('precioSoles')}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
           {errores.precioSoles && (
             <p role="alert" className="text-danger text-sm">
@@ -127,7 +130,7 @@ export function HojaPaquete({
             id="priceNote"
             placeholder="desde"
             {...register('priceNote')}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
       </div>
@@ -137,7 +140,7 @@ export function HojaPaquete({
           <label htmlFor="subtitle" className="text-muted text-xs">
             Subtítulo
           </label>
-          <input id="subtitle" {...register('subtitle')} className="campo bg-well border-line" />
+          <input id="subtitle" {...register('subtitle')} className="campo border-line" />
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -145,14 +148,18 @@ export function HojaPaquete({
             Ícono
           </label>
           {/* Lista cerrada que da la API: la misma contra la que valida. */}
-          <select id="icon" {...register('icon')} className="campo bg-well border-line">
-            <option value="">Ninguno</option>
-            {(iconosDisponibles ?? []).map((nombre) => (
-              <option key={nombre} value={nombre}>
-                {nombre}
-              </option>
-            ))}
-          </select>
+          <Controller
+            control={control}
+            name="icon"
+            render={({ field }) => (
+              <SelectorIcono
+                id="icon"
+                valor={field.value ?? ''}
+                onCambiar={field.onChange}
+                opciones={iconosDisponibles ?? []}
+              />
+            )}
+          />
         </div>
       </div>
 
@@ -160,31 +167,48 @@ export function HojaPaquete({
         <label htmlFor="idealFor" className="text-muted text-xs">
           Ideal para
         </label>
-        <input id="idealFor" {...register('idealFor')} className="campo bg-well border-line" />
+        <input id="idealFor" {...register('idealFor')} className="campo border-line" />
       </div>
 
       <CamposBullets form={form} />
 
       <fieldset className="flex flex-col gap-2">
         <legend className="text-muted text-xs">Categorías</legend>
-        <div className="flex flex-wrap gap-3">
-          {categorias.map((c) => (
-            <label key={c.id} className="flex min-h-11 items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={seleccionadas.includes(c.id)}
-                onChange={(e) =>
-                  setValue(
-                    'categoryIds',
-                    e.target.checked
-                      ? [...seleccionadas, c.id]
-                      : seleccionadas.filter((id) => id !== c.id),
-                  )
-                }
-              />
-              {c.name}
-            </label>
-          ))}
+        {/* Chips en vez de casillas nativas: el checkbox del sistema es azul y
+            no se puede estilar, y con más de diez categorías una fila de ellos
+            es una pared. El input sigue existiendo debajo —`sr-only`— así que
+            teclado y lector de pantalla funcionan igual. */}
+        <div className="flex flex-wrap gap-1.5">
+          {categorias.map((c) => {
+            const elegida = seleccionadas.includes(c.id);
+            return (
+              <label key={c.id} className="relative">
+                <input
+                  type="checkbox"
+                  checked={elegida}
+                  onChange={(e) =>
+                    setValue(
+                      'categoryIds',
+                      e.target.checked
+                        ? [...seleccionadas, c.id]
+                        : seleccionadas.filter((id) => id !== c.id),
+                    )
+                  }
+                  className="peer sr-only"
+                />
+                <span className="border-line-strong text-ash peer-checked:border-brass peer-checked:text-brass peer-checked:bg-brass/10 peer-focus-visible:outline-brass hover:border-line-hover rounded-control flex min-h-11 cursor-pointer items-center gap-1.5 border px-3 text-sm transition-colors duration-150 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 lg:min-h-8">
+                  <Check
+                    className={cn(
+                      'size-3.5 transition-opacity',
+                      elegida ? 'opacity-100' : 'opacity-0',
+                    )}
+                    aria-hidden
+                  />
+                  {c.name}
+                </span>
+              </label>
+            );
+          })}
         </div>
       </fieldset>
 
@@ -197,7 +221,7 @@ export function HojaPaquete({
             id="badgeText"
             placeholder="NUESTRO MÁS VENDIDO"
             {...register('badgeText')}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
 
@@ -208,7 +232,7 @@ export function HojaPaquete({
           <input
             id="whatsappMessage"
             {...register('whatsappMessage')}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
       </div>
@@ -221,7 +245,9 @@ export function HojaPaquete({
         proporcion="4 / 3"
       />
 
-      <div className="flex gap-2">
+      {/* Pegado abajo, como la cabecera arriba: con un formulario largo,
+          Guardar quedaba a un scroll entero de distancia. */}
+      <div className="bg-chrome border-line sticky bottom-0 -mx-4 -mb-[calc(1.5rem+env(safe-area-inset-bottom))] flex gap-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <button type="button" onClick={onCerrar} className={clasesBoton('secundario', 'flex-1')}>
           Cancelar
         </button>

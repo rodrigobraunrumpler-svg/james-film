@@ -84,11 +84,7 @@ export function HojaTestimonio({
           <label htmlFor="authorName" className="text-muted text-xs">
             Nombre
           </label>
-          <input
-            id="authorName"
-            {...register('authorName')}
-            className="campo bg-well border-line"
-          />
+          <input id="authorName" {...register('authorName')} className="campo border-line" />
           {errores.authorName && (
             <p role="alert" className="text-danger text-sm">
               {errores.authorName.message}
@@ -104,7 +100,7 @@ export function HojaTestimonio({
             id="authorHandle"
             placeholder="@ana"
             {...register('authorHandle')}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
       </div>
@@ -114,7 +110,7 @@ export function HojaTestimonio({
           <label htmlFor="format" className="text-muted text-xs">
             Formato
           </label>
-          <select id="format" {...register('format')} className="campo bg-well border-line">
+          <select id="format" {...register('format')} className="campo border-line">
             <option value="SCREENSHOT">Captura</option>
             <option value="TEXT">Texto</option>
           </select>
@@ -124,7 +120,7 @@ export function HojaTestimonio({
           <label htmlFor="source" className="text-muted text-xs">
             De dónde viene
           </label>
-          <select id="source" {...register('source')} className="campo bg-well border-line">
+          <select id="source" {...register('source')} className="campo border-line">
             <option value="WHATSAPP">WhatsApp</option>
             <option value="INSTAGRAM">Instagram</option>
             <option value="TIKTOK">TikTok</option>
@@ -142,7 +138,7 @@ export function HojaTestimonio({
             id="eventType"
             placeholder="Boda"
             {...register('eventType')}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
 
@@ -154,7 +150,7 @@ export function HojaTestimonio({
             id="eventDate"
             type="date"
             {...register('eventDate')}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
       </div>
@@ -167,7 +163,7 @@ export function HojaTestimonio({
           id="quote"
           rows={3}
           {...register('quote')}
-          className="campo bg-well border-line min-h-0 px-2.5 py-2"
+          className="campo border-line min-h-0 px-2.5 py-2"
         />
       </div>
 
@@ -176,7 +172,7 @@ export function HojaTestimonio({
           <label htmlFor="rating" className="text-muted text-xs">
             Estrellas
           </label>
-          <select id="rating" {...register('rating')} className="campo bg-well border-line">
+          <select id="rating" {...register('rating')} className="campo border-line">
             <option value="">Sin valoración</option>
             {[1, 2, 3, 4, 5].map((n) => (
               <option key={n} value={n}>
@@ -190,11 +186,7 @@ export function HojaTestimonio({
           <label htmlFor="externalUrl" className="text-muted text-xs">
             Enlace original
           </label>
-          <input
-            id="externalUrl"
-            {...register('externalUrl')}
-            className="campo bg-well border-line"
-          />
+          <input id="externalUrl" {...register('externalUrl')} className="campo border-line" />
           {errores.externalUrl && (
             <p role="alert" className="text-danger text-sm">
               {errores.externalUrl.message}
@@ -222,7 +214,9 @@ export function HojaTestimonio({
         />
       )}
 
-      <div className="flex gap-2">
+      {/* Pegado abajo, como la cabecera arriba: con un formulario largo,
+          Guardar quedaba a un scroll entero de distancia. */}
+      <div className="bg-chrome border-line sticky bottom-0 -mx-4 -mb-[calc(1.5rem+env(safe-area-inset-bottom))] flex gap-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <button type="button" onClick={onCerrar} className={clasesBoton('secundario', 'flex-1')}>
           Cancelar
         </button>

@@ -390,4 +390,23 @@ describe('la lista de íconos', () => {
   it('exige sesión', async () => {
     await http().get('/admin/icons').expect(401);
   });
+
+  it('la lista del ADMIN no reordena al destacar; la pública sí lo pone primero', async () => {
+    // En el admin, ordenar por `isHighlighted` hacía SALTAR la tarjeta al
+    // principio en cuanto James pulsaba «Destacar»: la lista que estaba mirando
+    // se le reordenaba bajo el dedo. En la landing sí tiene sentido que el
+    // destacado vaya delante.
+    const admin = await http().get('/admin/packages').set(auth()).expect(200);
+    const ids = (admin.body.data as Paquete[]).map((p) => p.id);
+
+    const otro = (admin.body.data as Paquete[]).find((p) => !p.isHighlighted && p.isActive);
+    expect(otro).toBeDefined();
+    await http().patch(`/admin/packages/${otro!.id}/highlight`).set(auth()).expect(200);
+
+    const despues = await http().get('/admin/packages').set(auth()).expect(200);
+    expect((despues.body.data as Paquete[]).map((p) => p.id)).toEqual(ids);
+
+    const publica = await http().get('/packages').expect(200);
+    expect((publica.body.data as Paquete[])[0]?.id).toBe(otro!.id);
+  });
 });

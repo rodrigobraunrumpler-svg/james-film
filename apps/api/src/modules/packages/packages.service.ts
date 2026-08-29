@@ -49,7 +49,11 @@ export class PackagesService {
   async listarTodos(): Promise<AdminPackageDto[]> {
     const filas = await this.prisma.package.findMany({
       select: { ...SELECT_PAQUETE_ADMIN, ...EXTRA_ADMIN },
-      orderBy: [{ isHighlighted: 'desc' }, ...ORDEN],
+      // SIN `isHighlighted` delante, al revés que la lista pública: en el admin
+      // ese criterio hacía SALTAR la tarjeta al principio en cuanto James
+      // pulsaba «Destacar», y la lista que estaba mirando se le reordenaba bajo
+      // el dedo. Aquí manda `order`, que es el que él controla.
+      orderBy: ORDEN,
     });
     return filas.map((f) => mapPaqueteAdmin(f, this.storage));
   }

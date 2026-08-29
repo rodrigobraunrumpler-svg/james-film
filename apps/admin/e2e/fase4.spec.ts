@@ -8,18 +8,34 @@ test.describe('paquetes', () => {
     await page.getByRole('link', { name: 'Paquetes' }).first().click();
     await expect(page.getByRole('heading', { name: 'Paquetes' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Editar' }).first().click();
+    // Editar vive en el menú de la tarjeta: en la tarjeta ocupaba media altura
+    // y competía con el precio, que es lo único que hay que leer ahí.
+    await page
+      .getByRole('button', { name: /^Acciones de / })
+      .first()
+      .click();
+    await page.getByRole('button', { name: 'Editar' }).click();
     const precio = page.getByLabel('Precio en soles');
     await precio.fill('450');
     await page.getByRole('button', { name: 'Guardar' }).click();
 
-    await expect(page.getByText('S/ 450.00').first()).toBeVisible({ timeout: 15_000 });
+    // El precio va en DOS nodos: `S/ 450` grande y `.00` pequeño, porque los
+    // céntimos no pueden pesar lo mismo que la cifra que se compara.
+    await expect(page.getByText('S/ 450', { exact: true }).first()).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('un precio con decimales no se guarda', async ({ page }) => {
     await irAlPanel(page);
     await page.getByRole('link', { name: 'Paquetes' }).first().click();
-    await page.getByRole('button', { name: 'Editar' }).first().click();
+    // Editar vive en el menú de la tarjeta: en la tarjeta ocupaba media altura
+    // y competía con el precio, que es lo único que hay que leer ahí.
+    await page
+      .getByRole('button', { name: /^Acciones de / })
+      .first()
+      .click();
+    await page.getByRole('button', { name: 'Editar' }).click();
 
     await page.getByLabel('Precio en soles').fill('300.5');
     await page.getByRole('button', { name: 'Guardar' }).click();

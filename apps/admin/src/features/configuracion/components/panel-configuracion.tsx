@@ -250,7 +250,7 @@ function Identidad({
           id="aboutText"
           rows={5}
           {...register('aboutText')}
-          className="campo bg-well border-line min-h-0 px-2.5 py-2"
+          className="campo border-line min-h-0 px-2.5 py-2"
         />
       </Campo>
       <div className="border-line bg-card rounded-control border p-3">
@@ -383,7 +383,7 @@ function Seo({ ajustes, onSucio }: { ajustes: SiteSettingsDto; onSucio: (v: bool
           id="metaDescription"
           rows={2}
           {...register('metaDescription')}
-          className="campo bg-well border-line min-h-0 px-2.5 py-2"
+          className="campo border-line min-h-0 px-2.5 py-2"
         />
       </Campo>
       <CampoImagen

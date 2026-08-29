@@ -64,7 +64,7 @@ export function CampoWhatsapp() {
             },
           })}
           aria-invalid={Boolean(formState.errors.whatsappNumber)}
-          className="campo bg-well border-line"
+          className="campo border-line"
         />
         <p className="text-muted text-xs">
           Con el prefijo del país y sin el «+». Para Perú: 51 y luego el número.
@@ -95,7 +95,7 @@ export function CampoWhatsapp() {
           id="whatsappDisplay"
           placeholder="994 724 944"
           {...register('whatsappDisplay')}
-          className="campo bg-well border-line"
+          className="campo border-line"
         />
         {divergen && (
           <p role="alert" className="text-ash text-sm">

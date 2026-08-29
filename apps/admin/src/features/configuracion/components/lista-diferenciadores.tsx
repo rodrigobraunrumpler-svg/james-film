@@ -115,7 +115,7 @@ export function ListaDiferenciadores() {
             id="dif-title"
             value={nuevo.title}
             onChange={(e) => setNuevo({ ...nuevo, title: e.target.value })}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -126,7 +126,7 @@ export function ListaDiferenciadores() {
             id="dif-subtitle"
             value={nuevo.subtitle}
             onChange={(e) => setNuevo({ ...nuevo, subtitle: e.target.value })}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -137,7 +137,7 @@ export function ListaDiferenciadores() {
             id="dif-icon"
             value={nuevo.icon}
             onChange={(e) => setNuevo({ ...nuevo, icon: e.target.value })}
-            className="campo bg-well border-line"
+            className="campo border-line"
           >
             {(iconos ?? []).map((n) => (
               <option key={n} value={n}>

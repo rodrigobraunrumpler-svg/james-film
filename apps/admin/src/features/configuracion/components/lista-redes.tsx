@@ -112,7 +112,7 @@ export function ListaRedes() {
             placeholder="instagram"
             value={nueva.platform}
             onChange={(e) => setNueva({ ...nueva, platform: e.target.value })}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -124,7 +124,7 @@ export function ListaRedes() {
             placeholder="James_film30"
             value={nueva.handle}
             onChange={(e) => setNueva({ ...nueva, handle: e.target.value })}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -136,7 +136,7 @@ export function ListaRedes() {
             placeholder="https://instagram.com/James_film30"
             value={nueva.url}
             onChange={(e) => setNueva({ ...nueva, url: e.target.value })}
-            className="campo bg-well border-line"
+            className="campo border-line"
           />
         </div>
         <button

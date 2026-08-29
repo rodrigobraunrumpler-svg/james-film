@@ -36,6 +36,23 @@ export const moneda = (centimos: number | null | undefined): string =>
     ? '—'
     : fmtMoneda.format(centimos / 100).replace(/\u00a0/g, ' ');
 
+/**
+ * El precio partido para poder pintar los céntimos más pequeños: `S/ 300` pesa
+ * y `,00` no debe competir con él. Devuelve las dos partes ya formateadas en
+ * es-PE, incluido el separador decimal que use el locale.
+ */
+export function monedaPartida(centimos: number | null | undefined): {
+  entero: string;
+  decimales: string;
+} {
+  const texto = moneda(centimos);
+  // Se busca el ÚLTIMO separador: `S/ 1,300.00` tiene dos y el primero agrupa
+  // los miles. Partir por el primero daría «S/ 1» y «,300.00».
+  const corte = Math.max(texto.lastIndexOf('.'), texto.lastIndexOf(','));
+  if (corte === -1) return { entero: texto, decimales: '' };
+  return { entero: texto.slice(0, corte), decimales: texto.slice(corte) };
+}
+
 const UNIDADES = [
   ['year', 31_536_000],
   ['month', 2_592_000],

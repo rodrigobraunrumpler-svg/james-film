@@ -436,7 +436,7 @@ export function TarjetaMedio({
                 defaultValue={medio.alt ?? ''}
                 autoFocus
                 placeholder="Los novios bailando en la recepción"
-                className="campo bg-well border-line"
+                className="campo border-line"
               />
               <p className="text-muted text-xs">
                 Sin esto, quien navegue con lector de pantalla oye «imagen» y ya. Describe lo que se
@@ -452,7 +452,7 @@ export function TarjetaMedio({
                 id={`caption-${medio.id}`}
                 name="caption"
                 defaultValue={medio.caption ?? ''}
-                className="campo bg-well border-line"
+                className="campo border-line"
               />
               <p className="text-muted text-xs">Opcional. Se ve debajo del medio en la web.</p>
             </div>

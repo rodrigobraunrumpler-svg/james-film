@@ -3,15 +3,27 @@
 import type { AdminPackageDto } from '@james-film/contracts';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Package, Plus, Star } from 'lucide-react';
-import { Boton, clasesBoton } from '@/components/shared/boton';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Info,
+  MoreHorizontal,
+  Package,
+  Pencil,
+  Plus,
+  Star,
+  Trash2,
+} from 'lucide-react';
+import { Boton } from '@/components/shared/boton';
 import { EstadoVacio } from '@/components/shared/estado-vacio';
 import { Hoja } from '@/components/shared/hoja';
 import { VerEnLaWeb } from '@/components/shared/ver-en-la-web';
 import { urlPaquetes } from '@/lib/enlaces';
 import { esApiError } from '@/lib/api/errors';
 import { cn } from '@/lib/utils/cn';
-import { moneda } from '@/lib/format';
+import { monedaPartida } from '@/lib/format';
 import { iconoDe } from '@/lib/iconos/mapa';
 import { useCategoriasComoOpciones } from '@/lib/catalogo/categorias';
 import {
@@ -37,6 +49,9 @@ export function ListaPaquetes() {
   const [editando, setEditando] = useState<AdminPackageDto | null | undefined>(undefined);
   const [borrando, setBorrando] = useState<AdminPackageDto | null>(null);
   const [ocultando, setOcultando] = useState<AdminPackageDto | null>(null);
+  const [acciones, setAcciones] = useState<AdminPackageDto | null>(null);
+
+  const porId = new Map((categorias.data ?? []).map((c) => [c.id, c.name]));
 
   if (isPending || categorias.isPending) return <SkeletonPaquetes />;
 
@@ -88,7 +103,10 @@ export function ListaPaquetes() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-[-0.01em]">Paquetes</h1>
+        <div className="flex flex-col gap-0.5">
+          <h1 className="text-xl font-semibold tracking-[-0.01em]">Paquetes</h1>
+          <p className="text-ash text-sm">Lo primero que mira quien entra en la web.</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* §9 lo pide para galerías Y paquetes. Aquí es la sección de la
               portada, no una página propia: por eso el ancla. */}
@@ -118,55 +136,133 @@ export function ListaPaquetes() {
 
       {/* auto-fit con minmax, NUNCA grid-cols-3: es la misma regla que la
           landing (§8), y con un nombre largo `1fr` desborda. */}
-      <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-4">
+      {/* auto-fit con minmax, NUNCA grid-cols-3: es la misma regla que la
+          landing (§8), y con un nombre largo `1fr` desborda. */}
+      <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-4">
         {data.map((p, i) => {
           const Icono = iconoDe(p.icon);
+          const precio = monedaPartida(p.priceAmount);
+          const nombres = p.categoryIds
+            .map((id) => porId.get(id))
+            .filter((n): n is string => Boolean(n));
           return (
             <li
               key={p.id}
               className={cn(
-                'bg-card rounded-card flex flex-col gap-3 border p-4 transition-colors duration-150',
+                'group bg-card rounded-card relative flex flex-col border transition-colors duration-150',
                 // El latón marca el destacado, y solo en el BORDE: es el único
                 // acento del admin y aquí dice cuál vende James de verdad.
                 p.isHighlighted ? 'border-brass' : 'border-line hover:border-line-hover',
                 !p.isActive && 'opacity-60',
               )}
             >
-              {p.isHighlighted && (
-                <span className="text-brass border-brass/40 bg-brass/10 -mt-0.5 self-start rounded px-1.5 py-0.5 text-[10px] tracking-[0.12em] uppercase">
-                  Nuestro más vendido
-                </span>
-              )}
-
-              <div className="flex items-start gap-3">
-                <Icono aria-hidden className="text-brass mt-0.5 size-5 shrink-0" />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex flex-wrap items-center gap-2 font-medium">
-                    <span className="dato">{p.name}</span>
-                    {!p.isActive && (
-                      <span className="text-ash bg-active rounded px-1.5 py-0.5 text-[10px]">
-                        Oculto
-                      </span>
+              {/* Destacar arriba a la derecha y siempre visible: es la única
+                  decisión de esta pantalla que cambia lo que ve un cliente. El
+                  resto de acciones va al menú, que no compite con el precio. */}
+              <div className="absolute top-3 right-3 flex items-center gap-1">
+                <label className="relative">
+                  <input
+                    type="radio"
+                    name="destacado"
+                    checked={p.isHighlighted}
+                    onChange={() => destacar.mutate(p.id)}
+                    aria-label={`Destacar ${p.name}`}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={cn(
+                      'peer-focus-visible:outline-brass rounded-control flex min-h-11 cursor-pointer items-center gap-1.5 px-2 text-xs transition-colors duration-150 peer-focus-visible:outline-2 lg:min-h-7',
+                      p.isHighlighted ? 'text-brass' : 'text-muted hover:text-ash',
                     )}
+                  >
+                    <Star
+                      className={cn('size-3.5', p.isHighlighted && 'fill-current')}
+                      aria-hidden
+                    />
+                    Destacar
                   </span>
-                  {/* El precio, en grande: es lo que se compara de un vistazo. */}
-                  <span className="text-lg font-semibold tabular-nums">
-                    {moneda(p.priceAmount)}
-                  </span>
-                  {p.priceNote && <span className="text-muted text-xs">{p.priceNote}</span>}
-                </div>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setAcciones(p)}
+                  aria-label={`Acciones de ${p.name}`}
+                  className="text-muted hover:text-bone rounded-control flex size-11 items-center justify-center transition-colors duration-150 lg:size-7"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden />
+                </button>
               </div>
 
-              <ul className="text-ash flex flex-col gap-1 text-sm">
-                {p.items.slice(0, 4).map((item) => (
-                  <li key={item.id} className={item.included ? '' : 'text-muted line-through'}>
-                    {item.text}
+              <div className="flex flex-col gap-2 p-4 pr-32">
+                <span className="flex items-center gap-2">
+                  <Icono aria-hidden className="text-brass size-4 shrink-0" />
+                  {/* Sin `uppercase`: los nombres del seed YA vienen en mayúsculas, y
+                      forzarlo convertiría un «Javier Rojas» escrito a mano en
+                      «JAVIER ROJAS». El dato se pinta como se escribió. */}
+                  <span className="dato font-medium tracking-[0.04em]">{p.name}</span>
+                  {!p.isActive && (
+                    <span className="text-ash bg-active shrink-0 rounded px-1.5 py-0.5 text-[10px]">
+                      Oculto
+                    </span>
+                  )}
+                </span>
+
+                {p.subtitle && <span className="text-ash dato text-sm">{p.subtitle}</span>}
+
+                {/* El hueco se reserva SIEMPRE: si la insignia apareciera de la
+                    nada, al destacar la tarjeta crecería una línea de golpe y
+                    las de al lado se moverían con ella. */}
+                <span className="flex min-h-[19px] items-center">
+                  {p.isHighlighted && (
+                    <span className="text-brass border-brass/40 bg-brass/10 rounded px-2 py-0.5 text-[10px] tracking-[0.12em] uppercase">
+                      {p.badgeText ?? 'Nuestro más vendido'}
+                    </span>
+                  )}
+                </span>
+
+                {/* Los céntimos, más pequeños: `S/ 300` es lo que se compara y
+                    `,00` no puede pesar lo mismo. */}
+                <span className="flex items-baseline gap-0.5 tabular-nums">
+                  <span className="text-2xl font-semibold">{precio.entero}</span>
+                  <span className="text-ash text-sm">{precio.decimales}</span>
+                </span>
+                {p.priceNote && <span className="text-muted -mt-1 text-xs">{p.priceNote}</span>}
+              </div>
+
+              <ul className="text-ash flex flex-col gap-1.5 px-4 text-sm">
+                {p.items.map((item) => (
+                  <li
+                    key={item.id}
+                    className={cn('flex gap-2', !item.included && 'text-muted line-through')}
+                  >
+                    <span aria-hidden className="text-line-hover">
+                      ·
+                    </span>
+                    <span className="dato">{item.text}</span>
                   </li>
                 ))}
-                {p.items.length > 4 && <li className="text-muted">y {p.items.length - 4} más</li>}
               </ul>
 
-              <div className="mt-auto flex flex-wrap gap-1">
+              {/* El pie: en qué categorías aparece y cuántos clics ha traído.
+                  `mt-auto` para que las tres tarjetas lo alineen aunque tengan
+                  distinto número de puntos. */}
+              <div className="border-line mt-auto flex flex-wrap items-center gap-2 border-t p-3">
+                {nombres.map((n) => (
+                  <span key={n} className="text-ash bg-active rounded px-1.5 py-0.5 text-[10px]">
+                    {n}
+                  </span>
+                ))}
+                <span
+                  className="text-muted ml-auto shrink-0 text-xs tabular-nums"
+                  title="Clics a WhatsApp atribuidos a este paquete"
+                >
+                  {p.whatsappClickCount} {p.whatsappClickCount === 1 ? 'clic' : 'clics'}
+                </span>
+              </div>
+
+              {/* Los botones de orden, discretos y abajo: reordenar es raro y no
+                  merece el sitio que ocupaba en la fila de acciones. */}
+              <div className="absolute right-3 bottom-3 flex gap-1 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100">
                 <button
                   type="button"
                   aria-label={`Mover ${p.name} antes`}
@@ -185,46 +281,52 @@ export function ListaPaquetes() {
                 >
                   <ArrowRight className="size-3.5" aria-hidden />
                 </button>
-                {/* Radio de verdad bajo `sr-only`: un checkbox invita a marcar
-                    dos y luego a preguntarse por qué se desmarcó el otro solo,
-                    y el radio nativo trae teclado y lector de pantalla gratis. */}
-                <label className="relative">
-                  <input
-                    type="radio"
-                    name="destacado"
-                    checked={p.isHighlighted}
-                    onChange={() => destacar.mutate(p.id)}
-                    aria-label={`Destacar ${p.name}`}
-                    className="peer sr-only"
-                  />
-                  <span
-                    className={clasesBoton(
-                      'secundario',
-                      'peer-checked:border-brass peer-checked:text-brass peer-focus-visible:outline-brass cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2',
-                    )}
-                  >
-                    <Star
-                      className={cn('size-3.5', p.isHighlighted && 'fill-current')}
-                      aria-hidden
-                    />
-                    Destacar
-                  </span>
-                </label>
-                <Boton
-                  aria-label={`${p.isActive ? 'Ocultar' : 'Mostrar'} ${p.name}`}
-                  onClick={() => alternarActivo(p)}
-                >
-                  {p.isActive ? 'Ocultar' : 'Mostrar'}
-                </Boton>
-                <Boton onClick={() => setEditando(p)}>Editar</Boton>
-                <Boton variante="peligro" onClick={() => pedirBorrado(p)}>
-                  Borrar
-                </Boton>
               </div>
             </li>
           );
         })}
       </ul>
+
+      <Comparativa paquetes={data} />
+
+      {/* Las acciones que no son «destacar»: ocupaban media tarjeta y compiten
+          con lo único que hay que leer, que es el precio. */}
+      <Hoja
+        abierta={acciones !== null}
+        onCerrar={() => setAcciones(null)}
+        titulo={acciones?.name ?? ''}
+        descripcion="Qué hacer con este paquete"
+      >
+        {acciones && (
+          <ul className="flex flex-col gap-1 pb-2">
+            <FilaAccion
+              Icono={acciones.isActive ? EyeOff : Eye}
+              etiqueta={`${acciones.isActive ? 'Ocultar' : 'Mostrar'} ${acciones.name}`}
+              onClick={() => {
+                alternarActivo(acciones);
+                setAcciones(null);
+              }}
+            />
+            <FilaAccion
+              Icono={Pencil}
+              etiqueta="Editar"
+              onClick={() => {
+                setEditando(acciones);
+                setAcciones(null);
+              }}
+            />
+            <FilaAccion
+              Icono={Trash2}
+              peligro
+              etiqueta="Borrar"
+              onClick={() => {
+                pedirBorrado(acciones);
+                setAcciones(null);
+              }}
+            />
+          </ul>
+        )}
+      </Hoja>
 
       <Hoja
         abierta={ocultando !== null}
@@ -308,5 +410,69 @@ export function SkeletonPaquetes() {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Fila de la hoja de acciones. 44px, icono a la izquierda y texto completo. */
+function FilaAccion({
+  Icono,
+  etiqueta,
+  onClick,
+  peligro,
+}: {
+  Icono: typeof Star;
+  etiqueta: string;
+  onClick: () => void;
+  peligro?: boolean;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          'hover:bg-card-hover rounded-control flex min-h-12 w-full items-center gap-3 px-3 text-left transition-colors duration-150',
+          peligro ? 'text-danger' : 'text-bone',
+        )}
+      >
+        <Icono
+          className={cn('size-4 shrink-0', peligro ? 'text-danger' : 'text-brass')}
+          aria-hidden
+        />
+        {etiqueta}
+      </button>
+    </li>
+  );
+}
+
+/**
+ * El único dato de negocio de esta pantalla: si un paquete no recibe clics, o no
+ * se ve o el precio asusta. Se dice sin ventana temporal porque
+ * `whatsappClickCount` es el acumulado DESDE SIEMPRE — poner «últimos 30 días»
+ * sería inventarse un dato que la API no da.
+ *
+ * Solo aparece cuando hay señal de verdad: al menos diez clics repartidos y un
+ * paquete por debajo de un tercio del mejor. Con menos, la diferencia es ruido y
+ * un aviso permanente enseña a ignorarlo.
+ */
+function Comparativa({ paquetes }: { paquetes: AdminPackageDto[] }) {
+  const activos = paquetes.filter((p) => p.isActive);
+  if (activos.length < 2) return null;
+
+  const total = activos.reduce((n, p) => n + p.whatsappClickCount, 0);
+  if (total < 10) return null;
+
+  const mejor = activos.reduce((a, b) => (b.whatsappClickCount > a.whatsappClickCount ? b : a));
+  const peor = activos.reduce((a, b) => (b.whatsappClickCount < a.whatsappClickCount ? b : a));
+  if (peor.id === mejor.id || peor.whatsappClickCount > mejor.whatsappClickCount / 3) return null;
+
+  return (
+    <p className="border-line bg-card text-ash rounded-card flex items-start gap-2.5 border p-3 text-sm">
+      <Info className="text-muted mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>
+        El {peor.name} lleva {peor.whatsappClickCount} clics contra {mejor.whatsappClickCount} del{' '}
+        {mejor.name}. O no se ve, o el precio asusta.
+      </span>
+    </p>
   );
 }

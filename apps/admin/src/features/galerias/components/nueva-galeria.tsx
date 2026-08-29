@@ -77,7 +77,7 @@ export function NuevaGaleria({ abierta, onCerrar }: { abierta: boolean; onCerrar
               onChange={(e) => setTitle(e.target.value)}
               placeholder="XV de Camila"
               autoFocus
-              className="campo bg-well border-line"
+              className="campo border-line"
             />
             <p className="text-muted text-xs">
               El que uses para reconocerlo. Se puede cambiar luego; el enlace no.
@@ -97,7 +97,7 @@ export function NuevaGaleria({ abierta, onCerrar }: { abierta: boolean; onCerrar
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="bg-chrome border-line sticky bottom-0 -mx-4 -mb-[calc(1.5rem+env(safe-area-inset-bottom))] flex gap-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Boton className="flex-1" onClick={onCerrar}>
               Cancelar
             </Boton>

@@ -96,7 +96,7 @@ export function HojaCategoria({
             },
           })}
           aria-invalid={Boolean(errores.name)}
-          className="campo bg-well border-line"
+          className="campo border-line"
         />
         {errores.name && (
           <p role="alert" className="text-danger text-sm">
@@ -128,7 +128,7 @@ export function HojaCategoria({
               id="slug"
               {...register('slug')}
               aria-invalid={Boolean(errores.slug)}
-              className="campo bg-well border-line"
+              className="campo border-line"
             />
             {/* El aviso, no un tooltip: cambiarlo rompe cada enlace que James
                 ya compartió, y no hay forma de enterarse después. */}
@@ -148,7 +148,7 @@ export function HojaCategoria({
         <label htmlFor="tagline" className="text-muted text-xs">
           Frase corta
         </label>
-        <input id="tagline" {...register('tagline')} className="campo bg-well border-line" />
+        <input id="tagline" {...register('tagline')} className="campo border-line" />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -159,7 +159,7 @@ export function HojaCategoria({
           id="description"
           rows={3}
           {...register('description')}
-          className="campo bg-well border-line min-h-0 px-2.5 py-2"
+          className="campo border-line min-h-0 px-2.5 py-2"
         />
       </div>
 
@@ -172,18 +172,14 @@ export function HojaCategoria({
         ayuda="Se usa en la landing como cabecera de la categoría."
       />
 
-      <details className="campo bg-well border-line min-h-0 px-2.5 py-2">
+      <details className="campo border-line min-h-0 px-2.5 py-2">
         <summary className="cursor-pointer text-sm font-medium">SEO</summary>
         <div className="mt-3 flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="metaTitle" className="text-sm">
               Título en Google
             </label>
-            <input
-              id="metaTitle"
-              {...register('metaTitle')}
-              className="campo bg-well border-line"
-            />
+            <input id="metaTitle" {...register('metaTitle')} className="campo border-line" />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="metaDescription" className="text-sm">
@@ -193,13 +189,15 @@ export function HojaCategoria({
               id="metaDescription"
               rows={2}
               {...register('metaDescription')}
-              className="campo bg-well border-line min-h-0 px-2.5 py-2"
+              className="campo border-line min-h-0 px-2.5 py-2"
             />
           </div>
         </div>
       </details>
 
-      <div className="flex gap-2">
+      {/* Pegado abajo, como la cabecera arriba: con un formulario largo,
+          Guardar quedaba a un scroll entero de distancia. */}
+      <div className="bg-chrome border-line sticky bottom-0 -mx-4 -mb-[calc(1.5rem+env(safe-area-inset-bottom))] flex gap-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <button type="button" onClick={onCerrar} className={clasesBoton('secundario', 'flex-1')}>
           Cancelar
         </button>

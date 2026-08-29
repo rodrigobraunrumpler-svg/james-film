@@ -69,7 +69,10 @@ test.describe('responsive', () => {
     await expect(page.getByRole('heading', { name: 'Paquetes', level: 1 })).toBeVisible();
 
     // §7: los datos que escribe el usuario no pueden romper el layout.
-    await page.getByRole('button', { name: 'Editar' }).first().click();
+    // Editar vive en el menú de la tarjeta desde que las acciones dejaron de
+    // ocupar media altura compitiendo con el precio.
+    await page.getByRole('button', { name: /^Acciones de / }).first().click();
+    await page.getByRole('button', { name: 'Editar' }).click();
     await page.getByLabel('Nombre').fill('X'.repeat(60));
     expect(await desbordaHorizontal(page)).toBe(false);
   });
