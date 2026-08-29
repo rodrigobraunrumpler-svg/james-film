@@ -36,6 +36,10 @@ Todo lo de `CLAUDE.md` y de la fase 3 sigue vigente. Lo específico de esta fase
   type="number">` en soles para editar, y la conversión en un solo sitio.
 - **Ningún borrado duro sin mirar qué apunta al registro.** Ver Task 0 · D4.
 - **Tablas → tarjetas apiladas bajo `md`.** Sin TanStack Table (§7 obliga a las tarjetas igual).
+- 🔶 **Sin paginación en las cuatro pantallas.** Son 4 categorías, 3 paquetes, 1 ajuste y unas
+  decenas de testimonios. **Paginar y reordenar son incompatibles** por el mismo motivo que el
+  filtro: reordenar una página manda un subconjunto. Si algún día testimonios crece de verdad,
+  el reorden pasa a *mover arriba / abajo* con un endpoint de intercambio, no a mandar la lista.
 - **Toda mutación de esta fase es un "cambio sin publicar".** El `TriggerDeployInterceptor` es de
   la fase 6, pero los endpoints se escriben ya sabiendo que van a llevarlo.
 
@@ -171,6 +175,10 @@ cerrada de ~15**. La lista tiene que existir en tres sitios: la API (para valida
       visible en la web, y ahí sí se ve. **Duplicar quince cadenas es más barato que un paquete
       runtime nuevo**, que obligaría a las tres apps a transpilarlo.
 - [ ] Fallback `?? 'link'` en los tres consumidores.
+- [ ] 🔶 **En el admin, un mapa estático de componentes, no un import dinámico.**
+      `lucide-react` resuelto por nombre en runtime obliga a meter el paquete entero en el
+      bundle o a hacerlo `lazy`. Quince `import` estáticos dentro de un objeto pesan menos **y
+      hacen imposible renderizar un nombre inválido**: si no está en el mapa, sale el fallback.
 
 ### D4 · Qué pasa al borrar
 
@@ -231,6 +239,51 @@ fiar.
 - [ ] En el admin, la cadena vacía se manda como `null`, no se omite. Helper compartido, porque
       son cuatro formularios y el que se olvide no dará error.
 
+### 1A bis · El seed sobrescribe lo que escriba James 🔴🔴 el peor de la revisión
+
+Verificado línea a línea en `prisma/seed.ts`:
+
+```ts
+await prisma.category.upsert({ where: { slug: c.slug }, update: c,       create: c });
+await prisma.package.upsert ({ where: { slug },          update: datos,  create: datos });
+await prisma.differentiator.upsert({ where: { title },   update: d,      create: d });
+await prisma.socialLink.upsert    ({ where: { platform },update: r,      create: r });
+await prisma.siteSettings.upsert  ({ where: { id },      update: AJUSTES, ... });
+
+await prisma.packageItem.deleteMany({ where: { packageId } });   // ← y recrea los 16
+```
+
+`update` lleva el **objeto entero**. Y `CLAUDE.md` dice que el seed *«se ejecuta en local, en
+cada branch de CI **y en producción**»*.
+
+**Lo que eso significa en cuanto exista la fase 4:** James cambia el precio del paquete Pro,
+corrige su handle de Instagram y reescribe su `aboutText`. El siguiente despliegue que corra el
+seed **lo devuelve todo a los valores del flyer**, incluido el número de WhatsApp. Sin error, sin
+log, sin nada que lo relacione con el deploy.
+
+Lo llamativo es que el razonamiento correcto **ya está escrito** en el mismo fichero, tres
+líneas más abajo, para el usuario:
+
+```ts
+await prisma.user.upsert({ where: { email }, update: {}, ... });
+// `update: {}` a propósito: si ya existe NO se le pisa la contraseña con la del entorno.
+// El seed no debe poder degradar una credencial real.
+```
+
+Es exactamente el mismo principio, aplicado a la credencial y no al contenido.
+
+- [ ] **`update: {}` en las cinco entidades de contenido.** El trabajo del seed es **crear** el
+      estado inicial, no mantenerlo sincronizado. A partir de la fase 4, la fuente de verdad del
+      contenido es el admin.
+- [ ] **Los bullets solo se crean si el paquete se acaba de crear.** El `deleteMany` +
+      `createMany` incondicional borra los que James haya editado. Se comprueba si ya tiene
+      items y, si los tiene, no se toca.
+- [ ] **`SEED_RESET=true`** para el caso local de «devuélvemelo al estado del flyer». Explícito,
+      opt-in, y **nunca** en el comando de producción.
+- [ ] Test: sembrar, cambiar un precio y un handle a mano, **volver a sembrar**, y comprobar que
+      siguen cambiados. Es la única forma de que esto no vuelva.
+- [ ] Regla en `CLAUDE.md`, porque hoy dice lo contrario de lo que debe hacer.
+
 ### 1B · `@AdminController`, el decorador que §5 pide y que no existe 🔴
 
 - [ ] Verificado: **no existe.** `CLAUDE.md` lo da por hecho («`@AdminController('path')` =
@@ -287,6 +340,11 @@ filas fijas (Bodas, XV Años, Cumpleaños, Eventos), así que **no hay paginaci�
 - [ ] **Step 2: el borrado cuenta primero** (D4). El servicio cuenta galerías y lanza un 409 con
       `code: 'CATEGORY_IN_USE'` y el número en el mensaje. **No se deja caer en el P2003**: el
       mensaje de Prisma no dice cuántas son, y ese número es justo lo accionable.
+  - [ ] 🔶 **`CATEGORY_IN_USE` no está en la unión `ErrorCode`** (`CONSENT_REQUIRED` sí — la fase
+        2 lo anticipó). Añadir un código toca **tres sitios**: la unión en `packages/contracts`,
+        el `Record<ErrorCode, true>` de `envelope.entities.ts` —que no compila si se
+        desincroniza— y el decorador `ApiErrors`. Es fácil descubrirlo tarde y a mitad de otra
+        cosa.
 - [ ] 🔶 **El conteo también mira los paquetes.** `PackageCategory` es **Cascade**, no Restrict:
       borrar una categoría **desvincula los paquetes en silencio** sin que Postgres se queje. El
       aviso los nombra: «4 galerías y 2 paquetes usan esta categoría».
@@ -311,8 +369,12 @@ Tres paquetes, dieciséis bullets, un destacado. Es donde está el precio, o sea
   - `PATCH /admin/packages/reorder`
   - `priceAmount` validado como entero ≥ 0 (céntimos), `currency` con defecto `PEN`
   - `icon` con `@IsIn(ICONOS)` (D3)
-  - `slug` con `SlugService` al crear, **sin regenerar al renombrar** (mismo motivo que las
-    galerías: la landing enlaza a `#paquete-basico` y James comparte esos enlaces)
+  - `slug` con `SlugService` al crear, **sin regenerar al renombrar**
+    - [ ] 🔶 **Autocorrección de la segunda pasada:** escribí que «la landing enlaza a
+          `#paquete-basico` y James comparte esos enlaces». **Eso no está en ningún sitio** — la
+          landing no existe todavía y lo di por hecho. Lo cierto es solo esto: `Package.slug` es
+          `@unique`, se genera al crear y no se regenera, **por la misma regla general que las
+          galerías**. Para qué lo usa la web lo decide la fase 5.
 - [ ] **Step 2: los bullets, en una sola llamada con el paquete.** 🔴 Decisión:
       `PATCH /admin/packages/:id` acepta `items: [{ id?, text, included }]` **completo y en
       orden**, y el servicio hace en UNA transacción: `upsert` de los que traen `id`, `create`
@@ -416,6 +478,12 @@ real a James.** Hay menores en los XV años.
       **deshabilitado** mientras `hasConsent` sea false, con el motivo escrito al lado — no un
       tooltip. Y marcar el consentimiento pide una confirmación explícita que diga **qué se está
       afirmando**: que la clienta dio permiso para publicar su nombre, su foto y su mensaje.
+- [ ] 🔶 **Step 3 bis: con filtro activo, el reorden se DESHABILITA.** `ReorderService` numera
+      `0..n-1` **solo los ids que recibe** y no toca al resto. Si la lista está filtrada por
+      estado —que es justo lo que pide el Step 4— reordenar mandaría un subconjunto y los que no
+      se ven conservarían órdenes que ahora colisionan: la lista pública saldría barajada sin
+      que nadie lo haya pedido y sin ningún error. El botón sale deshabilitado con el motivo
+      escrito («quita el filtro para reordenar»), no oculto.
 - [ ] **Step 4: pantalla.** Lista con el estado bien visible (Borrador / Publicado / **Sin
       consentimiento**), filtro por estado en la URL con `nuqs`, y hoja de edición con: formato
       (texto o captura), fuente, nombre, handle, avatar, tipo y fecha de evento, cita,
@@ -484,6 +552,18 @@ WhatsApp: **el campo más importante de todo el producto.**
       editable; si al guardar los dígitos no coinciden, se avisa. Sin bloquear: puede haber un
       motivo, pero no puede pasar sin que nadie lo vea.
 
+- [ ] 🔶 **Step 6 sexies: una pestaña vieja pisa lo que se hizo desde el móvil.**
+      `refetchOnWindowFocus: false` se decidió en la fase 3 para no gastarle datos a James en el
+      móvil, y está bien. La consecuencia es que **el admin abierto en el portátil desde ayer
+      tiene datos de ayer**, y un `PATCH` parcial los escribe encima de lo que él acaba de
+      cambiar desde el teléfono.
+
+      No hace falta versionado general para un usuario, pero **Configuración es el peor sitio
+      para perder un cambio**: un solo registro, veinte campos y el número de WhatsApp.
+      **Recomendación: `staleTime: 0` solo en esta consulta**, para que abrir la pantalla
+      siempre relea. Si más adelante duele, `updatedAt` como testigo en el `PATCH` del singleton
+      —412 si no coincide— es media hora de trabajo y no toca el schema.
+
 - [ ] **Step 7: autoguardado no.** Configuración se guarda con un botón explícito por pestaña.
       El autoguardado de la fase 3 tiene sentido sobre un borrador; aquí **cada campo está en
       vivo en la web**, y guardar a los dos segundos de escribir medio número de teléfono es
@@ -528,6 +608,11 @@ borrado + toggle de activo.
       lo de `/admin`.
 - [ ] **Step 2 bis: el snapshot pasa de 2 rutas a ~6, y el diff se revisa a mano** antes de
       commitearlo. Que el CI falle aquí es lo correcto: es la frontera con la landing.
+- [ ] 🔶 **Step 2 quinquies: faltan ~7 clases de entidad de Swagger.** Hoy solo existe
+      `galleries.entities.ts`. Cada DTO público nuevo (`CategoryDto`, `PackageDto`,
+      `PackageItemDto`, `TestimonialDto`, `SiteSettingsDto`, `DifferentiatorDto`,
+      `SocialLinkDto`) necesita su clase con `implements`: es lo que hace que el contrato sea
+      **tipado** y que el snapshot signifique algo. Sin ellas el documento sale con `data: {}`.
 - [ ] 🔶 **Step 2 ter: `@SkipThrottle()` en los cuatro controllers públicos nuevos.** El build
       de Astro va a pedir `/categories`, `/packages`, `/testimonials` y `/settings` además de
       las galerías, todo desde una IP y en segundos. El throttler global es de 120/min: hoy
@@ -625,6 +710,30 @@ va a pedirlos todos desde una IP), y **`motion` no se estrena** «porque ya est�
 se hagan: 1A se paga en cuatro pantallas con datos que se pierden en silencio, y 1B en siete
 controllers a migrar en vez de tres.
 
+## Tercera pasada — robustez
+
+Nueve más. El primero es el peor de las tres pasadas y **no es de esta fase**: ya está en el
+repo.
+
+| # | Hallazgo | Verificado | Dónde |
+|---|---|---|---|
+| 20 🔴🔴 | **El seed sobrescribe lo que escriba James.** `update` lleva el objeto entero en las cinco entidades de contenido, y los 16 bullets se borran y recrean. `CLAUDE.md` dice que el seed corre **en producción**: el siguiente deploy devuelve precios, redes, `aboutText` y **el número de WhatsApp** a los valores del flyer. Sin error y sin log | `seed.ts` líneas 135-174 | Task 1A bis |
+| 21 🔴 | **El backup deja de ser «antes de datos reales» y pasa a ser AHORA.** La fase 4 *es* el momento en que entran los datos reales. Con el hallazgo 20 al lado, un `pg_dump` sin restaurar nunca no es un backup | pendientes de `CLAUDE.md` | prerequisito |
+| 22 | **Reordenar con un filtro activo produce basura.** `ReorderService` numera solo los ids que recibe; el filtro por estado de testimonios —que pide mi propio plan— manda un subconjunto y los invisibles quedan con órdenes que colisionan | `reorder.service.ts` | Task 4 |
+| 23 | **Una pestaña vieja pisa lo hecho desde el móvil.** `refetchOnWindowFocus: false` es correcto para los datos de James, pero Configuración es el peor sitio para perder un cambio | `lib/query/cliente.ts` | Task 5 |
+| 24 | `CATEGORY_IN_USE` no está en la unión `ErrorCode`; añadirlo toca tres ficheros | `contracts` + `envelope.entities.ts` | Task 2 |
+| 25 | **Faltan ~7 clases de entidad de Swagger.** Sin ellas el contrato público sale con `data: {}` y el snapshot no significa nada | solo existe `galleries.entities.ts` | Task 7 |
+| 26 | Los íconos, con **mapa estático**: resolver `lucide-react` por nombre en runtime mete el paquete entero en el bundle | — | Task 0 · D3 |
+| 27 | **Paginar y reordenar son incompatibles**, por el mismo motivo que el filtro. Sin paginación en las cuatro pantallas | — | Constraints |
+| 28 | **Autocorrección:** en la segunda pasada escribí que la landing enlaza a `#paquete-basico`. **Me lo inventé** — la landing no existe. El slug se justifica por la regla general, no por un uso que nadie ha definido | — | Task 3 |
+
+**Lo que hay que hacer antes de darle el admin a James**, y no al cerrar la fase:
+
+1. Arreglar el seed (20). Es media hora y evita el único fallo de esta fase capaz de destruir
+   trabajo suyo.
+2. El cron de `pg_dump` a R2 **restaurado una vez** a una branch de Neon (21). `CLAUDE.md` ya lo
+   pedía «antes de datos reales»; esta es esa fase.
+
 ## Decisiones de Javier (cerradas)
 
 | # | Pregunta | Respuesta | Qué cambia en el plan |
@@ -645,4 +754,6 @@ controllers a migrar en vez de tres.
 | Un campo opcional no se puede vaciar | **ninguna**: la interfaz dice «Guardado» | Task 1A: la regla, el helper y un test por modelo que vacíe todos sus opcionales |
 | La fase 6 se olvida el interceptor en algún controller | «0 cambios sin publicar» tras editar precios | Task 1B: `@AdminController`, un fichero en vez de siete |
 | El display del WhatsApp diverge del número | ninguna hasta que un cliente marca y no es | se propone derivado y se avisa si los dígitos no cuadran |
+| Un deploy resetea el contenido de James | **ninguna**: nada falla, los valores vuelven al flyer | Task 1A bis: `update: {}` y un test que siembre dos veces |
+| Reordenar con filtro deja la lista pública barajada | ninguna: no hay error | el reorden se deshabilita con filtro activo, con el motivo escrito |
 | El logo SVG se sube normalizado y sale rasterizado | «se ve borroso en pantallas grandes», y nadie lo ata a la subida | `CampoImagen` salta la normalización para `image/svg+xml`, con test |
