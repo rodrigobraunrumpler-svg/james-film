@@ -573,10 +573,12 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
 
 Planes: [fase 1 — base](docs/plans/2026-08-28-fase-1-base.md) ✅ ·
 [fase 2 — API mínima](docs/plans/2026-08-28-fase-2-api-minima.md) ✅ ·
-[fase 3 — editor de galería](docs/plans/2026-08-28-fase-3-editor-galeria.md) ✅ (código) ·
+[fase 3 — editor de galería](docs/plans/2026-08-28-fase-3-editor-galeria.md) ✅ código
+([revisión](docs/plans/2026-08-28-fase-3-revision.md)) ·
 [fase 4 — resto del admin](docs/plans/2026-08-28-fase-4-resto-del-admin.md)
-([informe de revisión](docs/plans/2026-08-28-fase-3-revision.md)) ·
-**pendiente el [checklist del iPhone](docs/checklist-iphone.md)**, que es la fase 3.5
+
+**Pendiente la fase 3.5**: el [checklist del iPhone](docs/checklist-iphone.md), que decide
+multipart, si faststart bloquea o solo avisa, y el suelo de iOS. No bloquea la fase 4.
 
 | # | Fase | Duración |
 |---|---|---|
