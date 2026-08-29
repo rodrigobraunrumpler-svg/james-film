@@ -7,6 +7,7 @@ import type {
   GalleryListItemDto,
 } from '@james-film/contracts';
 import type { ListaPaginada } from '../../common/interceptors/response-envelope.interceptor.js';
+import { fechaDeCalendario } from '../../common/opcional.js';
 import { paginar } from '../../common/pagination.js';
 import { ExclusiveFlagService } from '../../common/services/exclusive-flag.service.js';
 import { ReorderService } from '../../common/services/reorder.service.js';
@@ -24,13 +25,6 @@ import {
   mapGaleriaAdmin,
   mapGaleriaListaAdmin,
 } from './galleries.mapper.js';
-
-/**
- * `YYYY-MM-DD` → medianoche UTC, que es lo que @db.Date guarda sin desfase.
- * Distingue los tres casos que el editor necesita: sin cambio, borrar, y fijar.
- */
-const fechaDeCalendario = (v: string | null | undefined): Date | null | undefined =>
-  v === undefined || v === null ? (v as null | undefined) : new Date(v);
 
 /** Lo que la landing puede ver: publicada, no borrada. */
 const VISIBLE = { isPublished: true, deletedAt: null } as const;

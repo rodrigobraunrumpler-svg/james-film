@@ -427,3 +427,48 @@ describe('isPublished: lo ve el admin, no la landing', () => {
     await http().get(`/galleries/${g.slug}`).expect(404);
   });
 });
+
+/**
+ * La plantilla que replica cada modelo de la fase 4: se vacían TODOS sus campos
+ * opcionales de una vez. Un test por modelo, no uno por campo — es barato de
+ * escribir y encuentra el olvido entero, que es como aparece este fallo.
+ */
+describe('vaciar TODOS los opcionales a la vez', () => {
+  it('los borra todos y no deja ninguno con el valor anterior', async () => {
+    const g = await crear({
+      title: 'Con todo relleno',
+      description: 'una descripción',
+      eventDate: '2026-03-15',
+      location: 'Ayacucho',
+    });
+
+    const { body } = await http()
+      .patch(`/admin/galleries/${g.id}`)
+      .set(auth())
+      .send({ description: null, eventDate: null, location: null })
+      .expect(200);
+
+    // Se comprueba el conjunto, no campo a campo: si mañana se añade un
+    // opcional nuevo y se olvida, este test no lo ve — pero el de su modelo sí.
+    expect({
+      description: body.data.description,
+      eventDate: body.data.eventDate,
+      location: body.data.location,
+    }).toEqual({ description: null, eventDate: null, location: null });
+
+    // Y sobrevive a la relectura: el fallo original devolvía bien el PATCH y
+    // reaparecía el valor viejo al volver a pedir la galería.
+    const relectura = await http().get(`/admin/galleries/${g.id}`).set(auth()).expect(200);
+    expect(relectura.body.data.eventDate).toBeNull();
+  });
+
+  it('un PATCH que no menciona un campo NO lo toca', async () => {
+    const g = await crear({ title: 'Intacto', description: 'no me toques', location: 'Ayacucho' });
+
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ title: 'Otro' }).expect(200);
+
+    const { body } = await http().get(`/admin/galleries/${g.id}`).set(auth()).expect(200);
+    expect(body.data.description).toBe('no me toques');
+    expect(body.data.location).toBe('Ayacucho');
+  });
+});

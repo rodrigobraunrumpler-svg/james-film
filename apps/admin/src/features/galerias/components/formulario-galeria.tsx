@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { AdminGalleryDto, CategoryRefDto } from '@james-film/contracts';
 import { useForm, type Path } from 'react-hook-form';
 import { esApiError } from '@/lib/api/errors';
+import { limpiar } from '@/lib/forms/limpiar';
 import { useAutoguardado } from '../hooks/use-autoguardado';
 import { useActualizarGaleria } from '../hooks/use-galeria';
 import { esquemaGaleria, type DatosFormularioGaleria } from '../schemas/galeria-schema';
@@ -20,15 +21,22 @@ const valoresDe = (g: AdminGalleryDto): DatosFormularioGaleria => ({
 });
 
 /**
- * La cadena vacía se manda como `null`, no se omite: omitirla dejaría el valor
- * viejo en la base y James no podría BORRAR una descripción, solo cambiarla.
+ * `limpiar` compartido: la cadena vacía se manda como `null`, no se omite.
+ * Omitirla dejaría el valor viejo en la base y James no podría BORRAR una
+ * descripción, solo cambiarla. Vive en `lib/forms` porque son cuatro pantallas
+ * y el formulario que se olvide no dará ningún error.
  */
 const aPayload = (d: DatosFormularioGaleria): DatosGaleria => ({
+  // Por `limpiar` pasan SOLO los que admiten null. Si pasara el título, un
+  // formulario vacío mandaría `title: null` y el tipo diría `string`: el cast
+  // que hiciera falta para compilar taparía justo lo que esta tarea arregla.
+  ...limpiar({
+    description: d.description,
+    eventDate: d.eventDate,
+    location: d.location,
+  }),
   title: d.title.trim(),
-  description: d.description?.trim() || null,
   categoryId: d.categoryId,
-  eventDate: d.eventDate || null,
-  location: d.location?.trim() || null,
 });
 
 export function FormularioGaleria({
