@@ -69,22 +69,50 @@ Ninguno es una fila `Media`: son claves sueltas sobre otros modelos. Meterlos en
 darles galería, orden, estado y portada que no tienen.
 
 - [ ] **Decisión: un endpoint genérico `POST /admin/uploads/presign`.** Recibe
-      `{ mimeType, sizeBytes, prefijo }`, devuelve `{ key, uploadUrl }` y **no escribe en la
+      `{ proposito, mimeType, sizeBytes }`, devuelve `{ key, uploadUrl }` y **no escribe en la
       base**. La clave se guarda cuando el `PATCH` de la entidad la incluye.
 
-  **Lo que esto rompe y hay que resolver en el mismo Task:** si James sube una imagen y luego
-  cierra sin guardar, el objeto queda en R2 **sin que ninguna fila lo referencie**. El cron
-  diario de la fase 6 sabe limpiar `Media` con `deletedAt` y `PENDING` huérfanos, pero no sabe
-  nada de esto.
+  **`proposito` es una lista cerrada, y el SERVIDOR decide el prefijo.** No se acepta una cadena
+  de prefijo del cliente: sería dejarle elegir dónde escribe dentro del bucket.
 
-  - [ ] Prefijo propio **`uploads/`** para todo lo de este endpoint.
-  - [ ] Regla escrita en `CLAUDE.md` para el cron: **objeto bajo `uploads/` con más de 24 h y
-        que no aparezca en ninguna de las nueve columnas `*Key` → se borra.** Se escribe ahora,
-        aunque el cron se construya en la fase 6, o para entonces nadie recordará que existe
-        esta categoría de huérfano.
-  - [ ] `signableHeaders` obligatorio, igual que en el presign de media. Sin él, alguien con la
-        URL sube `text/html` bajo una clave `.jpg` y el CDN lo sirve — XSS almacenado.
-  - [ ] Límite de tamaño por tipo, reusando `MAX_IMAGE_MB`.
+  | `proposito` | Prefijo | Tipos | Techo |
+  |---|---|---|---|
+  | `PORTADA_CATEGORIA`, `IMAGEN_PAQUETE` | `covers/` | jpeg, png, webp | `MAX_IMAGE_MB` |
+  | `AVATAR_TESTIMONIO` | `avatars/` | jpeg, png, webp | `MAX_IMAGE_MB` |
+  | `CAPTURA_TESTIMONIO` | `screenshots/` | jpeg, png, webp | `MAX_IMAGE_MB` |
+  | `LOGO`, `FIRMA` | `brand/` | jpeg, png, **svg** | 1 MB |
+  | `OG` | `og/` | jpeg, png | `MAX_IMAGE_MB` |
+  | `HERO_VIDEO` | `videos/` | mp4 | **1.5 MB** (§4) |
+  | `HERO_POSTER` | `posters/` | jpeg | `MAX_IMAGE_MB` |
+
+- [ ] 🔶 **Corrección a `CLAUDE.md`: la lista de prefijos se queda corta.** Hoy documenta
+      `videos/ photos/ posters/ screenshots/ og/ backups/`, y de las nueve claves nuevas solo dos
+      tienen sitio. **Se añaden `covers/`, `avatars/` y `brand/`** a esa lista en el mismo commit
+      que el endpoint, o el próximo que la lea creerá que está completa.
+
+- [ ] 🔶 **El SVG del logo y la firma es la única entrada de SVG del proyecto.** Un SVG es un
+      documento ejecutable: si el CDN lo sirve como `image/svg+xml`, un `<script>` dentro corre
+      con el origen del que lo sirve. Solo lo sube James, pero el fallo no depende de quién sube
+      sino de qué se sirve. **Decisión: se acepta**, y queda como requisito escrito para el
+      `_headers` de la fase 6, no como recordatorio.
+
+**Los huérfanos, y hay que resolverlos en este mismo Task.** Si James sube una imagen y cierra
+sin guardar, el objeto queda en R2 **sin que ninguna fila lo referencie**. El cron diario de la
+fase 6 sabe limpiar `Media` con `deletedAt` y `PENDING` huérfanos; de esto no sabe nada.
+
+- [ ] Regla escrita en `CLAUDE.md` para el cron: **un objeto bajo `covers/`, `avatars/`,
+      `brand/` o `og/` con más de 24 h que no aparezca en ninguna de las nueve columnas `*Key`
+      se borra.** Se escribe ahora, aunque el cron sea de la fase 6, o para entonces nadie
+      recordará que existe esta categoría de huérfano.
+- [ ] 🔶 **`videos/` y `posters/` quedan FUERA de ese barrido.** Ahí viven los reels, cuyas
+      claves están en `Media`, y un barrido que se equivoque al leer referencias borraría el
+      trabajo de James. El hero es la excepción: su clave vive en `SiteSettings`, así que el
+      barrido de `videos/` tendría que mirar en dos sitios. **No merece el riesgo por un
+      archivo**: el hero anterior se queda en el bucket y se borra a mano si algún día molesta.
+- [ ] `signableHeaders` obligatorio, igual que en el presign de media. Sin él, alguien con la
+      URL sube `text/html` bajo una clave `.jpg` y el CDN lo sirve — XSS almacenado.
+- [ ] Límite por `proposito`, según la tabla de arriba. **No un único `MAX_IMAGE_MB`**: el hero
+      es un vídeo, y con el techo de las imágenes colarían 15 MB de autoplay en la portada.
 
 - [ ] **Alternativa descartada:** un presign por entidad
       (`POST /admin/categories/:id/cover/presign`). Serían **siete endpoints casi idénticos**, y
@@ -118,8 +146,12 @@ cerrada de ~15**. La lista tiene que existir en tres sitios: la API (para valida
 - [ ] **Decisión: la lista canónica vive en la API**, en `src/modules/settings/iconos.ts`, y se
       valida con `@IsIn(ICONOS)`. La API tiene que validar sí o sí — `whitelist` es seguridad,
       no limpieza — así que ahí no es una copia, es la fuente.
-- [ ] El admin la pide a **`GET /icons`** (público, `@SkipThrottle`, `staleTime: Infinity`). Son
-      quince cadenas que cambian una vez al año: una petición al abrir la pantalla.
+- [ ] El admin la pide a **`GET /admin/icons`** (con guard, `staleTime: Infinity`). Son quince
+      cadenas que cambian una vez al año: una petición al abrir la pantalla.
+
+  🔶 **Admin, no público, y no es cosmético:** el contrato público está congelado en CI y lo
+  consume Astro. Una ruta pública que solo usa el admin lo movería sin que nadie en la landing
+  la llegue a pedir jamás.
 - [ ] `apps/web` la escribe en su `copy.ts`. Es build time: un nombre inválido deja un hueco
       visible en la web, y ahí sí se ve. **Duplicar quince cadenas es más barato que un paquete
       runtime nuevo**, que obligaría a las tres apps a transpilarlo.
@@ -179,6 +211,13 @@ filas fijas (Bodas, XV Años, Cumpleaños, Eventos), así que **no hay paginaci�
   - `GET /categories` público, filtrando `isActive` y ordenado, con `@SkipThrottle`
   - `GET /admin/categories`, `POST`, `PATCH /:id`, `DELETE /:id`
   - `PATCH /admin/categories/reorder` con `ReorderService`
+  - [ ] 🔶 **Trampa de orden de rutas, ya nos pasó en la fase 3.** `PATCH /admin/categories/:id`
+        captura `/reorder` si se declara antes. En la fase 3 el reorden colgaba de
+        `/galleries/:id/media/reorder` y por eso no chocaba; estas colecciones son de primer
+        nivel y sí. La ruta literal va **declarada antes** que la paramétrica, **y con un test
+        que pida `/reorder` y espere 200** — el orden de los métodos es exactamente el tipo de
+        detalle que alguien rompe reordenando el fichero, y sin test el síntoma sería un 404
+        con aspecto de "el id no existe". Aplica igual a paquetes y testimonios.
   - Slug con `SlugService` al crear, **no se regenera al renombrar** (los enlaces de James)
   - `exists()` normal, sin `deletedAt`: `Category` no tiene soft delete
 - [ ] **Step 2: el borrado cuenta primero** (D4). El servicio cuenta galerías y lanza un 409 con
@@ -205,6 +244,8 @@ Tres paquetes, dieciséis bullets, un destacado. Es donde está el precio, o sea
   - `PATCH /admin/packages/reorder`
   - `priceAmount` validado como entero ≥ 0 (céntimos), `currency` con defecto `PEN`
   - `icon` con `@IsIn(ICONOS)` (D3)
+  - `slug` con `SlugService` al crear, **sin regenerar al renombrar** (mismo motivo que las
+    galerías: la landing enlaza a `#paquete-basico` y James comparte esos enlaces)
 - [ ] **Step 2: los bullets, en una sola llamada con el paquete.** 🔴 Decisión:
       `PATCH /admin/packages/:id` acepta `items: [{ id?, text, included }]` **completo y en
       orden**, y el servicio hace en UNA transacción: `upsert` de los que traen `id`, `create`
@@ -217,6 +258,11 @@ Tres paquetes, dieciséis bullets, un destacado. Es donde está el precio, o sea
   **Por qué se conservan los ids** (y no delete+recreate como el seed): son la clave de React de
   cada fila. Recrearlos remonta la lista entera en cada guardado y el foco salta del campo que
   se está escribiendo.
+
+  - [ ] 🔶 **Los ids recibidos se comprueban contra el paquete ANTES de escribir.** Un `id` de
+        un bullet de otro paquete pasaría el `upsert` y **movería el bullet de sitio**. No hay
+        índice único `(id, packageId)` que lo impida, así que se valida en el servicio: los ids
+        que llegan tienen que pertenecer a `:id`, y si no, 400. Con test.
 
 - [ ] **Step 3: el vínculo con categorías.** `PackageCategory` es un pivote sin campos propios:
       el `PATCH` acepta `categoryIds: string[]` y el servicio hace `deleteMany` + `createMany`
@@ -244,9 +290,17 @@ real a James.** Hay menores en los XV años.
 - [ ] **Step 1: API — `TestimonialsModule`.**
   - Público: filtra `isActive: true` **Y `hasConsent: true`**, y nunca acepta un parámetro que lo
     desactive. Con test.
+  - Orden `[{ order: 'asc' }, { id: 'asc' }]` aunque no haya paginación: `order @default(0)`
+    empata por defecto y sin desempate Postgres puede devolverlos en distinto orden entre dos
+    builds de Astro, moviendo la sección sin que nadie haya tocado nada.
   - `hasConsent` **no sale en el DTO público**: es una condición para publicar, no un dato del
     visitante. Si un testimonio llega al contrato, es que lo tenía.
-  - Admin: CRUD, reorden, `isFeatured` con `ExclusiveFlagService`.
+  - Admin: CRUD y reorden.
+  - [ ] 🔶 **`Testimonial.isFeatured` NO se marca como exclusivo.** Lo di por hecho en el primer
+        borrador y no lo dice nadie: `CLAUDE.md` limita `ExclusiveFlagService` a
+        `Package.isHighlighted`, `Gallery.isFeatured` y `Media.isFeatured`, y el doc no habla de
+        un testimonio destacado. Se deja como booleano simple. **Pregunta abierta para Javier:**
+        ¿la landing enseña un testimonio destacado, o los enseña todos por orden?
 - [ ] **Step 2: la puerta del consentimiento, en el servidor.** 🔴 `PATCH` con
       `isActive: true` sobre una fila con `hasConsent: false` → **422 con
       `code: 'CONSENT_REQUIRED'`**. No es una comprobación de formulario: el admin puede
@@ -298,8 +352,17 @@ WhatsApp: **el campo más importante de todo el producto.**
 - [ ] **Step 5: `aboutText` es Markdown y solo usa negrita.** Un `<textarea>` con una vista
       previa que renderiza **solo** `**negrita**` — no se instala un editor ni un parser de
       Markdown para una sola marca.
+  - [ ] 🔶 **La vista previa NO genera HTML.** Se parte el texto por `**` y se devuelven nodos
+        React (`<strong>` en las posiciones impares). Un regex a `dangerouslySetInnerHTML` es
+        una inyección esperando su turno, y da igual que el texto lo escriba James: el mismo
+        campo se renderiza en la landing en build time.
 - [ ] **Step 6: diferenciadores y redes son listas dentro de la pantalla**, no pantallas propias
       (decisión ya tomada en `CLAUDE.md`, contra §9). Mismo componente de lista ordenable.
+- [ ] 🔶 **Step 6 bis: `Differentiator.title` y `SocialLink.platform` son `@unique`.** Crear un
+      diferenciador con un título repetido, o una segunda entrada de Instagram, revienta con
+      P2002 → 409. El filtro global lo convierte en `CONFLICT` con mensaje genérico, que aquí no
+      dice nada: el mensaje tiene que nombrar el campo («Ya hay un diferenciador con ese
+      título»). Con test, porque es la clase de detalle que se descubre usándolo.
 - [ ] **Step 7: autoguardado no.** Configuración se guarda con un botón explícito por pestaña.
       El autoguardado de la fase 3 tiene sentido sobre un borrador; aquí **cada campo está en
       vivo en la web**, y guardar a los dos segundos de escribir medio número de teléfono es
@@ -333,10 +396,13 @@ borrado + toggle de activo.
 - [ ] **Step 1: cobertura donde importa.** Alta en servicios, baja en controllers (§15). Lo
       irrenunciable: la puerta del consentimiento, el destacado exclusivo, el reorden, el
       redondeo del precio y la validación del número de WhatsApp.
-- [ ] **Step 2: el contrato público NO debe moverse** salvo en lo que esta fase publica a
-      propósito (categorías, paquetes, testimonios y ajustes ya tienen DTO en `contracts`; los
-      endpoints públicos son nuevos). **El snapshot cambia, y el diff se revisa a mano antes de
-      commitearlo.** Es la frontera que consume Astro en la fase 5.
+- [ ] **Step 2: ampliar el documento público a mano.** 🔶 `construirDocPublico` hoy lleva
+      `include: [GalleriesModule]` **escrito a mano**. Los cuatro módulos nuevos NO aparecen
+      solos: hay que añadirlos ahí o los endpoints públicos de esta fase no existirán en el
+      contrato que consume Astro, y la fase 5 no los verá. El `podar()` por ruta sigue quitando
+      lo de `/admin`.
+- [ ] **Step 2 bis: el snapshot pasa de 2 rutas a ~6, y el diff se revisa a mano** antes de
+      commitearlo. Que el CI falle aquí es lo correcto: es la frontera con la landing.
 - [ ] **Step 3: E2E, dos flujos más.** Editar un paquete y ver el precio formateado; intentar
       publicar un testimonio sin consentimiento y que no deje.
 - [ ] **Step 4: responsive.** Extender `responsive.spec.ts` a las cuatro pantallas nuevas: 320
@@ -366,11 +432,41 @@ toda la maquinaria dura ya existe: cliente HTTP, pasarela, sobre tipado, skeleto
 `ReorderService`, `ExclusiveFlagService`, `SlugService`, formato con `Intl` y el patrón de
 reorden optimista. Lo único que se construye de cero es el presign genérico del Task 1.
 
+## Hallazgos de la revisión
+
+Diez, marcados con 🔶 en el cuerpo. **Cuatro eran fallos del primer borrador**, no mejoras:
+
+| # | Hallazgo | Gravedad |
+|---|---|---|
+| 1 | Los prefijos de R2 de `CLAUDE.md` no cubren siete de las nueve claves nuevas. El borrador inventó `uploads/` para todo, sacando de su sitio a `screenshots/` y `og/`, que **ya estaban documentados** | fallo del plan |
+| 2 | El `prefijo` lo mandaba el cliente. Es dejarle elegir dónde escribe en el bucket: ahora manda un `proposito` de lista cerrada y **el servidor decide** | fallo del plan |
+| 3 | El techo del hero era `MAX_IMAGE_MB`. Es un **vídeo**: colarían 15 MB de autoplay en la portada de la landing | fallo del plan |
+| 4 | `Testimonial.isFeatured` como exclusivo **me lo inventé**: no lo dice el schema, ni `CLAUDE.md`, ni el doc. Queda como booleano simple y como pregunta abierta | fallo del plan |
+| 5 | `GET /icons` público movería el contrato congelado por una ruta que **solo usa el admin**. Pasa a `/admin/icons` | corrección |
+| 6 | `PATCH /admin/categories/reorder` lo captura `:id` si se declara antes — la misma trampa de la fase 3, pero ahí no chocaba porque el reorden colgaba más hondo | corrección |
+| 7 | El `upsert` de bullets aceptaría un `id` de **otro paquete** y movería el bullet: no hay índice que lo impida | corrección |
+| 8 | La vista previa de `aboutText` con regex a HTML es una inyección; se devuelven nodos React | corrección |
+| 9 | `Differentiator.title` y `SocialLink.platform` son `@unique`: P2002 con mensaje genérico que no dice qué campo | corrección |
+| 10 | `construirDocPublico` lleva `include: [GalleriesModule]` **a mano**: los módulos nuevos no aparecen solos y la fase 5 no vería sus endpoints | corrección |
+
+Y un límite que se decide en vez de arrastrarlo: **`videos/` y `posters/` quedan fuera del
+barrido de huérfanos.** Ahí vive el trabajo de James, y un barrido que se equivoque leyendo
+referencias lo borra. El hero viejo se queda en el bucket; borrarlo a mano una vez al año es más
+barato que el riesgo.
+
+## Preguntas abiertas para Javier
+
+1. **¿Hay testimonio destacado en la landing**, o se muestran todos por orden? (hallazgo 4)
+2. **El logo y la firma en SVG**: ¿los tendrá James en SVG de verdad, o habrá que aceptar PNG?
+   Cambia el `proposito` `LOGO`/`FIRMA` y la nota de seguridad de D1.
+3. **¿El precio se edita en soles con decimales** (S/ 300.50) o solo enteros? Si son enteros, el
+   redondeo del Task 3 Step 5 sobra.
+
 ## Riesgos
 
 | Riesgo | Señal temprana | Salida |
 |---|---|---|
-| Los huérfanos de `uploads/` se olvidan hasta la fase 6 | ninguna: no falla nada | la regla del cron se **escribe** en el Task 1, no se recuerda |
+| Los huérfanos de `covers/`, `avatars/` y `brand/` se olvidan hasta la fase 6 | ninguna: no falla nada | la regla del cron se **escribe** en el Task 1, no se recuerda |
 | Mover `lib/media` rompe la fase 3 en silencio | los 109 tests | no se sigue al Task 2 sin ellos en verde |
 | Cuatro pantallas divergentes | la tercera se escribe distinta a la primera | Task 6, y hacerlo con tres, no con una |
 | El número de WhatsApp queda mal guardado | **ninguna: no falla, nadie escribe** | validación en la API + botón de probar |
