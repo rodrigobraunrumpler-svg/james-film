@@ -346,7 +346,7 @@ De la capa 2 sí se puede afirmar lo único afirmable sin decodificador: que el 
 **`revokeObjectURL` se llama también en la rama de error** — el snippet de §10 solo lo revoca en
 el camino feliz.
 
-- [ ] **Step 1: Los tests primero.**
+- [x] **Step 1: Los tests primero.**
 
 ```ts
 describe('validarVideo', () => {
@@ -379,7 +379,7 @@ describe('normalizarImagen', () => {
 });
 ```
 
-- [ ] **Step 2: Espejo de los límites de la API, antes del presign.**
+- [x] **Step 2: Espejo de los límites de la API, antes del presign.**
 
 Las constantes del plan no tenían **ningún umbral en MB**. Un aftermovie largo a 1080p con
 bitrate legal (10 min a 4 Mbps ≈ 300 MB) pasa las cuatro validaciones, **se decodifica entero en
@@ -397,7 +397,7 @@ type ArchivoElegido = { name: string; size: number; type: string };
 
 Un archivo que no pase **no entra en el array del presign**.
 
-- [ ] **Step 3: `extraerPoster` con timeout y limpieza en `finally`.**
+- [x] **Step 3: `extraerPoster` con timeout y limpieza en `finally`.**
 
 El patrón de §10 no tiene salida si iOS no dispara ni `loadedmetadata` ni `error`: el archivo se
 queda en VALIDANDO indefinidamente, un estado terminal que la máquina no contempla. Un archivo
@@ -418,7 +418,7 @@ finally {
 **La extracción de poster va con concurrencia 1**: un solo `<video>` decodificando a la vez. La
 concurrencia 3 del Task 6 son las subidas.
 
-- [ ] **Step 4: El poster se genera en JPEG y se declara `blob.type`, nunca una constante.**
+- [x] **Step 4: El poster se genera en JPEG y se declara `blob.type`, nunca una constante.**
 
 ```ts
 const poster = await new Promise<Blob>((ok, err) =>
@@ -428,7 +428,7 @@ const poster = await new Promise<Blob>((ok, err) =>
 if (poster.type !== 'image/jpeg') throw new Error('El navegador no pudo generar el poster');
 ```
 
-- [ ] **Step 5**: `normalizarImagen`, y el resto de constantes (2160, 15 Mbps, 2560 px, 100 MP).
+- [x] **Step 5**: `normalizarImagen`, y el resto de constantes (2160, 15 Mbps, 2560 px, 100 MP).
 
 > **La redacción del error importa tanto como la validación** (§4). "Formato no válido" deja a
 > James atascado; "Expórtalo a 1080p desde CapCut" lo resuelve solo.
@@ -643,6 +643,12 @@ webServer: [
 - [ ] **Step 2: Probar en el iPhone REAL de James.** Wake Lock, HEIC, decodificación de vídeo y
   el file picker se comportan distinto en Safari de verdad; el modo dispositivo de DevTools no
   reproduce ninguno de los cuatro.
+- [ ] **Step 2.5: Verificar que un export REAL de CapCut trae faststart.** 🔴 La validación
+  rechaza el MP4 cuyo `moov` va detrás del `mdat`, y si CapCut exporta así **James no podría
+  subir absolutamente nada**. Es la validación con más riesgo de bloquear el uso normal, y solo
+  se resuelve con un archivo suyo de verdad: `analizarCabecera` sobre su export, en su iPhone.
+  Si falla, la salida es degradarla a aviso —el vídeo se sube igual, tarda más en arrancar— no
+  quitarla.
 - [ ] **Step 3: DECIDIR multipart** con el dato en la mano: subir un aftermovie real por 4G. Si
   funciona, nos hemos ahorrado la pieza más frágil del editor.
 - [ ] **Step 4: Checklist responsive** — 320 px sin scroll horizontal, 768 px vertical, zoom 200%,
