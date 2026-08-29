@@ -22,6 +22,7 @@ import { Hoja } from '@/components/shared/hoja';
 import { VerEnLaWeb } from '@/components/shared/ver-en-la-web';
 import { urlPaquetes } from '@/lib/enlaces';
 import { esApiError } from '@/lib/api/errors';
+import { ocultarSiFalla } from '@/lib/imagen';
 import { cn } from '@/lib/utils/cn';
 import { monedaPartida } from '@/lib/format';
 import { iconoDe } from '@/lib/iconos/mapa';
@@ -52,6 +53,9 @@ export function ListaPaquetes() {
   const [acciones, setAcciones] = useState<AdminPackageDto | null>(null);
 
   const porId = new Map((categorias.data ?? []).map((c) => [c.id, c.name]));
+  // Mientras nadie haya pulsado nada, el contador no informa y ocupa medio pie.
+  // En cuanto hay tráfico, un 0 pasa a ser el dato más importante de la tarjeta.
+  const hayClics = (data ?? []).some((p) => p.whatsappClickCount > 0);
 
   if (isPending || categorias.isPending) return <SkeletonPaquetes />;
 
@@ -149,13 +153,40 @@ export function ListaPaquetes() {
             <li
               key={p.id}
               className={cn(
-                'group bg-card rounded-card relative flex flex-col border transition-colors duration-150',
+                'group rounded-card relative isolate flex flex-col overflow-hidden border transition-colors duration-150',
                 // El latón marca el destacado, y solo en el BORDE: es el único
-                // acento del admin y aquí dice cuál vende James de verdad.
-                p.isHighlighted ? 'border-brass' : 'border-line hover:border-line-hover',
+                // acento del admin y aquí dice cuál vende James de verdad. Con
+                // seis paquetes el borde solo se pierde, así que además sube un
+                // escalón de superficie — uno, no un relleno.
+                p.isHighlighted
+                  ? 'border-brass bg-card-hover'
+                  : 'border-line bg-card hover:border-line-hover',
                 !p.isActive && 'opacity-60',
               )}
             >
+              {/* La imagen de fondo del paquete, la misma que usará la landing.
+                  Sin esto el campo solo escribe: James la sube y no tiene forma
+                  de saber si quedó bien. Al 14% y bajo un velo que arranca a
+                  media tarjeta, para que el pie y los puntos sigan legibles
+                  encima de cualquier foto. */}
+              {p.imageUrl && (
+                <>
+                  <img
+                    src={p.imageUrl}
+                    alt=""
+                    loading="lazy"
+                    onError={ocultarSiFalla}
+                    className="absolute inset-0 -z-10 h-full w-full object-cover opacity-[0.14]"
+                  />
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'absolute inset-0 -z-10 bg-gradient-to-b from-transparent',
+                      p.isHighlighted ? 'to-card-hover' : 'to-card',
+                    )}
+                  />
+                </>
+              )}
               {/* Destacar arriba a la derecha y siempre visible: es la única
                   decisión de esta pantalla que cambia lo que ve un cliente. El
                   resto de acciones va al menú, que no compite con el precio. */}
@@ -208,6 +239,9 @@ export function ListaPaquetes() {
                 </span>
 
                 {p.subtitle && <span className="text-ash dato text-sm">{p.subtitle}</span>}
+                {p.idealFor && (
+                  <span className="text-muted dato text-xs">Ideal para {p.idealFor}</span>
+                )}
 
                 {/* El hueco se reserva SIEMPRE: si la insignia apareciera de la
                     nada, al destacar la tarjeta crecería una línea de golpe y
@@ -252,12 +286,14 @@ export function ListaPaquetes() {
                     {n}
                   </span>
                 ))}
-                <span
-                  className="text-muted ml-auto shrink-0 text-xs tabular-nums"
-                  title="Clics a WhatsApp atribuidos a este paquete"
-                >
-                  {p.whatsappClickCount} {p.whatsappClickCount === 1 ? 'clic' : 'clics'}
-                </span>
+                {hayClics && (
+                  <span
+                    className="text-muted ml-auto shrink-0 text-xs tabular-nums"
+                    title="Clics a WhatsApp atribuidos a este paquete"
+                  >
+                    {p.whatsappClickCount} {p.whatsappClickCount === 1 ? 'clic' : 'clics'}
+                  </span>
+                )}
               </div>
 
               {/* Los botones de orden, discretos y abajo: reordenar es raro y no

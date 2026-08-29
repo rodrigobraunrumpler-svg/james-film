@@ -221,4 +221,47 @@ describe('lista de paquetes', () => {
     await waitFor(() => expect(api.de('PATCH', '/reorder')).toHaveLength(1), ESPERA);
     expect(api.de('PATCH', '/reorder')[0].cuerpo).toEqual({ ids: ['p2', 'p1'] });
   });
+
+  it('pinta la imagen de fondo y el «ideal para», que antes solo se escribían', async () => {
+    // Se podían editar los dos y no aparecían en ninguna parte del admin: James
+    // los rellenaba sin forma de saber si habían quedado bien.
+    servidor({
+      lista: [
+        paquete('p1', 'Con fondo', {
+          imageUrl: 'https://cdn.test/fondo.jpg',
+          idealFor: 'bodas íntimas',
+        }),
+      ],
+    });
+    render(<ListaPaquetes />, { wrapper: Envoltorio });
+
+    await screen.findByText('Con fondo');
+    expect(screen.getByText('Ideal para bodas íntimas')).toBeInTheDocument();
+    const fondo = document.querySelector('img[src="https://cdn.test/fondo.jpg"]');
+    expect(fondo).not.toBeNull();
+  });
+
+  it('sin ningún clic no pinta «0 clics» en cada tarjeta', async () => {
+    // Repetido tres veces no informa y ocupa medio pie. En cuanto uno tenga
+    // tráfico, el 0 de los demás pasa a ser lo más importante que hay ahí.
+    servidor({ lista: [paquete('p1', 'Nuevo', { whatsappClickCount: 0 })] });
+    render(<ListaPaquetes />, { wrapper: Envoltorio });
+
+    await screen.findByText('Nuevo');
+    expect(screen.queryByText(/0 clics/)).not.toBeInTheDocument();
+  });
+
+  it('con tráfico en uno, TODOS enseñan su número, incluido el cero', async () => {
+    servidor({
+      lista: [
+        paquete('p1', 'Popular', { whatsappClickCount: 12 }),
+        paquete('p2', 'Ignorado', { whatsappClickCount: 0 }),
+      ],
+    });
+    render(<ListaPaquetes />, { wrapper: Envoltorio });
+
+    await screen.findByText('Popular');
+    expect(screen.getByText('12 clics')).toBeInTheDocument();
+    expect(screen.getByText('0 clics')).toBeInTheDocument();
+  });
 });
