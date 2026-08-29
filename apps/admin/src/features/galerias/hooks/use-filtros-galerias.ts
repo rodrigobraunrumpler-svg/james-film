@@ -1,6 +1,7 @@
 'use client';
 
-import { parseAsInteger, useQueryStates } from 'nuqs';
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs';
+import { ESTADOS_GALERIA } from '../services/galerias';
 
 /**
  * El estado de lista vive en la URL, y ese MISMO objeto es la clave de TanStack
@@ -12,6 +13,8 @@ import { parseAsInteger, useQueryStates } from 'nuqs';
 export function useFiltrosGalerias() {
   const [filtros, setFiltros] = useQueryStates(
     {
+      estado: parseAsStringLiteral(ESTADOS_GALERIA).withDefault('todas'),
+      q: parseAsString.withDefault(''),
       page: parseAsInteger.withDefault(1),
       pageSize: parseAsInteger.withDefault(20),
     },

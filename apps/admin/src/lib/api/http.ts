@@ -15,6 +15,25 @@ export interface Respuesta<T> {
   meta?: PaginationMeta;
 }
 
+/**
+ * La pasarela ya intentó refrescar: si llega un 401, la sesión murió y no hay
+ * nada que reintentar. Se va al login con el MOTIVO, porque «tu sesión caducó»
+ * y «la cerramos por seguridad» piden reacciones distintas.
+ *
+ * `location.replace` y no el router de Next: hay que tirar TODO el estado del
+ * cliente —la caché de TanStack Query incluida— y una navegación blanda lo
+ * conservaría. Y sin entrada en el historial: el botón atrás desde el login no
+ * puede devolver a una pantalla que ya no se puede cargar.
+ */
+function alLogin(code: string | undefined): void {
+  if (typeof window === 'undefined') return;
+  if (window.location.pathname === '/login') return;
+  const url = new URL('/login', window.location.origin);
+  url.searchParams.set('motivo', code === 'SESSION_REVOKED' ? 'revocada' : 'caducada');
+  url.searchParams.set('desde', window.location.pathname);
+  window.location.replace(url.toString());
+}
+
 function construirUrl(ruta: string, query?: RequestOptions['query']): string {
   const url = new URL(`${config.base}${ruta}`, window.location.origin);
   for (const [k, v] of Object.entries(query ?? {})) {
@@ -64,7 +83,11 @@ async function peticion<T>(
 
   const cuerpo = await leerJson(res);
 
-  if (!res.ok) throw new ApiError(res.status, cuerpo as ApiFailure | undefined);
+  if (!res.ok) {
+    const error = new ApiError(res.status, cuerpo as ApiFailure | undefined);
+    if (error.esSesionMuerta) alLogin(error.code);
+    throw error;
+  }
 
   const sobre = cuerpo as ApiSuccess<T> | undefined;
   return { data: sobre?.data as T, meta: sobre?.meta };

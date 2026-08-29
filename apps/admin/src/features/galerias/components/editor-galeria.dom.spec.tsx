@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Toaster } from 'sonner';
 import { crearQueryClient } from '@/lib/query/cliente';
 import { EditorGaleria } from './editor-galeria';
 
@@ -97,8 +98,13 @@ function servidor(
 const ESPERA = { timeout: 5000 } as const;
 
 let cliente = crearQueryClient(() => {});
+// El `<Toaster />` vive en el layout raíz: sin montarlo aquí, los avisos no
+// llegan al DOM y el test no ve lo que se le dice a James.
 const Envoltorio = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={cliente}>{children}</QueryClientProvider>
+  <QueryClientProvider client={cliente}>
+    {children}
+    <Toaster />
+  </QueryClientProvider>
 );
 
 beforeEach(() => {
@@ -112,12 +118,18 @@ describe('editor de galería', () => {
     render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
 
     expect(await screen.findByLabelText('Título')).toHaveValue('XV de Camila');
-    expect(screen.getByLabelText('Fecha del evento')).toHaveValue('2026-03-15');
+    // Ya no es un `<input type="date">`: el nativo abre un panel que pinta el
+    // sistema, con su azul, y sobre esta paleta se lee como otra aplicación.
+    // Lo que se comprueba sigue siendo lo mismo — que el valor guardado está a
+    // la vista— pero ahora formateado en es-PE.
+    expect(screen.getByLabelText('Fecha del evento')).toHaveTextContent('15 de marzo de 2026');
     expect(screen.getByLabelText('Lugar')).toHaveValue('Ayacucho');
-    expect(screen.getByLabelText('Categoría')).toHaveValue('c1');
+    expect(screen.getByLabelText('Categoría')).toHaveTextContent('Bodas');
   });
 
-  it('autoguarda UNA sola vez tras dejar de escribir, no una por tecla', async () => {
+  it('NO guarda solo: hay que pulsar el botón', async () => {
+    // El autoguardado se quitó a propósito. Escribir ya no manda nada: cada
+    // campo del editor está en vivo en cuanto la galería está publicada.
     const usuario = userEvent.setup();
     const api = servidor();
 
@@ -126,26 +138,41 @@ describe('editor de galería', () => {
 
     await usuario.clear(titulo);
     await usuario.type(titulo, 'Boda de Ana');
+    await new Promise((r) => setTimeout(r, 2500));
 
-    // Antes de que venza el debounce no se ha mandado nada: sin esto serían
-    // once PATCH para once letras.
     expect(api.de('PATCH', '/galleries/g1')).toHaveLength(0);
-
-    await waitFor(() => expect(api.de('PATCH', '/galleries/g1')).toHaveLength(1), ESPERA);
-    expect(api.de('PATCH', '/galleries/g1')[0].cuerpo).toMatchObject({ title: 'Boda de Ana' });
   }, 15_000);
 
-  it('la línea de estado dice Guardando y luego Guardado, sin toast ni spinner', async () => {
+  it('el botón está apagado sin cambios y se enciende al escribir', async () => {
+    // Pulsar «Guardar» sobre un formulario intacto mandaría un PATCH que no
+    // cambia nada y marcaría la web como pendiente de publicar.
     const usuario = userEvent.setup();
     servidor();
 
     render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
-    await usuario.type(await screen.findByLabelText('Lugar'), ' centro');
-    await waitFor(
-      () => expect(screen.getByRole('status')).toHaveTextContent(/Guardado|Guardando/),
-      ESPERA,
-    );
-  }, 15_000);
+    const boton = await screen.findByRole('button', { name: 'Guardar cambios' });
+    expect(boton).toBeDisabled();
+
+    await usuario.type(screen.getByLabelText('Lugar'), ' centro');
+
+    expect(boton).toBeEnabled();
+    expect(screen.getByText('Tienes cambios sin guardar')).toBeInTheDocument();
+  });
+
+  it('al pulsar Guardar manda los cambios y avisa', async () => {
+    const usuario = userEvent.setup();
+    const api = servidor();
+
+    render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+    const titulo = await screen.findByLabelText('Título');
+    await usuario.clear(titulo);
+    await usuario.type(titulo, 'Boda de Ana');
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    await waitFor(() => expect(api.de('PATCH', '/galleries/g1')).toHaveLength(1), ESPERA);
+    expect(api.de('PATCH', '/galleries/g1')[0].cuerpo).toMatchObject({ title: 'Boda de Ana' });
+    expect(await screen.findByText('Galería guardada')).toBeInTheDocument();
+  });
 
   it('vaciar un campo lo manda como null, para poder BORRARLO', async () => {
     const usuario = userEvent.setup();
@@ -153,10 +180,12 @@ describe('editor de galería', () => {
 
     render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
     await usuario.clear(await screen.findByLabelText('Lugar'));
-    // Omitir el campo dejaría "Ayacucho" en la base para siempre.
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    // Omitir el campo dejaría «Ayacucho» en la base para siempre.
     await waitFor(() => expect(api.de('PATCH', '/galleries/g1')).toHaveLength(1), ESPERA);
     expect(api.de('PATCH', '/galleries/g1')[0].cuerpo).toMatchObject({ location: null });
-  }, 15_000);
+  });
 
   it('un título inválido no se guarda: no se manda basura al servidor', async () => {
     const usuario = userEvent.setup();
@@ -164,9 +193,11 @@ describe('editor de galería', () => {
 
     render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
     await usuario.clear(await screen.findByLabelText('Título'));
-    expect(api.de('PATCH', '/galleries/g1')).toHaveLength(0);
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
     expect(await screen.findByRole('alert')).toHaveTextContent('Mínimo 2 caracteres');
-  }, 15_000);
+    expect(api.de('PATCH', '/galleries/g1')).toHaveLength(0);
+  });
 
   it('los errores del servidor se atan al campo que los causó', async () => {
     const usuario = userEvent.setup();
@@ -179,11 +210,12 @@ describe('editor de galería', () => {
 
     render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
     await usuario.type(await screen.findByLabelText('Título'), ' y Ana');
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
     // `details[].field` llega listo: setError sin parsear nada.
-    const error = await screen.findByText('Máximo 120 caracteres', {}, ESPERA);
-    expect(error).toBeInTheDocument();
+    expect(await screen.findByText('Máximo 120 caracteres', {}, ESPERA)).toBeInTheDocument();
     expect(screen.getByLabelText('Título')).toHaveAttribute('aria-invalid', 'true');
-  }, 15_000);
+  });
 
   it('reconcilia al montar cada medio en PENDING, y solo esos', async () => {
     const api = servidor({

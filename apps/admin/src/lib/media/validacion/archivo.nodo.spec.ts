@@ -23,7 +23,7 @@ describe('validarArchivo', () => {
     const error = validarArchivo(archivo({ name: 'clip.mov', type: 'video/quicktime' }));
 
     expect(error).toContain('MP4');
-    expect(error).toContain('CapCut');
+    expect(error).toMatch(/H\.264|1080p|calidad/);
   });
 
   it('un archivo de 300 MB se rechaza ANTES de empezar a subir', () => {
@@ -70,10 +70,10 @@ describe('validarMetadatosVideo', () => {
     expect(validarMetadatosVideo(archivo(), meta())).toBeNull();
   });
 
-  it('rechaza por encima de 2160p diciendo qué hacer en CapCut', () => {
+  it('rechaza por encima de 2160p diciendo qué hacer', () => {
     const error = validarMetadatosVideo(archivo(), meta({ width: 2160, height: 3840 }));
 
-    expect(error).toContain('CapCut');
+    expect(error).toMatch(/H\.264|1080p|calidad/);
     expect(error).toContain('1080');
   });
 
@@ -86,7 +86,7 @@ describe('validarMetadatosVideo', () => {
     const error = validarMetadatosVideo(archivo({ size: mb(100) }), meta({ durationSec: 30 }));
 
     expect(error).toContain('Mbps');
-    expect(error).toContain('CapCut');
+    expect(error).toMatch(/H\.264|1080p|calidad/);
   });
 
   it('no divide por cero cuando la duración es 0 o NaN', () => {

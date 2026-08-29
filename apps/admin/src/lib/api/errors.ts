@@ -47,7 +47,9 @@ export class ApiError extends Error {
    * pasa cuando la rotación detecta reuso del refresh.
    */
   get esSesionMuerta(): boolean {
-    return this.status === 401 || this.code === 'SESSION_EXPIRED' || this.code === 'SESSION_REVOKED';
+    return (
+      this.status === 401 || this.code === 'SESSION_EXPIRED' || this.code === 'SESSION_REVOKED'
+    );
   }
 }
 

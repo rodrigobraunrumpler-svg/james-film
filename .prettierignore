@@ -3,3 +3,6 @@ dist/
 .next/
 .astro/
 apps/api/prisma/migrations/
+
+# Lo genera Prisma en cada `prisma generate`: formatearlo es trabajo tirado.
+apps/api/src/generated/

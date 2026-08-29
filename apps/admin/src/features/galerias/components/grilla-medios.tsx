@@ -1,9 +1,13 @@
 'use client';
 
 import type { AdminGalleryDto } from '@james-film/contracts';
+import { useState } from 'react';
 import { useCola } from '@/lib/media/cola/store';
+import { useEditarMedio } from '../hooks/use-editar-medio';
 import { useMarcarPortada, useOrdenMedios } from '../hooks/use-orden-medios';
 import { TarjetaMedio, type DatosTarjeta } from './tarjeta-medio';
+import { VisorMedio } from './visor-medio';
+import { ResumenLote, TeselaSoltar, useSeleccionArchivos } from './zona-soltar';
 
 /**
  * La grilla se pinta desde `gallery.media` (TanStack Query), NO desde la cola.
@@ -21,6 +25,13 @@ export function GrillaMedios({ galeria }: { galeria: AdminGalleryDto }) {
   const items = useCola((e) => e.items);
   const { reordenar, fallo } = useOrdenMedios(galeria.id);
   const portada = useMarcarPortada(galeria.id);
+  const editar = useEditarMedio(galeria.id);
+  const seleccion = useSeleccionArchivos(galeria.id);
+  const [viendo, setViendo] = useState<number | null>(null);
+
+  // El visor recorre SOLO lo que está en R2: un archivo a medio subir no tiene
+  // nada que enseñar a pantalla completa.
+  const visibles = galeria.media.filter((m) => m.status === 'READY');
 
   const deLaGaleria = Object.values(items).filter((i) => i.galleryId === galeria.id);
   const porMediaId = new Map(deLaGaleria.filter((i) => i.mediaId).map((i) => [i.mediaId, i]));
@@ -44,39 +55,57 @@ export function GrillaMedios({ galeria }: { galeria: AdminGalleryDto }) {
       })),
   ];
 
-  if (tarjetas.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed p-6 text-center text-sm text-neutral-500">
-        Todavía no hay nada en esta galería.
-      </p>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3 pb-0.75">
+        <p className="text-ash text-sm">
+          {tarjetas.length === 0
+            ? 'Todavía no hay nada en esta galería.'
+            : `${tarjetas.length} ${tarjetas.length === 1 ? 'medio' : 'medios'} · arrastra para reordenar`}
+        </p>
+      </div>
+
       {fallo && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-danger text-sm">
           No se pudo guardar el orden. Se ha dejado como estaba.
         </p>
       )}
 
-      {/* minmax(0,1fr) y no grid-cols-N: con un nombre largo, 1fr desborda (§7). */}
-      <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(140px,100%),1fr))] gap-3">
-        {tarjetas.map((datos, i) => (
-          <TarjetaMedio
-            key={datos.clave}
-            datos={datos}
-            acciones={{
-              posicion: i,
-              // Solo se reordena lo que el servidor conoce: una tarjeta local
-              // todavía no tiene fila que numerar.
-              total: galeria.media.length,
-              onMover: reordenar,
-              onPortada: (mediaId) => portada.mutate(mediaId),
-            }}
-          />
-        ))}
-      </ul>
+      {/* La tesela de soltar va FUERA del <ul> —con `contents` la lista no crea
+          caja y sus <li> caen igual en esta grilla—: dentro contaría como un
+          medio más en cualquier recuento, empezando por los tests. */}
+      <ResumenLote seleccion={seleccion} />
+
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(112px,100%),1fr))] gap-3 lg:grid-cols-6">
+        <ul className="contents">
+          {tarjetas.map((datos, i) => (
+            <TarjetaMedio
+              key={datos.clave}
+              datos={datos}
+              acciones={{
+                posicion: i,
+                // Solo se reordena lo que el servidor conoce: una tarjeta local
+                // todavía no tiene fila que numerar.
+                total: galeria.media.length,
+                onVer: datos.medio
+                  ? () => setViendo(visibles.findIndex((m) => m.id === datos.medio?.id))
+                  : undefined,
+                onMover: reordenar,
+                onPortada: (mediaId) => portada.mutate(mediaId),
+                onEditar: (mediaId, cambios) => editar.mutate({ mediaId, datos: cambios }),
+              }}
+            />
+          ))}
+        </ul>
+        <TeselaSoltar seleccion={seleccion} />
+      </div>
+
+      <VisorMedio
+        medios={visibles}
+        indice={viendo}
+        onCerrar={() => setViendo(null)}
+        onMover={setViendo}
+      />
     </div>
   );
 }

@@ -42,7 +42,10 @@ export interface ItemCola {
   progreso: number;
   bytesSubidos: number;
   mediaId: string | null;
+  /** El fallo que impidió subirlo. */
   motivo: string | null;
+  /** Se subió bien, pero algo conviene saberlo. En gris, no en rojo. */
+  aviso: string | null;
   intentos: number;
   /** Para el presupuesto temporal del reintento, no para un contador. */
   empezoEn: number;

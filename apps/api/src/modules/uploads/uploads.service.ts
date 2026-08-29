@@ -57,7 +57,9 @@ export class UploadsService {
 }
 
 const mb = (bytes: number): string =>
-  bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))} MB` : `${Math.round(bytes / 1024)} KB`;
+  bytes >= 1024 * 1024
+    ? `${Math.round(bytes / (1024 * 1024))} MB`
+    : `${Math.round(bytes / 1024)} KB`;
 
 const nombresLegibles = (mimes: readonly string[]): string =>
   mimes.map((m) => m.split('/')[1].replace('svg+xml', 'SVG').toUpperCase()).join(', ');

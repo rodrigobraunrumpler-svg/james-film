@@ -14,7 +14,7 @@ test.describe('login', () => {
     // Si difirieran, el formulario diría qué emails existen.
     await page.goto('/login');
     await page.getByLabel('Email').fill(CREDENCIALES.email);
-    await page.getByLabel('Contraseña').fill('no-es-la-buena');
+    await page.getByLabel('Contraseña', { exact: true }).fill('no-es-la-buena');
     await page.getByRole('button', { name: 'Entrar' }).click();
     // `p[role=alert]` y no getByRole('alert'): Next monta su propio anunciador
     // de ruta con ese rol y el localizador resolvería a dos elementos.
@@ -24,13 +24,16 @@ test.describe('login', () => {
 
     await page.goto('/login');
     await page.getByLabel('Email').fill('nadie@jamesfilm.local');
-    await page.getByLabel('Contraseña').fill('no-es-la-buena');
+    await page.getByLabel('Contraseña', { exact: true }).fill('no-es-la-buena');
     await page.getByRole('button', { name: 'Entrar' }).click();
 
     await expect(page.locator('p[role="alert"]')).toHaveText(conPasswordMala ?? '');
   });
 
-  test('sin sesión, una página redirige al login y la API devuelve 401', async ({ page, request }) => {
+  test('sin sesión, una página redirige al login y la API devuelve 401', async ({
+    page,
+    request,
+  }) => {
     await page.goto('/');
     await expect(page).toHaveURL(/\/login/);
 

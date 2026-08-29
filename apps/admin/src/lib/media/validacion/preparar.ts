@@ -25,6 +25,8 @@ export type Preparado =
       height: number;
       durationSec?: number;
       poster?: Blob;
+      /** Se sube igual; la tarjeta lo enseña en gris, no en rojo. */
+      aviso?: string;
     }
   | { ok: false; archivo: File; motivo: string };
 
@@ -70,8 +72,8 @@ export async function prepararArchivo(
     }
 
     const cabecera = await deps.inspeccionar(archivo);
-    const problema = validarMp4(archivo, cabecera);
-    if (problema) return rechazo(problema);
+    const revision = validarMp4(archivo, cabecera);
+    if (revision.error) return rechazo(revision.error);
 
     onEtapa('EXTRAYENDO_POSTER');
     const { poster, width, height, durationSec } = await deps.extraerPoster(archivo);
@@ -79,14 +81,24 @@ export async function prepararArchivo(
     const metadatos = validarMetadatosVideo(archivo, { width, height, durationSec });
     if (metadatos) return rechazo(metadatos);
 
-    return { ok: true, archivo, blob: archivo, tipo, width, height, durationSec, poster };
+    return {
+      ok: true,
+      archivo,
+      blob: archivo,
+      tipo,
+      width,
+      height,
+      durationSec,
+      poster,
+      ...(revision.aviso ? { aviso: revision.aviso } : {}),
+    };
   } catch (e) {
     // La cola llama a esto por cada archivo: una excepción suelta tumbaría el
     // lote entero en vez de marcar solo el que falló.
     return rechazo(
       e instanceof ErrorValidacion
         ? e.message
-        : `No se pudo preparar «${archivo.name}». Vuelve a exportarlo desde CapCut.`,
+        : `No se pudo preparar «${archivo.name}». Vuelve a exportarlo en MP4 con códec H.264.`,
     );
   }
 }

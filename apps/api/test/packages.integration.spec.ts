@@ -123,7 +123,12 @@ describe('los bullets viajan con el paquete', () => {
     await http()
       .patch(`/admin/packages/${p.id}`)
       .set(auth())
-      .send({ items: [{ id: p.items[0].id, text: 'A' }, { id: p.items[2].id, text: 'C' }] })
+      .send({
+        items: [
+          { id: p.items[0].id, text: 'A' },
+          { id: p.items[2].id, text: 'C' },
+        ],
+      })
       .expect(200);
 
     const despues = await leer(p.id);
@@ -137,7 +142,12 @@ describe('los bullets viajan con el paquete', () => {
     await http()
       .patch(`/admin/packages/${p.id}`)
       .set(auth())
-      .send({ items: [{ id: p.items[1].id, text: 'B' }, { id: p.items[0].id, text: 'A' }] })
+      .send({
+        items: [
+          { id: p.items[1].id, text: 'B' },
+          { id: p.items[0].id, text: 'A' },
+        ],
+      })
       .expect(200);
 
     expect((await leer(p.id)).items.map((i) => i.text)).toEqual(['B', 'A']);
@@ -161,7 +171,11 @@ describe('los bullets viajan con el paquete', () => {
   it('no mandar `items` NO los toca', async () => {
     const p = await crear({ items: [{ text: 'Intacto' }] });
 
-    await http().patch(`/admin/packages/${p.id}`).set(auth()).send({ name: 'test- Otro' }).expect(200);
+    await http()
+      .patch(`/admin/packages/${p.id}`)
+      .set(auth())
+      .send({ name: 'test- Otro' })
+      .expect(200);
 
     expect((await leer(p.id)).items.map((i) => i.text)).toEqual(['Intacto']);
   });

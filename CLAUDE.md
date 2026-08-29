@@ -13,6 +13,9 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **`preview.webp`** = el flyer original. Confirma los datos de §14 (paquetes, precios, bullets,
   diferenciadores, redes, `aboutText` con su resaltado). Es la referencia visual de la marca.
 - **[`docs/admin.md`](docs/admin.md)** = stack del admin y diseño del cliente HTTP (fase 4).
+- **[`docs/james-film-admin-ui.md`](docs/james-film-admin-ui.md)** = guía visual del admin
+  (paleta, tipografía, densidad, componentes). Manda en cómo se ve el admin; donde pida una
+  dependencia o una API, mandan las reglas de este archivo.
 - **[`docs/plans/`](docs/plans/)** = planes de implementación por fase.
 
 ---
@@ -53,6 +56,21 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - Paleta cerrada: `void #0A0908` · `surface #141210` · `elevated #1E1B18` · `line #2E2A26` ·
   `ash #9C958C` · `bone #F2EFE9` · `brass-200 #E5D3AC` · `brass-400 #C9A96A` · `brass-600 #9A7F47` ·
   `whatsapp #25D366`. Cyan y magenta del flyer **no se usan**. §6
+- **Esa paleta es la de la LANDING. El admin usa la suya**, en `docs/james-film-admin-ui.md`:
+  `content #0F0D0C` · `chrome #151311` · `card #171412` · `card-hover #1C1917` · `active #221E1A` ·
+  `well #080706` · `line #262220` · `line-strong #3D362F` · `line-hover #4A4038` · `muted #5F5952` ·
+  `ash #8E877E` · `bone #F2EFE9` · `brass #C9A96A`. Solo `bone` y el latón coinciden, y es a
+  propósito: en el admin **el chrome es más CLARO que el contenido** —así el sidebar se separa sin
+  una línea— y eso no funciona con `void #0A0908`, que es más oscuro que todo lo demás. Mezclarlas
+  deja el admin a medio camino de las dos.
+- **El login es la «sala oscura»** (`docs/mockups-admin/login.html`, dirección B): sin tarjeta,
+  la pantalla entera es la superficie, con el saludo en **Bricolage Grotesque 800** —el único sitio
+  del admin con tipografía de display— y los campos reducidos a una línea base que crece con
+  `scaleX` al enfocar. **El saludo por hora se calcula tras montar**: en el servidor renderizaría
+  «Buenas tardes» y el navegador «Buenas noches», y React descarta el árbol entero por error de
+  hidratación. Arranca en «Hola», cierto a cualquier hora, para que el titular no salte.
+- **El latón del admin solo va en bordes, iconos y estado activo.** Nunca un botón sólido dorado:
+  el único que existe es el CTA de WhatsApp, y ese vive en la landing.
 - **Regla del acento único**: Básico neutro → Pro latón → Premium hueso. §6
 - Bricolage Grotesque **solo 400 y 800** (no tiene cursiva) + Inter 400/500. Titulares con `clamp()`. §6
 - La firma "James" es SVG, no fuente. §6
@@ -218,7 +236,12 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
     al skeleton es un retroceso: tenías información y pasas a tener menos.
   - Mutación → **optimista con reversión** por defecto; si hay que esperar, pendiente **dentro
     del botón**. Nunca overlay. Toast al terminar, no al empezar.
-  - Autoguardado y barra de publicación → línea de texto discreta, ni spinner ni toast.
+  - Barra de publicación → línea de texto discreta, ni spinner ni toast.
+  - **Sin autoguardado.** Se quitó del editor de galería (29-ago-2026): tenía sentido mientras
+    era un borrador, pero con la galería publicada cada campo está **en vivo en la web**, y
+    guardar a los dos segundos de escribir medio título es publicar medio título. Botón
+    explícito, deshabilitado sin cambios —un PATCH que no cambia nada marcaría la web como
+    pendiente de publicar— y aviso al salir con cambios sin guardar.
   - Subidas → **progreso real**, nunca indeterminado.
   - No ser optimista cuando el servidor decide algo impredecible (el slug con desambiguación) o
     en borrados con confirmación fuerte.
@@ -234,6 +257,19 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Nada `fixed` sobre el contenido del panel.** Un elemento fijo no ocupa sitio en el flujo:
   la barra de subidas tapaba el botón de Cancelar de la última tarjeta — justo el que hace falta
   mientras se sube. `sticky bottom-0` se pega abajo **y** reserva su hueco.
+- **Un test de Testing Library que pulsa el nodo correcto NO demuestra que se pueda pulsar.**
+  RTL no hace hit-testing: `getByRole(...).click()` dispara el evento sobre el elemento aunque
+  tenga otra capa encima. La capa de acciones de la tesela cubría la miniatura entera y —con
+  `opacity: 0`, que **no** desactiva los clics, solo `pointer-events` lo hace— se tragaba el clic
+  que abre el visor, con los tres tests unitarios en verde. Lo que lo detecta es Playwright, que
+  sí hace hit-testing. Regla: **cualquier cosa que se pulse por encima de otra lleva su prueba en
+  el E2E**, no solo en el dom.
+- **Los botones inyectados en desarrollo se filtran en el E2E responsive**: el de Next
+  (`nextjs-portal`, 32px) y el de las devtools de TanStack Query (`tsqd-open-btn`, 40px). Sin el
+  filtro, el test de objetivos táctiles pasa o falla según lo que tengas abierto.
+- **Medir tamaños con una animación de entrada en curso da números falsos**: un botón de 44px
+  bajo `scale(0.97)` mide 43,65 y el test falla por algo que no es un fallo. Se espera con
+  `el.getAnimations({ subtree: true })`, no con un `waitForTimeout` a ojo.
 - **`@dnd-kit` NO se usa** y no es un olvido: su estable lleva 21 meses sin publicar y su línea
   nueva va en `beta` pre-1.0, así que no pasa la regla de dependencias. El reorden va con arrastre
   nativo HTML5 en escritorio y **botones de mover** en táctil, que es además el único camino
@@ -244,11 +280,56 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - `zustand` solo para la cola de subidas: con Context, cada tick de progreso re-renderiza a todos
   los consumidores.
 - shadcn/ui sobre Radix (código propio, no dependencia — por eso no contradice §6), `react-hook-form`
-  + `zod`, `@dnd-kit`, `lucide-react`, `sonner`, `motion`, `clsx` + `tailwind-merge`.
+  + `zod`, `lucide-react`, `sonner`, `motion`, `clsx` + `tailwind-merge`. **`@dnd-kit` no está
+  en la lista a propósito** — ver arriba.
 - **Base UI descartada**: sigue en `1.0.0-rc`. Radix está estable.
+- **View Transitions: NO**, aunque la guía del admin las pida. Entre documentos siguen tras un
+  flag experimental en Next, y eso choca con «nada en `experimental` en producción». Se revisa
+  cuando salgan del flag, no antes.
+- **Los recuentos de las pestañas y el uso de disco son endpoints PROPIOS**
+  (`GET /admin/galleries/counts`, `GET /admin/storage`), no campos del meta paginado. Si viajaran
+  en la respuesta filtrada, «Borradores 3» valdría 3 en Borradores y 0 en Publicadas — el contador
+  diría lo contrario de lo que cuenta. Y `@Get('counts')` va **declarado antes que `@Get(':id')`**:
+  Nest resuelve por orden, así que abajo `:id` capturaría «counts» y devolvería un 404 que parece
+  culpa del cliente.
+- **El uso de disco se suma sobre `Media`, no se pregunta a R2.** El bucket guarda además portadas,
+  avatares y logos —kilobytes— y un `ListObjectsV2` paginado por cada carga del panel costaría más
+  que el dato. Los borrados blandos no cuentan aunque el objeto siga arriba: para James ese archivo
+  ya no existe. Se muestra en **eventos** («quedan unos 29»), no en gigas, con los 230 MB/evento de §2.
+- **Toda galería tiene un degradado propio y estable, derivado de su id** (`lib/degradado.ts`).
+  Va DEBAJO de la portada: se ve mientras la imagen carga y es lo único que hay cuando la galería
+  aún no tiene ninguna. Sin él, seis eventos recién creados son seis rectángulos negros idénticos.
+  **Son dieciséis y el hash es FNV-1a**: con seis se repetían a simple vista en una pantalla de
+  nueve, y una suma tipo `h*31` deja a las galerías creadas el mismo día en el mismo color —los
+  cuid comparten prefijo y lo que las distingue está en la cola. Con FNV-1a, doce galerías del
+  mismo día salen en doce colores. Hay test de reparto, no solo de estabilidad.
+- **Una portada que no carga se ESCONDE y deja ver el degradado, pero AVISA por consola**
+  (`lib/imagen.ts`). Sin el `onError`, R2 caído o una clave movida a mano pintan el icono de
+  imagen rota encima de la tarjeta y un fallo de red parece un fallo de datos; sin el `warn`, un
+  bucket mal configurado se ve **exactamente igual que una galería vacía** —seis degradados y
+  ningún error en ninguna parte—. Las dos mitades hacen falta.
+- **El bucket de MinIO se deja con `mc anonymous set download`** en `storage-init`. No es relajar
+  la seguridad: es reproducir producción, donde los objetos se sirven por el dominio `media.` de
+  R2, que es público, y `CDN_BASE_URL` apunta ahí. En local esa variable apunta a MinIO directo y
+  un bucket nace PRIVADO, así que **cada `<img>` recibe un 403** mientras la subida sigue
+  funcionando —el PUT va firmado— y la API no registra ni un error. Escribir sin firma sigue
+  dando 403, que es el mismo reparto que en producción.
+- **El buscador (`?q=`) actualiza la URL con 300 ms de retraso.** Sin eso cada tecla es una petición
+  **y una entrada en el historial**: el botón atrás habría que pulsarlo una vez por letra escrita.
+  Y `?q=` vacío se convierte en `undefined` en el DTO: `contains: ''` casa con todo pero deja el
+  índice fuera y convierte cada tecleo en un scan inútil.
+- **«Deshacer» SÍ, y sale casi gratis**: el soft delete ya existe, así que deshacer un borrado es
+  un `PATCH` con `deletedAt: null` y una acción en el toast de `sonner`. Va solo donde el error
+  duele —borrar una galería o un medio—, no en cada guardado.
+- **Animaciones del admin: solo `transform` y `opacity`, ≤350ms, dentro de
+  `prefers-reduced-motion`.** El relleno de subida es `scaleY()` sobre el progreso real, nunca
+  `height`. Sin shimmer recorriendo los skeletons (repinta en bucle; un `opacity` pulsante hace
+  lo mismo por nada) y sin FLIP al reordenar la grilla: es donde el iPhone de James lo nota.
 - **Sin TanStack Table en v1** (5 tablas de decenas de filas, y §7 obliga a tarjetas apiladas en
-  móvil igual) y sin librería de fechas (`Intl` + `<input type="date">`, que en el iPhone de James
-  abre el selector nativo de iOS).
+  móvil igual). La guía del admin la pide y **se contradice sola**: dos páginas antes dice
+  «tarjetas, no tablas». Gana lo de las tarjetas.
+- **Sin librería de fechas**: `Intl` + `<input type="date">`, que en el iPhone de James abre el
+  selector nativo de iOS.
 - **Los esquemas Zod de formulario viven en el admin, no en `packages/contracts`** — son runtime y
   romperían la propiedad de "solo tipos". La API sigue siendo la autoridad (`whitelist`).
 - El admin **no tiene presupuesto de INP**: no se indexa. Las restricciones duras de §6 son de la
@@ -271,6 +352,12 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   validador E.164 general: es la comprobación de que lleva prefijo de país.
 - **Un `useForm` por pestaña en Configuración.** Con uno global, guardar SEO mandaría también el
   número de WhatsApp y pisaría un cambio hecho desde el móvil.
+- **`listarPublicas` usaba `mapGaleriaListaAdmin`** y devolvía `isPublished` en la respuesta de la
+  landing. Siempre valía `true` —el controller filtra— así que no rompía nada y por eso llevaba ahí
+  desde la fase 2; el fallo real es que al añadir un campo al DTO de admin se cuela solo en el
+  público. Corregido a `mapGaleriaLista`, con test que comprueba las dos respuestas a la vez.
+  **`updatedAt` va en `SELECT_GALERIA_ADMIN`, no en `SELECT_GALERIA`**: lo que no se selecciona no
+  se puede filtrar mal.
 - **`Gallery.coverKey` borrada** (migración `quitar_gallery_coverkey`). Era una columna muerta con
   lectura viva: el mapper la respetaba, no la escribía nadie y ningún DTO la exponía. Verificada
   vacía antes de borrarla. La portada se deriva del medio destacado, siempre.
@@ -334,6 +421,13 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   trae su propio bundle de ffmpeg). El spec de subida se salta comprobando la **capacidad**, no el
   canal. `channel: 'chrome'` sigue siendo el defecto —es lo más parecido a lo que usa James— con
   `PW_CANAL=chromium` para máquinas donde no se pueda instalar Chrome, que pide root.
+- **Si ya tienes la API corriendo, el E2E la REUSA** (`reuseExistingServer`) y su
+  `RATE_LIMIT_ENABLED=false` no se aplica: a la tercera ejecución seguida, el login empieza a
+  devolver «demasiados intentos» y parece un fallo de credenciales. Mata el proceso del 3000 y
+  deja que Playwright lo levante.
+- **Y si tienes un `next dev` en el 3001**, Next inyecta su botón de dev tools (32 px) y el test
+  de objetivos táctiles falla. Está filtrado por `closest('nextjs-portal')`, pero conviene
+  saberlo: un test que pasa o falla según qué tengas abierto es peor que no tenerlo.
 - **El E2E entra UNA vez** y reutiliza la sesión con `storageState`. El login limita a 5 intentos
   por minuto, y hace bien: sin esto la suite se autobloquea y el fallo parece de credenciales.
 
@@ -636,8 +730,21 @@ Planes: [fase 1 — base](docs/plans/2026-08-28-fase-1-base.md) ✅ ·
 ([revisión](docs/plans/2026-08-28-fase-3-revision.md)) ·
 [fase 4 — resto del admin](docs/plans/2026-08-28-fase-4-resto-del-admin.md)
 
+**`faststart` AVISA, no bloquea** (resuelto lo que la fase 3.5 dejaba abierto). HEVC sí bloquea:
+Chrome y Firefox no lo reproducen, así que subirlo es publicar un vídeo que media web no puede
+abrir. Un MP4 sin faststart **se reproduce perfectamente**; lo único es que el primer play tarda
+porque el navegador no puede empezar hasta tenerlo entero. Bloquearlo dejaba a James **sin salida**
+cuando su editor no ofrece esa opción —y varios no la ofrecen—: cambiar un inconveniente por una
+imposibilidad es peor negocio. El aviso se pinta en `ash`, nunca en rojo.
+
+**Los mensajes de error no nombran ninguna aplicación.** Decían «vuelve a exportarlo desde CapCut»
+y James puede haber montado en Premiere, en DaVinci o en el propio iPhone: nombrar un producto que
+no usa convierte «di qué hacer» en «busca una pantalla que no existe». Se nombra el AJUSTE —MP4,
+H.264, 1080p, «inicio rápido»— y, cuando el ajuste puede no existir, se añade «si tu editor lo
+ofrece». Hay test de que el mensaje dice qué hacer, no de que cite una marca.
+
 **Pendiente la fase 3.5**: el [checklist del iPhone](docs/checklist-iphone.md), que decide
-multipart, si faststart bloquea o solo avisa, y el suelo de iOS. No bloquea la fase 4.
+multipart y el suelo de iOS. Lo de faststart ya está resuelto arriba. No bloquea la fase 4.
 
 | # | Fase | Duración |
 |---|---|---|

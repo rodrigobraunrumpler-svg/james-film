@@ -1,0 +1,1308 @@
+<title>Cinta y Sala Oscura</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600&display=swap"
+  rel="stylesheet"
+/>
+
+<style>
+  /* ------------------------------------------------------------------
+     Tokens del ADMIN (docs/james-film-admin-ui.md §3). No se inventa
+     ningún color: los catorce que hay son los catorce que existen.
+     ------------------------------------------------------------------ */
+  :root {
+    --content: #0f0d0c;
+    --chrome: #151311;
+    --card: #171412;
+    --card-hover: #1c1917;
+    --active: #221e1a;
+    --well: #080706;
+    --line: #262220;
+    --line-strong: #3d362f;
+    --line-hover: #4a4038;
+    --muted: #5f5952;
+    --ash: #8e877e;
+    --bone: #f2efe9;
+    --brass: #c9a96a;
+    --danger: #c87676;
+    --danger-line: #7a3b3b;
+    --danger-bg: #1a1211;
+
+    --r-card: 8px;
+    --r-control: 6px;
+
+    --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --display: 'Bricolage Grotesque', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --ease-io: cubic-bezier(0.4, 0, 0.2, 1);
+
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--content);
+    color: var(--bone);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-wrap: break-word;
+  }
+
+  /* El anillo de foco es el mismo en toda la página: latón, 2px, con hueco.
+     No se quita en ningún sitio. */
+  :focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  /* ==================================================================
+     1. Chrome del documento (esto NO es el login: es la hoja de revisión)
+     ================================================================== */
+  .doc-head {
+    border-bottom: 1px solid var(--line);
+    background: var(--chrome);
+    padding: 18px 20px;
+  }
+
+  .doc-head__fila {
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 18px;
+    max-width: 1000px;
+  }
+
+  .doc-head__marca {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--bone);
+  }
+
+  .doc-head__que {
+    color: var(--ash);
+    font-size: 12px;
+  }
+
+  .doc-head__meta {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .doc {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 28px 20px 72px;
+  }
+
+  .doc__intro {
+    margin: 0 0 40px;
+    max-width: 62ch;
+    color: var(--ash);
+    font-size: 13px;
+  }
+
+  .doc__intro strong {
+    color: var(--bone);
+    font-weight: 500;
+  }
+
+  .prop {
+    margin-bottom: 56px;
+  }
+
+  .prop__tag {
+    display: inline-block;
+    margin: 0 0 8px;
+    color: var(--brass);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .prop__nombre {
+    margin: 0 0 6px;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    color: var(--bone);
+  }
+
+  .prop__idea {
+    margin: 0 0 18px;
+    max-width: 64ch;
+    color: var(--ash);
+    font-size: 13px;
+  }
+
+  /* El marco que hace que cada dirección se lea como una pantalla y no
+     como una sección más de esta hoja. */
+  .prop__pantalla {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--content);
+  }
+
+  .demo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .demo__et {
+    margin-right: 2px;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .demo__b {
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-control);
+    background: var(--card);
+    color: var(--ash);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      color 0.12s ease,
+      border-color 0.12s ease,
+      background-color 0.12s ease;
+  }
+
+  .demo__b:hover {
+    background: var(--card-hover);
+    border-color: var(--line-hover);
+    color: var(--bone);
+  }
+
+  /* ==================================================================
+     2. Primitivas de formulario compartidas por las dos direcciones
+     ================================================================== */
+  .grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .grupo__label {
+    color: var(--bone);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .grupo__input {
+    width: 100%;
+    min-height: 44px; /* mínimo táctil §7 */
+    padding: 0 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-control);
+    background: var(--well);
+    color: var(--bone);
+    font: inherit;
+    font-size: 13px;
+    transition:
+      border-color 0.12s ease,
+      background-color 0.12s ease;
+  }
+
+  .grupo__input::placeholder {
+    color: var(--muted);
+  }
+
+  .grupo__input:hover {
+    border-color: var(--line-hover);
+  }
+
+  .grupo__input[aria-invalid='true'] {
+    border-color: var(--danger-line);
+  }
+
+  .grupo__error {
+    margin: 0;
+    color: var(--danger);
+    font-size: 12px;
+  }
+
+  .grupo__error:empty {
+    display: none;
+  }
+
+  .aviso {
+    margin: 0;
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--danger-line);
+    border-radius: var(--r-control);
+    background: var(--danger-bg);
+    color: var(--danger);
+    font-size: 12px;
+  }
+
+  .aviso:empty {
+    display: none;
+  }
+
+  .aviso::before {
+    content: '';
+    flex: 0 0 auto;
+    align-self: stretch;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--danger);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: var(--r-control);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    /* El latón va EN EL BORDE. En el admin no existe un botón dorado macizo. */
+    border: 1px solid var(--brass);
+    background: transparent;
+    color: var(--brass);
+    transition:
+      background-color 0.12s ease,
+      transform 0.12s var(--ease-io),
+      opacity 0.12s ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    background: rgba(201, 169, 106, 0.1);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .btn:disabled {
+    cursor: progress;
+    opacity: 0.6;
+  }
+
+  .spin {
+    width: 13px;
+    height: 13px;
+    border: 1.5px solid rgba(201, 169, 106, 0.28);
+    border-top-color: var(--brass);
+    border-radius: 50%;
+  }
+
+  @keyframes gira {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ==================================================================
+     3. Dirección A — «Cinta»
+     ================================================================== */
+  .cinta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 580px;
+    padding: 40px 16px;
+  }
+
+  .cinta__card {
+    position: relative;
+    width: 100%;
+    max-width: 372px;
+    padding: 30px 26px 30px 52px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--card);
+  }
+
+  /* La tira: carril con perforaciones pegado al canto izquierdo de la tarjeta. */
+  .cinta__rail {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 26px;
+    overflow: hidden;
+    border-right: 1px solid var(--line);
+    border-radius: var(--r-card) 0 0 var(--r-card);
+    background: var(--well);
+  }
+
+  .cinta__perf {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    bottom: -40px;
+    left: 0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(201, 169, 106, 0.18) 0 9px,
+      transparent 9px 22px
+    );
+    background-position: 8px 0;
+    background-size: 10px 100%;
+    background-repeat: repeat-y;
+  }
+
+  /* El marcador de fotograma: se mueve al campo enfocado. Solo transform. */
+  .cinta__marca {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 26px;
+    border-left: 2px solid var(--brass);
+    background: linear-gradient(to right, rgba(201, 169, 106, 0.14), transparent);
+    opacity: 0;
+    transition:
+      transform 0.2s var(--ease-io),
+      opacity 0.15s ease;
+    pointer-events: none;
+  }
+
+  .cinta__marca.is-visible {
+    opacity: 1;
+  }
+
+  .cinta__head {
+    margin-bottom: 24px;
+  }
+
+  .cinta__word {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 6px;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--bone);
+  }
+
+  .cinta__word svg {
+    flex: 0 0 auto;
+    color: var(--brass);
+  }
+
+  .cinta__sub {
+    margin: 0;
+    color: var(--ash);
+    font-size: 12px;
+  }
+
+  .cinta__form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  @media (max-width: 380px) {
+    .cinta__card {
+      padding: 24px 18px 24px 44px;
+    }
+  }
+
+  /* ==================================================================
+     4. Dirección B — «Sala oscura»
+     ================================================================== */
+  .sala {
+    position: relative;
+    display: grid;
+    align-items: center;
+    min-height: 580px;
+    padding: 48px 24px;
+    background: var(--content);
+  }
+
+  /* Luz cálida de set: la del tubo de tungsteno del flyer, no un degradado
+     decorativo. Latón a muy baja opacidad, nada fuera de la paleta. */
+  .sala__luz {
+    position: absolute;
+    top: -20%;
+    right: -14%;
+    width: min(78%, 520px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(201, 169, 106, 0.15) 0%,
+      rgba(201, 169, 106, 0.05) 40%,
+      transparent 70%
+    );
+    filter: blur(14px);
+    pointer-events: none;
+  }
+
+  .sala__grano {
+    position: absolute;
+    inset: 0;
+    opacity: 0.05;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .sala__interior {
+    position: relative;
+    display: grid;
+    gap: 40px;
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  .sala__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 18px;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--ash);
+  }
+
+  .sala__eyebrow svg {
+    flex: 0 0 auto;
+    color: var(--brass);
+  }
+
+  .sala__saludo {
+    margin: 0 0 14px;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(27px, 6vw, 44px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--bone);
+  }
+
+  .sala__saludo .pal {
+    display: inline-block;
+  }
+
+  .sala__pie {
+    margin: 0;
+    max-width: 34ch;
+    color: var(--ash);
+    font-size: 13px;
+  }
+
+  .sala__form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    max-width: 340px;
+  }
+
+  /* Campos sin caja: una línea base que se dibuja al enfocar. */
+  .sala .grupo {
+    gap: 4px;
+  }
+
+  /* La línea vive pegada al input, no al grupo: si colgara del grupo se
+     desplazaría hacia abajo en cuanto apareciera el error. */
+  .sala__caja {
+    position: relative;
+    display: block;
+  }
+
+  .sala .grupo__label {
+    color: var(--ash);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    transition: color 0.12s ease;
+  }
+
+  .sala .grupo:focus-within .grupo__label {
+    color: var(--brass);
+  }
+
+  .sala .grupo__input {
+    min-height: 44px;
+    padding: 0 0 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: inset 0 -1px 0 0 var(--line-strong);
+    font-size: 15px;
+  }
+
+  .sala .grupo__input:hover {
+    box-shadow: inset 0 -1px 0 0 var(--line-hover);
+  }
+
+  .sala .grupo__input:focus-visible {
+    outline: 2px solid transparent; /* lo sustituye la línea de latón de abajo */
+    outline-offset: 0;
+  }
+
+  .sala .grupo__input[aria-invalid='true'] {
+    box-shadow: inset 0 -1px 0 0 var(--danger-line);
+  }
+
+  /* La línea de latón: crece desde la izquierda con scaleX, no toca el layout. */
+  .sala__linea {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--brass);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.2s var(--ease-out);
+    pointer-events: none;
+  }
+
+  .sala .grupo:focus-within .sala__linea {
+    transform: scaleX(1);
+  }
+
+  .sala .grupo__input[aria-invalid='true'] ~ .sala__linea {
+    background: var(--danger);
+  }
+
+  .sala__acciones {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  @media (min-width: 860px) {
+    .sala__interior {
+      grid-template-columns: 1.05fr 1px 0.95fr;
+      gap: 0;
+      align-items: center;
+    }
+
+    .sala__regla {
+      align-self: stretch;
+      background: var(--line);
+    }
+
+    .sala__texto {
+      padding-right: 48px;
+    }
+
+    .sala__form {
+      padding-left: 48px;
+      max-width: none;
+    }
+  }
+
+  /* ==================================================================
+     5. Qué cambia y por qué
+     ================================================================== */
+  .porque {
+    border-top: 1px solid var(--line);
+    padding-top: 32px;
+  }
+
+  .porque__h {
+    margin: 0 0 24px;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 17px;
+    color: var(--bone);
+  }
+
+  .porque__cols {
+    display: grid;
+    gap: 32px;
+  }
+
+  @media (min-width: 760px) {
+    .porque__cols {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .porque__tag {
+    margin: 0 0 14px;
+    color: var(--brass);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .porque__lista {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .porque__item {
+    border-left: 1px solid var(--line);
+    padding-left: 14px;
+  }
+
+  .porque__que {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--bone);
+    font-weight: 500;
+  }
+
+  .porque__pq {
+    color: var(--ash);
+  }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92em;
+    color: var(--bone);
+  }
+
+  .porque__nota {
+    margin: 28px 0 0;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    background: var(--card);
+    color: var(--ash);
+    font-size: 12px;
+  }
+
+  .porque__nota strong {
+    color: var(--bone);
+    font-weight: 500;
+  }
+
+  /* ==================================================================
+     6. Movimiento — solo transform y opacity, nada por encima de 350ms
+     ================================================================== */
+  @keyframes sube {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes avanza {
+    from {
+      transform: translateY(-22px);
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  @keyframes aparece {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes creceX {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes deriva {
+    from {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      transform: translate3d(-4%, 3%, 0) scale(1.06);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* A: la tarjeta entra y la tira avanza un fotograma. Una sola idea. */
+    .is-entrando .cinta__card {
+      animation: sube 0.35s var(--ease-out) both;
+    }
+    .is-entrando .cinta__perf {
+      animation: avanza 0.35s var(--ease-out) both;
+    }
+    .is-entrando .cinta__anim {
+      animation: sube 0.3s var(--ease-out) both;
+      animation-delay: calc(90ms + var(--i, 0) * 50ms);
+    }
+
+    /* B: secuencia de títulos. El stagger se corta a los seis elementos. */
+    .is-entrando .sala__anim {
+      animation: sube 0.35s var(--ease-out) both;
+      animation-delay: calc(var(--i, 0) * 60ms);
+    }
+    .is-entrando .sala__regla {
+      animation: creceX 0.3s var(--ease-out) both;
+      animation-delay: 240ms;
+      transform-origin: center top;
+    }
+    .is-entrando .sala__luz {
+      animation:
+        aparece 0.35s ease both,
+        deriva 26s ease-in-out 0.35s infinite alternate;
+    }
+    .spin {
+      animation: gira 0.7s linear infinite;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    /* Sin movimiento, el foco de B tiene que verse igual: la línea aparece ya. */
+    .sala .grupo:focus-within .sala__linea {
+      transform: scaleX(1);
+    }
+  }
+</style>
+
+<header class="doc-head">
+  <div class="doc-head__fila">
+    <p class="doc-head__marca">JAMES FILM</p>
+    <span class="doc-head__que">Login del admin — dos direcciones para elegir</span>
+    <span class="doc-head__meta">Maqueta viva · agosto 2026</span>
+  </div>
+</header>
+
+<main class="doc">
+  <p class="doc__intro">
+    Las dos son <strong>la misma pantalla y el mismo formulario</strong>: mismos campos, mismos
+    mensajes, mismos tokens del admin. Lo que cambia es de dónde sale el carácter. Puedes escribir
+    en los campos, enviarlos y ver los estados reales — usa los controles grises que hay debajo de
+    cada una.
+  </p>
+
+  <!-- ================= DIRECCIÓN A ================= -->
+  <section class="prop">
+    <p class="prop__tag">Dirección A</p>
+    <h2 class="prop__nombre">Cinta</h2>
+    <p class="prop__idea">
+      El login es un fotograma. La tarjeta va montada sobre una tira de película que avanza al
+      cargar y que marca, desde el borde, el campo en el que estás.
+    </p>
+
+    <div class="prop__pantalla" data-mock="a">
+      <div class="cinta">
+        <div class="cinta__card">
+          <div class="cinta__rail" aria-hidden="true">
+            <div class="cinta__perf"></div>
+            <div class="cinta__marca" data-marca></div>
+          </div>
+
+          <div class="cinta__head cinta__anim" style="--i: 0">
+            <h3 class="cinta__word">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                <rect
+                  x="1.6"
+                  y="1.6"
+                  width="20.8"
+                  height="20.8"
+                  rx="2.2"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                />
+                <rect
+                  x="7.2"
+                  y="6.4"
+                  width="9.6"
+                  height="11.2"
+                  rx="1"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1"
+                  opacity="0.55"
+                />
+                <g fill="currentColor">
+                  <rect x="3.3" y="4.3" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="3.3" y="10.9" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="3.3" y="17.5" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="18.5" y="4.3" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="18.5" y="10.9" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="18.5" y="17.5" width="2.2" height="2.2" rx="0.6" />
+                </g>
+              </svg>
+              JAMES FILM
+            </h3>
+            <p class="cinta__sub">Entra para publicar.</p>
+          </div>
+
+          <form class="cinta__form" novalidate data-form>
+            <div class="grupo cinta__anim" style="--i: 1">
+              <label class="grupo__label" for="a-email">Email</label>
+              <input
+                class="grupo__input"
+                id="a-email"
+                name="email"
+                type="email"
+                autocomplete="username"
+                inputmode="email"
+                autocapitalize="none"
+                spellcheck="false"
+                aria-describedby="a-email-error"
+              />
+              <p class="grupo__error" id="a-email-error" role="alert" data-error="email"></p>
+            </div>
+
+            <div class="grupo cinta__anim" style="--i: 2">
+              <label class="grupo__label" for="a-password">Contraseña</label>
+              <input
+                class="grupo__input"
+                id="a-password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                aria-describedby="a-password-error"
+              />
+              <p class="grupo__error" id="a-password-error" role="alert" data-error="password"></p>
+            </div>
+
+            <p class="aviso cinta__anim" style="--i: 3" role="alert" aria-live="polite" data-aviso></p>
+
+            <button class="btn cinta__anim" style="--i: 3" type="submit" data-enviar>
+              <span data-texto>Entrar</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo">
+      <span class="demo__et">Demo</span>
+      <button class="demo__b" type="button" data-repetir="a">Repetir entrada</button>
+      <button class="demo__b" type="button" data-servidor="a">Ver estado de error</button>
+      <button class="demo__b" type="button" data-limpiar="a">Limpiar</button>
+    </div>
+  </section>
+
+  <!-- ================= DIRECCIÓN B ================= -->
+  <section class="prop">
+    <p class="prop__tag">Dirección B</p>
+    <h2 class="prop__nombre">Sala oscura</h2>
+    <p class="prop__idea">
+      Sin tarjeta: la pantalla entera es la sala. Un titular que saluda según la hora del
+      dispositivo, los campos reducidos a una línea que se dibuja al enfocar, y al fondo la luz
+      cálida de un set.
+    </p>
+
+    <div class="prop__pantalla" data-mock="b">
+      <div class="sala">
+        <div class="sala__luz" aria-hidden="true"></div>
+        <div class="sala__grano" aria-hidden="true"></div>
+
+        <div class="sala__interior">
+          <div class="sala__texto">
+            <p class="sala__eyebrow sala__anim" style="--i: 0">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+                <rect
+                  x="1.6"
+                  y="1.6"
+                  width="20.8"
+                  height="20.8"
+                  rx="2.2"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.3"
+                />
+                <g fill="currentColor">
+                  <rect x="3.3" y="4.3" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="3.3" y="10.9" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="3.3" y="17.5" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="18.5" y="4.3" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="18.5" y="10.9" width="2.2" height="2.2" rx="0.6" />
+                  <rect x="18.5" y="17.5" width="2.2" height="2.2" rx="0.6" />
+                </g>
+              </svg>
+              JAMES FILM
+            </p>
+
+            <h3 class="sala__saludo">
+              <span class="pal sala__anim" style="--i: 1" data-saludo>Buenas noches,</span>
+              <span class="pal sala__anim" style="--i: 2">James.</span>
+            </h3>
+
+            <p class="sala__pie sala__anim" style="--i: 3">
+              Entra y sigue donde lo dejaste.
+            </p>
+          </div>
+
+          <div class="sala__regla" aria-hidden="true"></div>
+
+          <form class="sala__form" novalidate data-form>
+            <div class="grupo sala__anim" style="--i: 4">
+              <label class="grupo__label" for="b-email">Email</label>
+              <span class="sala__caja">
+                <input
+                  class="grupo__input"
+                  id="b-email"
+                  name="email"
+                  type="email"
+                  autocomplete="username"
+                  inputmode="email"
+                  autocapitalize="none"
+                  spellcheck="false"
+                  aria-describedby="b-email-error"
+                />
+                <span class="sala__linea" aria-hidden="true"></span>
+              </span>
+              <p class="grupo__error" id="b-email-error" role="alert" data-error="email"></p>
+            </div>
+
+            <div class="grupo sala__anim" style="--i: 5">
+              <label class="grupo__label" for="b-password">Contraseña</label>
+              <span class="sala__caja">
+                <input
+                  class="grupo__input"
+                  id="b-password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  aria-describedby="b-password-error"
+                />
+                <span class="sala__linea" aria-hidden="true"></span>
+              </span>
+              <p class="grupo__error" id="b-password-error" role="alert" data-error="password"></p>
+            </div>
+
+            <div class="sala__acciones sala__anim" style="--i: 6">
+              <p class="aviso" role="alert" aria-live="polite" data-aviso></p>
+              <button class="btn" type="submit" data-enviar>
+                <span data-texto>Entrar</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo">
+      <span class="demo__et">Demo</span>
+      <button class="demo__b" type="button" data-repetir="b">Repetir entrada</button>
+      <button class="demo__b" type="button" data-servidor="b">Ver estado de error</button>
+      <button class="demo__b" type="button" data-limpiar="b">Limpiar</button>
+    </div>
+  </section>
+
+  <!-- ================= QUÉ CAMBIA Y POR QUÉ ================= -->
+  <section class="porque">
+    <h2 class="porque__h">Qué cambia y por qué</h2>
+
+    <div class="porque__cols">
+      <div>
+        <p class="porque__tag">Dirección A · Cinta</p>
+        <ul class="porque__lista">
+          <li class="porque__item">
+            <span class="porque__que">La tira de perforaciones sustituye al icono <code>film</code> de lucide.</span>
+            <span class="porque__pq">
+              El logotipo de James es una tira de película, no un pictograma de catálogo. Dibujada
+              vertical repite además el 9:16 que él produce, así que el mismo trazo dice la marca y
+              dice el producto.
+            </span>
+          </li>
+          <li class="porque__item">
+            <span class="porque__que">Un marcador de latón sigue al campo enfocado dentro de la tira.</span>
+            <span class="porque__pq">
+              El foco deja de ser solo el anillo del input: se ve desde el canto de la tarjeta. En el
+              iPhone, con el teclado tapando media pantalla, esa marca en el borde es la referencia
+              que queda visible.
+            </span>
+          </li>
+          <li class="porque__item">
+            <span class="porque__que">Tarjeta <code>card</code> sobre <code>content</code>, con <code>well</code> dentro de los inputs.</span>
+            <span class="porque__pq">
+              Son los tres escalones que usa el panel al que se entra. El login deja de ser una
+              pantalla aparte y pasa a ser la primera del admin: al autenticarse no hay salto.
+            </span>
+          </li>
+          <li class="porque__item">
+            <span class="porque__que">El wordmark en Bricolage 800 a 11px con <code>0.2em</code>.</span>
+            <span class="porque__pq">
+              Es el único sitio del admin con tipografía de display, y a ese tamaño Bricolage aporta
+              carácter sin competir con el formulario, que sigue en Inter 13px. La landing y el panel
+              se reconocen como la misma marca sin repetir la landing.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <p class="porque__tag">Dirección B · Sala oscura</p>
+        <ul class="porque__lista">
+          <li class="porque__item">
+            <span class="porque__que">Se quita la tarjeta: la superficie es la pantalla entera.</span>
+            <span class="porque__pq">
+              Dos campos dentro de una caja centrada es la plantilla de cualquier panel. Sin caja, lo
+              que se recuerda es el titular — lo único de esta pantalla que habla de James y no de
+              un formulario.
+            </span>
+          </li>
+          <li class="porque__item">
+            <span class="porque__que">Campos reducidos a una línea base que se dibuja al enfocar.</span>
+            <span class="porque__pq">
+              Menos borde y un foco más inequívoco: la línea pasa a latón y crece desde la izquierda
+              con <code>scaleX</code>, sin tocar el layout. En error la misma línea se tiñe, así que
+              el estado se lee sin añadir un segundo elemento.
+            </span>
+          </li>
+          <li class="porque__item">
+            <span class="porque__que">El saludo cambia con la hora del dispositivo.</span>
+            <span class="porque__pq">
+              El panel tiene un usuario y se abre casi siempre de madrugada, al volver de un evento.
+              Son tres líneas de JS —y en Next van en el cliente, para no romper la hidratación— y
+              convierten un trámite en un sitio al que se vuelve.
+            </span>
+          </li>
+          <li class="porque__item">
+            <span class="porque__que">Grano fino y una luz cálida al fondo, en latón al 15%.</span>
+            <span class="porque__pq">
+              Es el tungsteno del flyer, no un degradado decorativo: da profundidad al negro sin
+              meter un solo color fuera de la paleta. La deriva es de 26s y solo mueve
+              <code>transform</code>; con <code>prefers-reduced-motion</code> queda quieta.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="porque__nota">
+      <strong>Lo que no cambia en ninguna de las dos.</strong>
+      <code>type="email"</code> con <code>inputmode</code> y <code>autocapitalize="none"</code> —sin
+      eso el iPhone abre el teclado alfabético con mayúscula—, <code>autocomplete</code> de usuario y
+      contraseña para que el llavero rellene, <code>&lt;label&gt;</code> reales, error por campo con
+      <code>role="alert"</code> y error general con <code>aria-live="polite"</code>, los dos mensajes
+      del servidor tal cual («Email o contraseña incorrectos.» y «Demasiados intentos. Espera un
+      minuto y vuelve a probar.»), «Entrando…» dentro del botón y nunca un overlay, objetivos de
+      44px, foco visible siempre, y ninguna animación fuera de <code>transform</code> y
+      <code>opacity</code> ni por encima de 350ms.
+    </p>
+  </section>
+</main>
+
+<script>
+  (function () {
+    'use strict';
+
+    var MSG = {
+      email: 'Escribe un email válido',
+      password: 'Escribe tu contraseña',
+      credenciales: 'Email o contraseña incorrectos.',
+      limite: 'Demasiados intentos. Espera un minuto y vuelve a probar.'
+    };
+    var EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    var mocks = {};
+    Array.prototype.forEach.call(document.querySelectorAll('[data-mock]'), function (mock) {
+      mocks[mock.getAttribute('data-mock')] = mock;
+      preparar(mock);
+    });
+
+    /* ---------- errores ---------- */
+    function pintarCampo(mock, nombre, texto) {
+      var input = mock.querySelector('[name="' + nombre + '"]');
+      var salida = mock.querySelector('[data-error="' + nombre + '"]');
+      if (!input || !salida) return;
+      salida.textContent = texto || '';
+      if (texto) input.setAttribute('aria-invalid', 'true');
+      else input.removeAttribute('aria-invalid');
+    }
+
+    function pintarAviso(mock, texto) {
+      var aviso = mock.querySelector('[data-aviso]');
+      if (aviso) aviso.textContent = texto || '';
+    }
+
+    function limpiar(mock) {
+      pintarCampo(mock, 'email', '');
+      pintarCampo(mock, 'password', '');
+      pintarAviso(mock, '');
+    }
+
+    /* ---------- estado del botón ---------- */
+    function enviando(boton, activo) {
+      var texto = boton.querySelector('[data-texto]');
+      boton.disabled = activo;
+      if (activo) boton.setAttribute('aria-busy', 'true');
+      else boton.removeAttribute('aria-busy');
+      texto.textContent = activo ? 'Entrando…' : 'Entrar';
+
+      var rueda = boton.querySelector('.spin');
+      if (activo && !rueda) {
+        rueda = document.createElement('span');
+        rueda.className = 'spin';
+        rueda.setAttribute('aria-hidden', 'true');
+        boton.insertBefore(rueda, texto);
+      } else if (!activo && rueda) {
+        rueda.remove();
+      }
+    }
+
+    /* ---------- una maqueta ---------- */
+    function preparar(mock) {
+      var form = mock.querySelector('[data-form]');
+      var boton = mock.querySelector('[data-enviar]');
+      var pendiente = null;
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (boton.disabled) return;
+        limpiar(mock);
+
+        var email = form.elements.email;
+        var pass = form.elements.password;
+        var fallo = null;
+
+        if (!EMAIL_OK.test(email.value.trim())) {
+          pintarCampo(mock, 'email', MSG.email);
+          fallo = fallo || email;
+        }
+        if (pass.value.length === 0) {
+          pintarCampo(mock, 'password', MSG.password);
+          fallo = fallo || pass;
+        }
+        if (fallo) {
+          fallo.focus();
+          return;
+        }
+
+        // No hay servidor: se simula el viaje para enseñar el estado del botón.
+        enviando(boton, true);
+        window.clearTimeout(pendiente);
+        pendiente = window.setTimeout(function () {
+          enviando(boton, false);
+          pintarAviso(mock, MSG.credenciales);
+        }, 1400);
+      });
+
+      // El error se borra al corregir, no al reenviar.
+      Array.prototype.forEach.call(form.querySelectorAll('input'), function (input) {
+        input.addEventListener('input', function () {
+          if (input.getAttribute('aria-invalid') === 'true') pintarCampo(mock, input.name, '');
+        });
+      });
+
+      // Marcador de fotograma (solo dirección A).
+      var marca = mock.querySelector('[data-marca]');
+      if (marca) {
+        var tarjeta = mock.querySelector('.cinta__card');
+        mock.addEventListener('focusin', function (e) {
+          if (!e.target.matches('input')) return;
+          var caja = e.target.getBoundingClientRect();
+          var base = tarjeta.getBoundingClientRect();
+          marca.style.height = caja.height + 'px';
+          marca.style.transform = 'translateY(' + (caja.top - base.top) + 'px)';
+          marca.classList.add('is-visible');
+        });
+        mock.addEventListener('focusout', function (e) {
+          if (!mock.contains(e.relatedTarget)) marca.classList.remove('is-visible');
+        });
+      }
+    }
+
+    /* ---------- controles de la hoja de revisión ---------- */
+    function conectar(attr, accion) {
+      Array.prototype.forEach.call(document.querySelectorAll('[' + attr + ']'), function (boton) {
+        boton.addEventListener('click', function () {
+          accion(mocks[boton.getAttribute(attr)], boton);
+        });
+      });
+    }
+
+    conectar('data-limpiar', function (mock) {
+      limpiar(mock);
+    });
+
+    conectar('data-repetir', function (mock) {
+      mock.classList.remove('is-entrando');
+      void mock.offsetWidth; // fuerza reflow: si no, la clase vuelve en el mismo frame
+      mock.classList.add('is-entrando');
+    });
+
+    // Cicla los dos mensajes reales del servidor y vuelve a limpio.
+    var ciclo = {};
+    conectar('data-servidor', function (mock, boton) {
+      var clave = boton.getAttribute('data-servidor');
+      ciclo[clave] = ((ciclo[clave] || 0) + 1) % 3;
+      var paso = ciclo[clave];
+      pintarAviso(mock, paso === 1 ? MSG.credenciales : paso === 2 ? MSG.limite : '');
+    });
+
+    /* ---------- saludo por hora (dirección B) ---------- */
+    var saludo = document.querySelector('[data-saludo]');
+    if (saludo) {
+      var h = new Date().getHours();
+      saludo.textContent =
+        (h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches') + ',';
+    }
+
+    /* ---------- entrada al entrar en pantalla ---------- */
+    var pantallas = document.querySelectorAll('[data-mock]');
+    if ('IntersectionObserver' in window) {
+      var obs = new IntersectionObserver(
+        function (entradas) {
+          entradas.forEach(function (entrada) {
+            if (!entrada.isIntersecting) return;
+            entrada.target.classList.add('is-entrando');
+            obs.unobserve(entrada.target);
+          });
+        },
+        { threshold: 0.2 }
+      );
+      Array.prototype.forEach.call(pantallas, function (p) {
+        obs.observe(p);
+      });
+    } else {
+      Array.prototype.forEach.call(pantallas, function (p) {
+        p.classList.add('is-entrando');
+      });
+    }
+  })();
+</script>

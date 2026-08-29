@@ -1,16 +1,28 @@
 'use client';
 
+import { ChevronRight, Star } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Boton } from '@/components/shared/boton';
+import { ConfirmarBorrado } from '@/components/shared/confirmar-borrado';
+import { Hoja } from '@/components/shared/hoja';
+import { VerEnLaWeb } from '@/components/shared/ver-en-la-web';
 import { esApiError } from '@/lib/api/errors';
+import { urlGaleria } from '@/lib/enlaces';
+import { useBorrarGaleria, useDestacarGaleria } from '../hooks/use-crear-galeria';
 import { useCategorias, useGaleria, useReconciliarPendientes } from '../hooks/use-galeria';
 import { BotonPublicar } from './boton-publicar';
 import { FormularioGaleria } from './formulario-galeria';
 import { GrillaMedios } from './grilla-medios';
-import { ZonaSoltar } from './zona-soltar';
 import { SkeletonEditor } from './skeleton-editor';
 
 export function EditorGaleria({ id }: { id: string }) {
   const galeria = useGaleria(id);
   const categorias = useCategorias();
+  const borrar = useBorrarGaleria();
+  const destacar = useDestacarGaleria(id);
+  const [borrando, setBorrando] = useState(false);
 
   // Step 0: los PENDING que dejó una pestaña muerta se re-confirman al montar.
   // Va antes de cualquier return: los hooks no pueden ir detrás de una rama.
@@ -23,46 +35,99 @@ export function EditorGaleria({ id }: { id: string }) {
     const esNoEncontrada = esApiError(error) && error.isNotFound;
 
     return (
-      <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border p-6">
+      <div
+        role="alert"
+        className="border-danger-line bg-danger-bg rounded-card flex flex-col items-start gap-3 border p-5"
+      >
         <p className="font-medium">
           {esNoEncontrada ? 'Esta galería ya no existe' : 'No se pudo cargar la galería'}
         </p>
         {!esNoEncontrada && (
-          <button
-            type="button"
+          <Boton
             onClick={() => {
               void galeria.refetch();
               void categorias.refetch();
             }}
-            className="min-h-11 rounded-md border px-4 text-sm font-medium"
           >
             Reintentar
-          </button>
+          </Boton>
         )}
       </div>
     );
   }
 
+  const datos = galeria.data;
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold [overflow-wrap:anywhere]">{galeria.data.title}</h1>
-        <BotonPublicar galeria={galeria.data} />
-      </div>
+    <div className="flex flex-col gap-5">
       {/* key por id: navegar de una galería a otra REMONTA el formulario en vez
           de reusar el estado de la anterior, que es cómo se guardan los datos
           de una galería sobre otra. */}
       <FormularioGaleria
-        key={galeria.data.id}
-        galeria={galeria.data}
+        key={datos.id}
+        galeria={datos}
         categorias={categorias.data}
+        migas={
+          <nav aria-label="Migas de pan" className="text-ash flex items-center gap-1.75 text-sm">
+            <Link href="/" className="hover:text-bone transition-colors duration-150">
+              Galerías
+            </Link>
+            <ChevronRight className="size-3" aria-hidden />
+            <span>{datos.category.name}</span>
+          </nav>
+        }
+        acciones={
+          <>
+            {/* Solo si está publicada: enlazar a una URL que devuelve 404 es peor
+                que no ofrecer el enlace. */}
+            {datos.isPublished && <VerEnLaWeb url={urlGaleria(datos.slug)} />}
+            <BotonPublicar galeria={datos} />
+          </>
+        }
       />
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">Reels y fotos</h2>
-        <ZonaSoltar galleryId={galeria.data.id} />
-        <GrillaMedios galeria={galeria.data} />
-      </section>
+      <GrillaMedios galeria={datos} />
+
+      {/* Abajo y en voz baja: destacar y borrar no son lo que James viene a
+          hacer aquí, y borrar es lo único de esta pantalla que no se deshace
+          desde la propia pantalla. */}
+      <div className="border-line flex flex-wrap items-center gap-2 border-t pt-4">
+        <Boton
+          onClick={() => destacar.mutate(!datos.isFeatured)}
+          aria-pressed={datos.isFeatured}
+          className={datos.isFeatured ? 'border-brass text-brass' : undefined}
+        >
+          <Star className={datos.isFeatured ? 'size-3.5 fill-current' : 'size-3.5'} aria-hidden />
+          {datos.isFeatured ? 'Destacada en la portada' : 'Destacar en la portada'}
+        </Boton>
+        <Boton variante="peligro" className="ml-auto" onClick={() => setBorrando(true)}>
+          Borrar galería
+        </Boton>
+      </div>
+
+      <Hoja
+        abierta={borrando}
+        onCerrar={() => setBorrando(false)}
+        titulo="Borrar la galería"
+        descripcion="Esto no se puede deshacer desde aquí."
+      >
+        <ConfirmarBorrado
+          nombre={datos.title}
+          descripcion={
+            datos.media.length > 0
+              ? `Se borrarán también sus ${datos.media.length} archivos, y el enlace que hayas compartido dejará de funcionar.`
+              : 'El enlace que hayas compartido dejará de funcionar.'
+          }
+          cargando={borrar.isPending}
+          onCancelar={() => setBorrando(false)}
+          onConfirmar={() => {
+            borrar.mutate(id, {
+              onSuccess: () => toast.success('Galería borrada'),
+              onError: () => toast.error('No se pudo borrar.'),
+            });
+          }}
+        />
+      </Hoja>
     </div>
   );
 }

@@ -11,10 +11,7 @@ import { ReorderService } from '../../common/services/reorder.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { StorageService } from '../../storage/storage.service.js';
 import type { UpdateSettingsDto } from './dto/update-settings.dto.js';
-import type {
-  CreateDifferentiatorDto,
-  UpdateDifferentiatorDto,
-} from './dto/differentiator.dto.js';
+import type { CreateDifferentiatorDto, UpdateDifferentiatorDto } from './dto/differentiator.dto.js';
 import type { CreateSocialLinkDto, UpdateSocialLinkDto } from './dto/social-link.dto.js';
 import {
   SELECT_AJUSTES,

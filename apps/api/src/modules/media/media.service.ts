@@ -1,10 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { MediaConfirmResult, PresignItemResult } from '@james-film/contracts';
+import type {
+  AdminMediaDto,
+  MediaConfirmResult,
+  PresignItemResult,
+  StorageUsageDto,
+} from '@james-film/contracts';
+import { textoLimpio } from '../../common/opcional.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { StorageService } from '../../storage/storage.service.js';
 import type { PresignItemDto } from './dto/presign.dto.js';
+import type { UpdateMediaDto } from './dto/update-media.dto.js';
+import { SELECT_MEDIA_ADMIN, mapMediaAdmin } from '../galleries/galleries.mapper.js';
 import {
   MIMES_FOTO,
   MIMES_POSTER,
@@ -22,6 +30,25 @@ export class MediaService {
     private readonly storage: StorageService,
     private readonly config: ConfigService,
   ) {}
+
+  /**
+   * Lo que ocupa el trabajo de James. Se suma sobre `Media` y no se pregunta a
+   * R2: el bucket guarda además portadas, avatares y logos, que son kilobytes,
+   * y un `ListObjectsV2` paginado por cada carga del panel costaría más que el
+   * dato. Los borrados blandos NO cuentan aunque el objeto siga arriba: para
+   * James ese archivo ya no existe y verlo ocupando sitio no tiene arreglo
+   * posible desde la interfaz.
+   */
+  async usoDeAlmacenamiento(): Promise<StorageUsageDto> {
+    const { _sum } = await this.prisma.media.aggregate({
+      _sum: { sizeBytes: true },
+      where: { deletedAt: null, status: 'READY' },
+    });
+    return {
+      usedBytes: _sum.sizeBytes ?? 0,
+      quotaBytes: this.config.getOrThrow<number>('STORAGE_QUOTA_GB') * 1024 ** 3,
+    };
+  }
 
   async presign(galleryId: string, items: PresignItemDto[]): Promise<PresignItemResult[]> {
     await this.asegurarGaleria(galleryId);
@@ -105,6 +132,29 @@ export class MediaService {
       },
       select: { id: true, status: true, orientation: true, error: true },
     });
+  }
+
+  /**
+   * Solo `alt` y `caption`. Se anota con `AdminMediaDto` para que `select`
+   * falle cerrado: olvidar un campo no compila.
+   */
+  async actualizar(id: string, dto: UpdateMediaDto): Promise<AdminMediaDto> {
+    const existe = await this.prisma.media.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
+    if (!existe) throw new NotFoundException();
+
+    const fila = await this.prisma.media.update({
+      where: { id },
+      data: {
+        // `null` BORRA, `undefined` NO TOCA.
+        alt: textoLimpio(dto.alt),
+        caption: textoLimpio(dto.caption),
+      },
+      select: SELECT_MEDIA_ADMIN,
+    });
+    return mapMediaAdmin(fila, this.storage);
   }
 
   async borrar(id: string): Promise<void> {

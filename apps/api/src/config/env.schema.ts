@@ -51,6 +51,12 @@ export const envSchema = z.object({
   MAX_VIDEO_MB: z.coerce.number().int().positive().default(200),
   MAX_IMAGE_MB: z.coerce.number().int().positive().default(15),
   PRESIGN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  /**
+   * El plan gratuito de R2 son 10 GB. Es el techo que pinta el medidor del
+   * sidebar; no lo aplica nadie todavía —subir por encima seguiría funcionando
+   * y lo cobraría Cloudflare—, así que es información, no una cuota.
+   */
+  STORAGE_QUOTA_GB: z.coerce.number().int().positive().default(10),
 });
 
 export type Env = z.infer<typeof envSchema>;

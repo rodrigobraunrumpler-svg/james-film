@@ -141,6 +141,7 @@ export function crearCola(deps: DepsCola): Cola {
     }
 
     preparados.set(id, resultado);
+    if (resultado.aviso) parchear(id, { aviso: resultado.aviso });
     // Vuelve a SELECCIONADO: es la cola de espera de red, y `bombear` decide
     // cuándo hay hueco. Sin este paso, ocho archivos preparados arrancarían
     // ocho subidas.
@@ -269,6 +270,7 @@ export function crearCola(deps: DepsCola): Cola {
         bytesSubidos: 0,
         mediaId: null,
         motivo: null,
+        aviso: null,
         intentos: 0,
         empezoEn: deps.ahora(),
       };

@@ -229,7 +229,9 @@ describe('estados y filtro', () => {
 });
 
 describe('borrado', () => {
-  it('avisa de que la captura se borra del servidor', async () => {
+  it('exige escribir el nombre, y dice que la captura se borra del servidor', async () => {
+    // Se lleva del bucket la foto de una persona real y no hay vuelta atrás:
+    // el confirm() nativo se acepta con el pulgar sin leerlo.
     const usuario = userEvent.setup();
     const api = servidor([testimonio('t1', 'Ana')]);
     render(<ListaTestimonios />, { wrapper: Envoltorio });
@@ -237,9 +239,14 @@ describe('borrado', () => {
 
     await usuario.click(screen.getByRole('button', { name: 'Borrar' }));
 
-    expect(globalThis.confirm).toHaveBeenCalledWith(
-      expect.stringContaining('se borrará su captura del servidor'),
-    );
+    expect(screen.getByText(/se borrarán del servidor su captura y su foto/)).toBeInTheDocument();
+    const confirmar = screen.getByRole('button', { name: 'Borrar para siempre' });
+    expect(confirmar).toBeDisabled();
+    expect(api.de('DELETE', '/admin/testimonials')).toHaveLength(0);
+
+    await usuario.type(screen.getByLabelText(/Escribe/), 'Ana');
+    await usuario.click(confirmar);
+
     await waitFor(() => expect(api.de('DELETE', '/admin/testimonials/t1')).toHaveLength(1), ESPERA);
   });
 });

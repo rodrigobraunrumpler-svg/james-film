@@ -23,13 +23,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!res.ok) {
     // El error se devuelve tal cual: el formulario distingue por `code`
     // (INVALID_CREDENTIALS vs RATE_LIMITED) para elegir el mensaje.
-    return NextResponse.json(cuerpo ?? { code: 'INTERNAL' }, { status: res.status });
+    //
+    // `Retry-After` se reenvía porque es el ÚNICO dato que convierte «espera un
+    // minuto» en un reloj. Sin él James reintenta a los diez segundos, vuelve a
+    // fallar y la ventana del throttler se le reinicia.
+    const espera = res.headers.get('retry-after');
+    return NextResponse.json(cuerpo ?? { code: 'INTERNAL' }, {
+      status: res.status,
+      headers: espera ? { 'retry-after': espera } : undefined,
+    });
   }
 
   const tokens = (cuerpo as { data?: Sesion } | undefined)?.data;
   if (!tokens?.accessToken || !tokens.refreshToken) {
     return NextResponse.json(
-      { success: false, statusCode: 502, code: 'INTERNAL', message: 'Respuesta inesperada al iniciar sesión' },
+      {
+        success: false,
+        statusCode: 502,
+        code: 'INTERNAL',
+        message: 'Respuesta inesperada al iniciar sesión',
+      },
       { status: 502 },
     );
   }

@@ -3,6 +3,9 @@
 import type { AdminCategoryDto } from '@james-film/contracts';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Tags } from 'lucide-react';
+import { EstadoVacio } from '@/components/shared/estado-vacio';
+import { Hoja } from '@/components/shared/hoja';
 import { esApiError } from '@/lib/api/errors';
 import {
   useBorrarCategoria,
@@ -74,94 +77,105 @@ export function ListaCategorias() {
         </p>
       )}
 
-      <ul className="flex flex-col gap-3">
-        {data.map((c, i) => (
-          <li
-            key={c.id}
-            className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center"
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="aspect-[16/9] w-16 shrink-0 overflow-hidden rounded bg-neutral-100">
-                {c.coverUrl && (
-                  <img
-                    src={c.coverUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                )}
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="flex items-center gap-2 font-medium">
-                  <span className="truncate [overflow-wrap:anywhere]">{c.name}</span>
-                  {!c.isActive && (
-                    <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] font-medium text-neutral-700">
-                      Oculta
-                    </span>
+      {data.length === 0 ? (
+        <EstadoVacio
+          Icono={Tags}
+          titulo="Aún no tienes categorías"
+          explicacion="Una categoría agrupa galerías del mismo tipo: bodas, XV años, cumpleaños. Sin al menos una no puedes crear galerías."
+          accion="Crear la primera"
+          onAccion={() => setEditando(null)}
+        />
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {data.map((c, i) => (
+            <li
+              key={c.id}
+              className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center"
+            >
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="aspect-[16/9] w-16 shrink-0 overflow-hidden rounded bg-neutral-100">
+                  {c.coverUrl && (
+                    <img
+                      src={c.coverUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
                   )}
-                </span>
-                <span className="truncate text-sm text-neutral-500">
-                  /{c.slug} · {c.galleryCount} {c.galleryCount === 1 ? 'galería' : 'galerías'}
-                </span>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="flex items-center gap-2 font-medium">
+                    <span className="truncate [overflow-wrap:anywhere]">{c.name}</span>
+                    {!c.isActive && (
+                      <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] font-medium text-neutral-700">
+                        Oculta
+                      </span>
+                    )}
+                  </span>
+                  <span className="truncate text-sm text-neutral-500">
+                    /{c.slug} · {c.galleryCount} {c.galleryCount === 1 ? 'galería' : 'galerías'}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* `flex-wrap` y no `shrink-0`: cinco botones de 44 px no caben en
+              {/* `flex-wrap` y no `shrink-0`: cinco botones de 44 px no caben en
                 una pantalla de 320, y §7 no admite scroll horizontal. */}
-            <div className="flex flex-wrap gap-1">
-              <button
-                type="button"
-                aria-label={`Mover ${c.name} antes`}
-                disabled={i === 0}
-                onClick={() => reordenar(i, i - 1)}
-                className="min-h-11 min-w-11 rounded-md border text-sm disabled:opacity-40"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                aria-label={`Mover ${c.name} después`}
-                disabled={i >= data.length - 1}
-                onClick={() => reordenar(i, i + 1)}
-                className="min-h-11 min-w-11 rounded-md border text-sm disabled:opacity-40"
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                aria-label={`${c.isActive ? 'Ocultar' : 'Mostrar'} ${c.name}`}
-                onClick={() => guardar.mutate({ id: c.id, datos: { isActive: !c.isActive } })}
-                className="min-h-11 rounded-md border px-3 text-sm"
-              >
-                {c.isActive ? 'Ocultar' : 'Mostrar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditando(c)}
-                className="min-h-11 rounded-md border px-3 text-sm"
-              >
-                Editar
-              </button>
-              <button
-                type="button"
-                onClick={() => void pedirBorrado(c)}
-                className="min-h-11 rounded-md border px-3 text-sm"
-              >
-                Borrar
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {editando !== undefined && (
-        <div className="rounded-lg border p-4">
-          <h2 className="mb-4 text-lg font-semibold">
-            {editando ? `Editar ${editando.name}` : 'Nueva categoría'}
-          </h2>
-          <HojaCategoria categoria={editando} onCerrar={() => setEditando(undefined)} />
-        </div>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  aria-label={`Mover ${c.name} antes`}
+                  disabled={i === 0}
+                  onClick={() => reordenar(i, i - 1)}
+                  className="min-h-11 min-w-11 rounded-md border text-sm disabled:opacity-40"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Mover ${c.name} después`}
+                  disabled={i >= data.length - 1}
+                  onClick={() => reordenar(i, i + 1)}
+                  className="min-h-11 min-w-11 rounded-md border text-sm disabled:opacity-40"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  aria-label={`${c.isActive ? 'Ocultar' : 'Mostrar'} ${c.name}`}
+                  onClick={() => guardar.mutate({ id: c.id, datos: { isActive: !c.isActive } })}
+                  className="min-h-11 rounded-md border px-3 text-sm"
+                >
+                  {c.isActive ? 'Ocultar' : 'Mostrar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditando(c)}
+                  className="min-h-11 rounded-md border px-3 text-sm"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void pedirBorrado(c)}
+                  className="min-h-11 rounded-md border px-3 text-sm"
+                >
+                  Borrar
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
+
+      <Hoja
+        abierta={editando !== undefined}
+        onCerrar={() => setEditando(undefined)}
+        titulo={editando ? `Editar ${editando.name}` : 'Nueva categoría'}
+      >
+        {editando !== undefined && (
+          <HojaCategoria categoria={editando} onCerrar={() => setEditando(undefined)} />
+        )}
+      </Hoja>
     </div>
   );
 }

@@ -46,6 +46,12 @@ export const SELECT_GALERIA = {
   category: { select: SELECT_CATEGORIA },
 } as const;
 
+/**
+ * `updatedAt` va SOLO en el select del admin. En la lista pública no se usa y
+ * no tiene por qué viajar: lo que no se selecciona no se puede filtrar mal.
+ */
+export const SELECT_GALERIA_ADMIN = { ...SELECT_GALERIA, updatedAt: true } as const;
+
 type FilaMedia = { [K in keyof typeof SELECT_MEDIA]: unknown } & {
   id: string;
   type: MediaDto['type'];
@@ -175,10 +181,19 @@ export function mapGaleria(
 }
 
 export function mapGaleriaListaAdmin(
-  g: FilaGaleria & { _count: { media: number }; media: FilaMedia[] },
+  g: FilaGaleria & { updatedAt: Date; _count: { media: number }; media: FilaMedia[] },
   storage: StorageService,
 ): AdminGalleryListItemDto {
-  return { ...mapGaleriaLista(g, storage), isPublished: g.isPublished };
+  // El medio destacado ya viene en `media` (take: 1): de ahí salen el icono de
+  // reproducir y el `1:12` de la tarjeta, sin una segunda consulta.
+  const portada = g.media.find((m) => m.isFeatured) ?? null;
+  return {
+    ...mapGaleriaLista(g, storage),
+    isPublished: g.isPublished,
+    updatedAt: g.updatedAt.toISOString(),
+    coverType: portada?.type ?? null,
+    coverDurationSec: portada?.durationSec ?? null,
+  };
 }
 
 export function mapGaleriaLista(

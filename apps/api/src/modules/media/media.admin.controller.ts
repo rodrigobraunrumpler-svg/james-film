@@ -1,12 +1,26 @@
-import { Body, Delete, HttpCode, Param, Post } from '@nestjs/common';
+import { Body, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
 import { AdminController } from '../../common/decorators/admin-controller.decorator.js';
-import { DocBorrarMedia, DocConfirmar, DocPresign } from './docs/media.docs.js';
+import {
+  DocActualizarMedia,
+  DocBorrarMedia,
+  DocConfirmar,
+  DocPresign,
+  DocUsoAlmacenamiento,
+} from './docs/media.docs.js';
 import { PresignDto } from './dto/presign.dto.js';
+import { UpdateMediaDto } from './dto/update-media.dto.js';
 import { MediaService } from './media.service.js';
 
 @AdminController('admin', { tag: 'admin/media' })
 export class MediaAdminController {
   constructor(private readonly media: MediaService) {}
+
+  /** Alimenta el medidor del sidebar. Sin `:id`, así que no hay choque de rutas. */
+  @DocUsoAlmacenamiento()
+  @Get('storage')
+  uso() {
+    return this.media.usoDeAlmacenamiento();
+  }
 
   /** N archivos, UN roundtrip: ocho reels no deben ser ocho peticiones (§10). */
   @DocPresign()
@@ -20,6 +34,12 @@ export class MediaAdminController {
   @Post('media/:id/confirm')
   confirmar(@Param('id') id: string) {
     return this.media.confirmar(id);
+  }
+
+  @DocActualizarMedia()
+  @Patch('media/:id')
+  actualizar(@Param('id') id: string, @Body() dto: UpdateMediaDto) {
+    return this.media.actualizar(id, dto);
   }
 
   @DocBorrarMedia()

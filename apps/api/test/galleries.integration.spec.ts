@@ -86,8 +86,22 @@ describe('controller público', () => {
     await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
     await prisma.media.createMany({
       data: [
-        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/1.mp4', status: 'READY' },
-        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/2.mp4', status: 'PENDING' },
+        {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: 'videos/1.mp4',
+          status: 'READY',
+        },
+        {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: 'videos/2.mp4',
+          status: 'PENDING',
+        },
       ],
     });
 
@@ -102,8 +116,22 @@ describe('controller público', () => {
     await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
     await prisma.media.createMany({
       data: [
-        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/ok.mp4', status: 'READY' },
-        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/no.mp4', status: 'FAILED' },
+        {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: 'videos/ok.mp4',
+          status: 'READY',
+        },
+        {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: 'videos/no.mp4',
+          status: 'FAILED',
+        },
       ],
     });
 
@@ -116,11 +144,26 @@ describe('controller público', () => {
     const g = await crear({ title: 'Interna' });
     await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
     await prisma.media.create({
-      data: { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 999, storageKey: 'videos/x.mp4', status: 'READY' },
+      data: {
+        galleryId: g.id,
+        type: 'REEL',
+        mimeType: 'video/mp4',
+        sizeBytes: 999,
+        storageKey: 'videos/x.mp4',
+        status: 'READY',
+      },
     });
 
     const { body } = await http().get('/galleries/interna').expect(200);
-    for (const campo of ['storageKey', 'sizeBytes', 'status', 'error', 'attempts', 'clientUploadId', 'deletedAt']) {
+    for (const campo of [
+      'storageKey',
+      'sizeBytes',
+      'status',
+      'error',
+      'attempts',
+      'clientUploadId',
+      'deletedAt',
+    ]) {
       expect(body.data.media[0]).not.toHaveProperty(campo);
     }
     expect(body.data).not.toHaveProperty('isPublished');
@@ -183,8 +226,13 @@ describe('portada y estado (lo que necesita el editor)', () => {
     const g = await crear({ title: 'Con portada' });
     const m = await prisma.media.create({
       data: {
-        galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1,
-        storageKey: 'videos/p.mp4', posterKey: 'posters/p.jpg', status: 'READY',
+        galleryId: g.id,
+        type: 'REEL',
+        mimeType: 'video/mp4',
+        sizeBytes: 1,
+        storageKey: 'videos/p.mp4',
+        posterKey: 'posters/p.jpg',
+        status: 'READY',
       },
     });
 
@@ -197,10 +245,100 @@ describe('portada y estado (lo que necesita el editor)', () => {
     expect(despues.body.data[0].coverUrl).toContain('posters/p.jpg');
   });
 
+  it('?estado filtra borradores y publicadas, y rechaza cualquier otra cosa', async () => {
+    const borrador = await crear({ title: 'Sigue en borrador' });
+    const publicada = await crear({ title: 'Ya está en vivo' });
+    await http().patch(`/admin/galleries/${publicada.id}`).set(auth()).send({ isPublished: true });
+
+    const soloBorradores = await http()
+      .get('/admin/galleries?estado=borradores')
+      .set(auth())
+      .expect(200);
+    const idsBorrador = soloBorradores.body.data.map((g: { id: string }) => g.id);
+    expect(idsBorrador).toContain(borrador.id);
+    expect(idsBorrador).not.toContain(publicada.id);
+
+    const soloPublicadas = await http()
+      .get('/admin/galleries?estado=publicadas')
+      .set(auth())
+      .expect(200);
+    const idsPublicada = soloPublicadas.body.data.map((g: { id: string }) => g.id);
+    expect(idsPublicada).toContain(publicada.id);
+    expect(idsPublicada).not.toContain(borrador.id);
+
+    // Lista cerrada: sin el @IsIn, `?estado=cualquiercosa` devolvería la lista
+    // entera y el filtro parecería roto en vez de rechazado.
+    await http().get('/admin/galleries?estado=todo').set(auth()).expect(422);
+  });
+
+  it('?q busca en el título sin distinguir mayúsculas y recorta el vacío', async () => {
+    await crear({ title: 'XV de Camila' });
+    await crear({ title: 'Boda Ana & Luis' });
+
+    const { body } = await http().get('/admin/galleries?q=camila').set(auth()).expect(200);
+    expect(body.data.map((g: { title: string }) => g.title)).toEqual(['XV de Camila']);
+
+    // `?q=` vacío NO debe filtrar por `contains: ''`: eso casa con todo pero
+    // convierte cada tecleo del buscador en un scan inútil.
+    const vacio = await http().get('/admin/galleries?q=%20%20').set(auth()).expect(200);
+    expect(vacio.body.data.length).toBeGreaterThan(1);
+  });
+
+  it('/counts NO lo captura la ruta :id, y cuadra con la lista', async () => {
+    const publicada = await crear({ title: 'Contada y publicada' });
+    await http().patch(`/admin/galleries/${publicada.id}`).set(auth()).send({ isPublished: true });
+    await crear({ title: 'Contada y en borrador' });
+
+    // Si `@Get('counts')` se declarara DESPUÉS de `@Get(':id')`, esto sería un
+    // 404 buscando una galería con id «counts».
+    const { body } = await http().get('/admin/galleries/counts').set(auth()).expect(200);
+    expect(body.data.todas).toBe(body.data.publicadas + body.data.borradores);
+
+    const lista = await http().get('/admin/galleries?estado=borradores').set(auth()).expect(200);
+    expect(lista.body.meta.totalCount).toBe(body.data.borradores);
+  });
+
+  it('la lista de admin trae updatedAt y los datos de la portada; la pública NO', async () => {
+    const g = await crear({ title: 'Con portada' });
+    const m = await prisma.media.create({
+      data: {
+        galleryId: g.id,
+        type: 'REEL',
+        mimeType: 'video/mp4',
+        sizeBytes: 1,
+        storageKey: 'videos/d.mp4',
+        posterKey: 'posters/d.jpg',
+        durationSec: 72,
+        status: 'READY',
+        isFeatured: true,
+      },
+    });
+    expect(m.id).toBeDefined();
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+
+    const admin = await http().get(`/admin/galleries?q=Con portada`).set(auth()).expect(200);
+    expect(admin.body.data[0]).toMatchObject({ coverType: 'REEL', coverDurationSec: 72 });
+    expect(typeof admin.body.data[0].updatedAt).toBe('string');
+
+    // La lista pública usaba el mapper del ADMIN y colaba `isPublished`; con
+    // `updatedAt` en el DTO habría colado también el instante de edición.
+    const publica = await http().get('/galleries').expect(200);
+    expect(publica.body.data[0]).not.toHaveProperty('isPublished');
+    expect(publica.body.data[0]).not.toHaveProperty('updatedAt');
+    expect(publica.body.data[0]).not.toHaveProperty('coverType');
+  });
+
   it('la portada de un VÍDEO sin poster no mete un .mp4 en coverUrl', async () => {
     const g = await crear({ title: 'Sin poster' });
     const m = await prisma.media.create({
-      data: { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/np.mp4', status: 'READY' },
+      data: {
+        galleryId: g.id,
+        type: 'REEL',
+        mimeType: 'video/mp4',
+        sizeBytes: 1,
+        storageKey: 'videos/np.mp4',
+        status: 'READY',
+      },
     });
     await http().patch(`/admin/galleries/${g.id}/media/${m.id}/cover`).set(auth()).expect(200);
 
@@ -214,8 +352,23 @@ describe('portada y estado (lo que necesita el editor)', () => {
     await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
     await prisma.media.createMany({
       data: [
-        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/ok.mp4', status: 'READY' },
-        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/ko.mp4', status: 'FAILED', error: 'La subida quedó incompleta' },
+        {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: 'videos/ok.mp4',
+          status: 'READY',
+        },
+        {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: 'videos/ko.mp4',
+          status: 'FAILED',
+          error: 'La subida quedó incompleta',
+        },
       ],
     });
 
@@ -235,9 +388,30 @@ describe('portada y estado (lo que necesita el editor)', () => {
     const g = await crear({ title: 'Cuenta' });
     await prisma.media.createMany({
       data: [
-        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/a.mp4', status: 'READY' },
-        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/b.mp4', status: 'FAILED' },
-        { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/c.mp4', status: 'PENDING' },
+        {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: 'videos/a.mp4',
+          status: 'READY',
+        },
+        {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: 'videos/b.mp4',
+          status: 'FAILED',
+        },
+        {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: 'videos/c.mp4',
+          status: 'PENDING',
+        },
       ],
     });
 
@@ -252,7 +426,13 @@ describe('borrado', () => {
     // app las vea y los objetos quedarían huérfanos en el bucket para siempre.
     const g = await crear({ title: 'Con medios' });
     await prisma.media.create({
-      data: { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: 'videos/h.mp4' },
+      data: {
+        galleryId: g.id,
+        type: 'REEL',
+        mimeType: 'video/mp4',
+        sizeBytes: 1,
+        storageKey: 'videos/h.mp4',
+      },
     });
 
     await http().delete(`/admin/galleries/${g.id}`).set(auth()).expect(204);
@@ -280,7 +460,14 @@ describe('admin', () => {
     const b = await crear({ title: 'XV Camila' });
     const m = async (galleryId: string, key: string) =>
       prisma.media.create({
-        data: { galleryId, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: key, status: 'READY' },
+        data: {
+          galleryId,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: key,
+          status: 'READY',
+        },
       });
 
     const a1 = await m(a.id, 'videos/a1.mp4');
@@ -299,7 +486,14 @@ describe('admin', () => {
     const ids: string[] = [];
     for (const k of ['a', 'b', 'c']) {
       const m = await prisma.media.create({
-        data: { galleryId: g.id, type: 'REEL', mimeType: 'video/mp4', sizeBytes: 1, storageKey: `videos/${k}.mp4`, status: 'READY' },
+        data: {
+          galleryId: g.id,
+          type: 'REEL',
+          mimeType: 'video/mp4',
+          sizeBytes: 1,
+          storageKey: `videos/${k}.mp4`,
+          status: 'READY',
+        },
       });
       ids.push(m.id);
     }
@@ -360,7 +554,6 @@ describe('actualizar: null borra, undefined no toca', () => {
   });
 });
 
-
 describe('isPublished: lo ve el admin, no la landing', () => {
   it('el detalle de admin lo trae', async () => {
     const g = await crear({ title: 'Borrador' });
@@ -383,7 +576,11 @@ describe('isPublished: lo ve el admin, no la landing', () => {
     // Allí siempre valdría true —el controller filtra— y añadirlo movería el
     // openapi-public.json que el CI congela.
     const g = await crear({ title: 'Publicada' });
-    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true }).expect(200);
+    await http()
+      .patch(`/admin/galleries/${g.id}`)
+      .set(auth())
+      .send({ isPublished: true })
+      .expect(200);
 
     const { body } = await http().get(`/galleries/${g.slug}`).expect(200);
 

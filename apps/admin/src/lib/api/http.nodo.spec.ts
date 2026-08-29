@@ -27,7 +27,10 @@ beforeEach(() => {
 
 describe('cliente HTTP', () => {
   it('desenvuelve el sobre y devuelve data y meta', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(envuelto([{ id: 'a' }], { totalCount: 1 }))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(envuelto([{ id: 'a' }], { totalCount: 1 }))),
+    );
 
     const r = await api.get<{ id: string }[]>('/admin/galleries');
 
@@ -64,7 +67,13 @@ describe('cliente HTTP', () => {
 
   it('esSesionMuerta distingue lo que manda al login de lo que no', async () => {
     const construir = (code: string, status: number) =>
-      new ApiError(status, { success: false, statusCode: status, code, message: '', timestamp: '' } as never);
+      new ApiError(status, {
+        success: false,
+        statusCode: status,
+        code,
+        message: '',
+        timestamp: '',
+      } as never);
 
     expect(construir('SESSION_EXPIRED', 401).esSesionMuerta).toBe(true);
     expect(construir('SESSION_REVOKED', 401).esSesionMuerta).toBe(true);
@@ -82,8 +91,14 @@ describe('cliente HTTP', () => {
   });
 
   it('un 204 no intenta parsear JSON', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(null, { status: 204 }))));
-    await expect(api.delete('/admin/media/x')).resolves.toEqual({ data: undefined, meta: undefined });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response(null, { status: 204 }))),
+    );
+    await expect(api.delete('/admin/media/x')).resolves.toEqual({
+      data: undefined,
+      meta: undefined,
+    });
   });
 
   it('Content-Type solo cuando hay cuerpo', async () => {
@@ -100,7 +115,10 @@ describe('cliente HTTP', () => {
   it('una cancelación del llamante se relanza SIN envolver', async () => {
     // Si se envolviera, TanStack Query la trataría como error y sacaría un toast
     // al navegar, que es justo lo que no debe pasar.
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new DOMException('abortado', 'AbortError'))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new DOMException('abortado', 'AbortError'))),
+    );
 
     const ctrl = new AbortController();
     ctrl.abort();
@@ -113,12 +131,13 @@ describe('cliente HTTP', () => {
   it('el timeout da TimeoutError, distinguible de "no hay conexión"', async () => {
     vi.stubGlobal(
       'fetch',
-      mockFetch((_u, init) =>
-        new Promise<Response>((_ok, rej) => {
-          init?.signal?.addEventListener('abort', () =>
-            rej(new DOMException('timeout', 'TimeoutError')),
-          );
-        }),
+      mockFetch(
+        (_u, init) =>
+          new Promise<Response>((_ok, rej) => {
+            init?.signal?.addEventListener('abort', () =>
+              rej(new DOMException('timeout', 'TimeoutError')),
+            );
+          }),
       ),
     );
 
@@ -129,7 +148,10 @@ describe('cliente HTTP', () => {
   });
 
   it('una caída de red da NetworkError', async () => {
-    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))),
+    );
 
     const e = await api.get('/x').catch((x: unknown) => x);
     expect(e).toBeInstanceOf(NetworkError);

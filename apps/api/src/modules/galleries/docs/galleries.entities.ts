@@ -1,10 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type {
   AdminGalleryListItemDto,
+  AdminMediaDto,
   CategoryRefDto,
+  GalleryCountsDto,
   GalleryDto,
   GalleryListItemDto,
   MediaDto,
+  MediaStatus,
   MediaType,
   Orientation,
 } from '@james-film/contracts';
@@ -29,6 +32,13 @@ export class MediaEntity implements MediaDto {
   @ApiProperty({ type: String, nullable: true }) caption!: string | null;
   @ApiProperty() order!: number;
   @ApiProperty({ description: 'La portada. Exclusiva por galería.' }) isFeatured!: boolean;
+}
+
+/** Lo que ve el admin de un medio: el estado de subida y el porqué del fallo. */
+export class AdminMediaEntity extends MediaEntity implements AdminMediaDto {
+  @ApiProperty({ enum: ['PENDING', 'READY', 'FAILED'] }) status!: MediaStatus;
+  @ApiProperty({ type: String, nullable: true, description: 'Qué falló, en castellano.' })
+  error!: string | null;
 }
 
 export class GalleryEntity implements GalleryDto {
@@ -73,4 +83,26 @@ export class AdminGalleryListItemEntity
 {
   @ApiProperty({ description: 'false = borrador. La landing no lo ve.' })
   isPublished!: boolean;
+
+  @ApiProperty({
+    example: '2026-08-29T02:14:00.000Z',
+    description: 'Último cambio. Se muestra como «hace 3 días», en America/Lima.',
+  })
+  updatedAt!: string;
+
+  @ApiPropertyOptional({
+    enum: ['REEL', 'AFTERMOVIE', 'PHOTO'],
+    nullable: true,
+    description: 'Tipo del medio destacado. null si la galería aún no tiene portada.',
+  })
+  coverType!: MediaType | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 72, description: 'Duración de la portada.' })
+  coverDurationSec!: number | null;
+}
+
+export class GalleryCountsEntity implements GalleryCountsDto {
+  @ApiProperty({ example: 14 }) todas!: number;
+  @ApiProperty({ example: 11 }) publicadas!: number;
+  @ApiProperty({ example: 3 }) borradores!: number;
 }

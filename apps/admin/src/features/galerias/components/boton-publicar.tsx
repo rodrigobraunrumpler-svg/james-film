@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AdminGalleryDto } from '@james-film/contracts';
 import { toast } from 'sonner';
+import { Boton } from '@/components/shared/boton';
 import type { Respuesta } from '@/lib/api/http';
 import { keys } from '@/lib/api/keys';
 import { galerias } from '../services/galerias';
@@ -29,23 +30,26 @@ export function BotonPublicar({ galeria }: { galeria: AdminGalleryDto }) {
   const publicada = galeria.isPublished;
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2">
+      {/* El ESTADO y la ACCIÓN son dos cosas: un solo botón que dijera
+          «Publicada» no diría qué pasa al pulsarlo. */}
       <span
-        className={`rounded px-2 py-1 text-xs font-medium ${
-          publicada ? 'bg-green-100 text-green-800' : 'bg-neutral-200 text-neutral-700'
-        }`}
+        className={
+          publicada
+            ? 'text-brass border-brass rounded-control border px-2 py-1 text-xs'
+            : 'text-ash border-line-strong rounded-control border px-2 py-1 text-xs'
+        }
       >
         {publicada ? 'Publicada' : 'Borrador'}
       </span>
 
-      <button
-        type="button"
+      <Boton
+        variante={publicada ? 'secundario' : 'principal'}
         onClick={() => mutacion.mutate()}
         disabled={mutacion.isPending}
-        className="min-h-11 rounded-md border px-4 text-sm font-medium disabled:opacity-60"
       >
         {mutacion.isPending ? 'Guardando…' : publicada ? 'Pasar a borrador' : 'Publicar galería'}
-      </button>
+      </Boton>
     </div>
   );
 }

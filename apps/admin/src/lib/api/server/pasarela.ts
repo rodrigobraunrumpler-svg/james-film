@@ -39,8 +39,7 @@ export async function pasarela(
 
   // Se lee a texto, no se reenvía el stream: el reintento tras el 401 necesita
   // poder releerlo, y un ReadableStream se consume una sola vez.
-  const cuerpo =
-    req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.text();
+  const cuerpo = req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.text();
 
   const sesion = await leerSesion();
 
@@ -58,15 +57,25 @@ export async function pasarela(
   // Un solo reintento, y solo si hay refresh que usar.
   if (res.status === 401 && sesion?.refreshToken) {
     const nueva = await refrescar(sesion.refreshToken);
-    if (!nueva) {
+    if (!nueva.ok) {
       await borrarSesion();
+      // El `code` viaja tal cual: `SESSION_REVOKED` es el reuso del refresh y
+      // el login lo cuenta distinto que una caducidad normal.
       return NextResponse.json(
-        { success: false, statusCode: 401, code: 'SESSION_EXPIRED', message: 'Tu sesión ha expirado' },
+        {
+          success: false,
+          statusCode: 401,
+          code: nueva.code,
+          message:
+            nueva.code === 'SESSION_REVOKED'
+              ? 'Tu sesión se cerró por seguridad'
+              : 'Tu sesión ha expirado',
+        },
         { status: 401 },
       );
     }
-    await guardarSesion(nueva);
-    res = await enviar(nueva.accessToken);
+    await guardarSesion(nueva.sesion);
+    res = await enviar(nueva.sesion.accessToken);
   }
 
   // El estado se devuelve TAL CUAL: el admin distingue por `code` y necesita el

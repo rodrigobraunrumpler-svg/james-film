@@ -117,7 +117,11 @@ describe('cola de subidas', () => {
       preparar: (f) =>
         Promise.resolve(
           f.name === 'reel-2.mp4'
-            ? { ok: false, archivo: f, motivo: 'Está en HEVC (H.265). Elige H.264 en CapCut.' }
+            ? {
+                ok: false,
+                archivo: f,
+                motivo: 'Está en HEVC (H.265). Vuelve a exportarlo con códec H.264.',
+              }
             : preparadoOk(f),
         ),
     });

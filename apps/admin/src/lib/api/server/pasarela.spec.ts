@@ -83,8 +83,9 @@ describe('pasarela', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(String(fetchMock.mock.calls[1]![0])).toContain('/auth/refresh');
     // El reintento lleva el token NUEVO, no el caducado.
-    expect((fetchMock.mock.calls[2]![1]!.headers as Headers).get('authorization'))
-      .toBe('Bearer nuevo');
+    expect((fetchMock.mock.calls[2]![1]!.headers as Headers).get('authorization')).toBe(
+      'Bearer nuevo',
+    );
     expect(almacen.get(COOKIE)).toContain('ref-2');
   });
 
@@ -143,8 +144,7 @@ describe('pasarela', () => {
 
     const res = await pasarela(peticion(), ctx(['admin', 'galleries']));
 
-    expect((fetchMock.mock.calls[0]![1]!.headers as Headers).get('authorization'))
-      .toBeNull();
+    expect((fetchMock.mock.calls[0]![1]!.headers as Headers).get('authorization')).toBeNull();
     expect(res.status).toBe(401);
     expect(fetchMock).toHaveBeenCalledTimes(1); // sin refreshToken no hay refresh
   });

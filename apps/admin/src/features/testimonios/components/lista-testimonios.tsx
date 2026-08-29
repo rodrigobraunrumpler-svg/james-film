@@ -3,6 +3,10 @@
 import type { AdminTestimonialDto } from '@james-film/contracts';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { MessageSquareQuote } from 'lucide-react';
+import { ConfirmarBorrado } from '@/components/shared/confirmar-borrado';
+import { EstadoVacio } from '@/components/shared/estado-vacio';
+import { Hoja } from '@/components/shared/hoja';
 import { esApiError } from '@/lib/api/errors';
 import { fecha } from '@/lib/format';
 import {
@@ -37,6 +41,7 @@ export function ListaTestimonios() {
   const destacar = useDestacarTestimonio();
   const borrar = useBorrarTestimonio();
   const [editando, setEditando] = useState<AdminTestimonialDto | null | undefined>(undefined);
+  const [borrando, setBorrando] = useState<AdminTestimonialDto | null>(null);
 
   if (isPending) return <SkeletonTestimonios />;
 
@@ -76,15 +81,15 @@ export function ListaTestimonios() {
     if (seguro) guardar.mutate({ id: t.id, datos: { hasConsent: true } });
   };
 
-  const pedirBorrado = async (t: AdminTestimonialDto): Promise<void> => {
-    const seguro = confirm(
-      `¿Borrar el testimonio de ${t.authorName}? También se borrará su captura del servidor. ` +
-        `No se puede deshacer.`,
-    );
-    if (!seguro) return;
-
+  /**
+   * Borrado FUERTE, escribiendo el nombre: se lleva del servidor la captura y
+   * la foto de una persona real, y no hay vuelta atrás. Es el mismo criterio
+   * que la galería — el `confirm()` nativo se acepta con el pulgar sin leerlo.
+   */
+  const confirmarBorrado = async (t: AdminTestimonialDto): Promise<void> => {
     try {
       await borrar.mutateAsync(t.id);
+      setBorrando(null);
       toast.success('Testimonio borrado');
     } catch (e) {
       toast.error(esApiError(e) ? e.message : 'No se pudo borrar.');
@@ -135,7 +140,15 @@ export function ListaTestimonios() {
         </p>
       )}
 
-      {visibles.length === 0 ? (
+      {data.length === 0 ? (
+        <EstadoVacio
+          Icono={MessageSquareQuote}
+          titulo="Aún no tienes testimonios"
+          explicacion="Una captura de un WhatsApp de una clienta contenta vende más que cualquier texto. Acuérdate de pedirle permiso antes de publicarlo."
+          accion="Añadir el primero"
+          onAccion={() => setEditando(null)}
+        />
+      ) : visibles.length === 0 ? (
         <p className="rounded-lg border border-dashed p-6 text-center text-sm text-neutral-500">
           No hay testimonios con este filtro.
         </p>
@@ -250,7 +263,7 @@ export function ListaTestimonios() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => void pedirBorrado(t)}
+                  onClick={() => setBorrando(t)}
                   className="min-h-11 rounded-md border px-3 text-sm"
                 >
                   Borrar
@@ -261,14 +274,26 @@ export function ListaTestimonios() {
         </ul>
       )}
 
-      {editando !== undefined && (
-        <div className="rounded-lg border p-4">
-          <h2 className="mb-4 text-lg font-semibold">
-            {editando ? `Editar ${editando.authorName}` : 'Nuevo testimonio'}
-          </h2>
-          <HojaTestimonio testimonio={editando} onCerrar={() => setEditando(undefined)} />
-        </div>
+      {borrando && (
+        <ConfirmarBorrado
+          nombre={borrando.authorName}
+          descripcion="También se borrarán del servidor su captura y su foto. No se puede deshacer."
+          cargando={borrar.isPending}
+          onCancelar={() => setBorrando(null)}
+          onConfirmar={() => void confirmarBorrado(borrando)}
+        />
       )}
+
+      <Hoja
+        abierta={editando !== undefined}
+        onCerrar={() => setEditando(undefined)}
+        titulo={editando ? `Editar ${editando.authorName}` : 'Nuevo testimonio'}
+        descripcion="Se crea como borrador: publicarlo exige marcar el consentimiento aparte."
+      >
+        {editando !== undefined && (
+          <HojaTestimonio testimonio={editando} onCerrar={() => setEditando(undefined)} />
+        )}
+      </Hoja>
     </div>
   );
 }

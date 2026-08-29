@@ -11,6 +11,9 @@ export const keys = {
     all: ['galleries'] as const,
     lists: () => [...keys.galleries.all, 'list'] as const,
     list: (filtros: object) => [...keys.galleries.lists(), filtros] as const,
+    // Fuera de `lists()`: los recuentos NO dependen del filtro, y colgarlos ahí
+    // los invalidaría en cada cambio de pestaña sin que hayan cambiado.
+    counts: () => [...keys.galleries.all, 'counts'] as const,
     detail: (id: string) => [...keys.galleries.all, 'detail', id] as const,
   },
   categories: {
@@ -28,6 +31,9 @@ export const keys = {
   settings: {
     all: ['settings'] as const,
     detail: () => [...keys.settings.all, 'detail'] as const,
+  },
+  storage: {
+    usage: ['storage', 'usage'] as const,
   },
   auth: {
     me: ['auth', 'me'] as const,

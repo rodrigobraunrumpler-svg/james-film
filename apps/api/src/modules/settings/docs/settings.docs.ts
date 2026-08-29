@@ -31,7 +31,11 @@ export const DocListarDiferenciadores = (): MethodDecorator =>
   ApiDoc({ summary: 'Lista los diferenciadores activos', okArray: DifferentiatorEntity });
 
 export const DocListarDiferenciadoresAdmin = (): MethodDecorator =>
-  ApiDoc({ summary: 'Lista todos los diferenciadores', okArray: AdminDifferentiatorEntity, auth: true });
+  ApiDoc({
+    summary: 'Lista todos los diferenciadores',
+    okArray: AdminDifferentiatorEntity,
+    auth: true,
+  });
 
 export const DocCrearDiferenciador = (): MethodDecorator =>
   ApiDoc({
@@ -44,13 +48,22 @@ export const DocCrearDiferenciador = (): MethodDecorator =>
   });
 
 export const DocActualizarDiferenciador = (): MethodDecorator =>
-  ApiDoc({ summary: 'Actualiza un diferenciador', ok: AdminDifferentiatorEntity, errors: [404, 409], auth: true });
+  ApiDoc({
+    summary: 'Actualiza un diferenciador',
+    ok: AdminDifferentiatorEntity,
+    errors: [404, 409],
+    auth: true,
+  });
 
 export const DocBorrarDiferenciador = (): MethodDecorator =>
   ApiDoc({ summary: 'Borra un diferenciador', status: 204, errors: [404], auth: true });
 
 export const DocReordenarDiferenciadores = (): MethodDecorator =>
-  ApiDoc({ summary: 'Reordena los diferenciadores', okArray: AdminDifferentiatorEntity, auth: true });
+  ApiDoc({
+    summary: 'Reordena los diferenciadores',
+    okArray: AdminDifferentiatorEntity,
+    auth: true,
+  });
 
 export const DocListarRedes = (): MethodDecorator =>
   ApiDoc({ summary: 'Lista las redes activas', okArray: SocialLinkEntity });
@@ -69,7 +82,12 @@ export const DocCrearRed = (): MethodDecorator =>
   });
 
 export const DocActualizarRed = (): MethodDecorator =>
-  ApiDoc({ summary: 'Actualiza una red', ok: AdminSocialLinkEntity, errors: [404, 409], auth: true });
+  ApiDoc({
+    summary: 'Actualiza una red',
+    ok: AdminSocialLinkEntity,
+    errors: [404, 409],
+    auth: true,
+  });
 
 export const DocBorrarRed = (): MethodDecorator =>
   ApiDoc({ summary: 'Borra una red', status: 204, errors: [404], auth: true });

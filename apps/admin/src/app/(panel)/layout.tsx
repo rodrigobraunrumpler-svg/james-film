@@ -9,19 +9,20 @@ import { BarraSubidas } from '@/lib/media/cola/barra-subidas';
 export default function LayoutPanel({ children }: { children: React.ReactNode }) {
   return (
     <ProveedorQuery>
-      <div className="flex min-h-dvh flex-col lg:flex-row">
+      <div className="bg-content flex min-h-dvh flex-col lg:flex-row">
         <Navegacion />
-        {/* El padding inferior deja sitio a la barra de publicación (fase 4),
-            respetando el área segura del iPhone. */}
-        {/* Columna propia para que la barra pueda ser `sticky`: pegada abajo
-            mientras se scrollea, pero ocupando su hueco en vez de taparlo. */}
+        {/* Columna propia para que la barra de subidas pueda ser `sticky`:
+            pegada abajo mientras se scrollea, pero ocupando su hueco en vez de
+            taparlo. Con `fixed` tapaba el botón de Cancelar de la última tarjeta. */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <main className="flex-1 px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:px-8">
+          {/* ARRIBA y en el flujo: ocupa su hueco en vez de taparle a la última
+              tarjeta el botón de Cancelar. En el layout y no en el editor,
+              para que navegar no libere el Wake Lock ni oculte el progreso. */}
+          <BarraSubidas />
+          {/* El padding inferior respeta el área segura del iPhone. */}
+          <main className="flex-1 px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:px-6">
             {children}
           </main>
-          {/* En el layout, no en el editor: navegar a otra pantalla no debe
-              liberar el Wake Lock ni ocultar el progreso. */}
-          <BarraSubidas />
         </div>
       </div>
     </ProveedorQuery>

@@ -1,6 +1,7 @@
 import { ApiDoc } from '../../../common/swagger/api-doc.decorator.js';
 import {
   AdminGalleryListItemEntity,
+  GalleryCountsEntity,
   GalleryEntity,
   GalleryListItemEntity,
 } from './galleries.entities.js';
@@ -32,7 +33,18 @@ export const DocGaleriaPorSlug = (): MethodDecorator =>
 export const DocListarGaleriasAdmin = (): MethodDecorator =>
   ApiDoc({
     summary: 'Lista todas las galerías, incluidos los borradores',
+    description: 'Filtra con `?estado=todas|publicadas|borradores` y busca en el título con `?q=`.',
     paginated: AdminGalleryListItemEntity,
+    auth: true,
+  });
+
+export const DocContarGalerias = (): MethodDecorator =>
+  ApiDoc({
+    summary: 'Cuenta las galerías por estado, para las pestañas',
+    description:
+      'Endpoint propio porque los recuentos NO dependen del filtro activo: ' +
+      'devolverlos en la lista filtrada obligaría a recalcularlos en cada página.',
+    ok: GalleryCountsEntity,
     auth: true,
   });
 

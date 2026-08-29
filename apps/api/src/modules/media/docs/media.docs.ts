@@ -1,9 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { AdminMediaEntity } from '../../galleries/docs/galleries.entities.js';
 import type {
   MediaConfirmResult,
   MediaStatus,
   Orientation,
   PresignItemResult,
+  StorageUsageDto,
 } from '@james-film/contracts';
 import { ApiDoc } from '../../../common/swagger/api-doc.decorator.js';
 
@@ -23,6 +25,24 @@ export class MediaConfirmResultEntity implements MediaConfirmResult {
   @ApiProperty({ type: String, nullable: true, description: 'Qué falló, en castellano.' })
   error!: string | null;
 }
+
+export class StorageUsageEntity implements StorageUsageDto {
+  @ApiProperty({ example: 3_435_973_836, description: 'Suma de los medios READY sin borrar.' })
+  usedBytes!: number;
+  @ApiProperty({ example: 10_737_418_240, description: 'STORAGE_QUOTA_GB en bytes.' })
+  quotaBytes!: number;
+}
+
+export const DocUsoAlmacenamiento = (): MethodDecorator =>
+  ApiDoc({
+    summary: 'Cuánto ocupan los medios, para el medidor del sidebar',
+    description:
+      'Se suma sobre `Media`, no se pregunta a R2: el bucket guarda además portadas ' +
+      'y logos —kilobytes— y un `ListObjectsV2` por cada carga del panel costaría ' +
+      'más que el dato. Los borrados blandos no cuentan.',
+    ok: StorageUsageEntity,
+    auth: true,
+  });
 
 export const DocPresign = (): MethodDecorator =>
   ApiDoc({
@@ -56,6 +76,17 @@ export const DocBorrarMedia = (): MethodDecorator =>
   ApiDoc({
     summary: 'Borra un medio (soft delete)',
     status: 204,
+    errors: [404],
+    auth: true,
+  });
+
+export const DocActualizarMedia = (): MethodDecorator =>
+  ApiDoc({
+    summary: 'Edita el texto alternativo y el pie de un medio',
+    description:
+      'Lo ÚNICO editable de un medio ya subido: el resto lo determina el archivo. El `alt` es ' +
+      'accesibilidad de la landing — sin él un lector de pantalla anuncia «imagen» y ya.',
+    ok: AdminMediaEntity,
     errors: [404],
     auth: true,
   });

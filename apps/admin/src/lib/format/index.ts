@@ -47,13 +47,29 @@ const UNIDADES = [
 
 /** "hace 4 minutos", "hace 3 días". Las cadenas exactas que pide §9. */
 export function relativo(v: string | Date, ahora: number = Date.now()): string {
-  const segundos = Math.round((new Date(v).getTime() - ahora) / 1000);
+  const instante = new Date(v).getTime();
+  // Una fecha ilegible devuelve cadena vacía en vez de reventar: `Intl` lanza
+  // con NaN, y ese throw sale del render y se lleva la pantalla ENTERA al
+  // error boundary por un solo campo mal formado en una sola tarjeta.
+  if (!Number.isFinite(instante)) return '';
+  const segundos = Math.round((instante - ahora) / 1000);
   for (const [unidad, enSegundos] of UNIDADES) {
     if (Math.abs(segundos) >= enSegundos || unidad === 'second') {
       return fmtRelativo.format(Math.round(segundos / enSegundos), unidad);
     }
   }
   return '';
+}
+
+/**
+ * Segundos → `1:12`. Los segundos van siempre a dos dígitos: `1:7` se lee como
+ * un minuto y siete, no como uno cero siete.
+ */
+export function duracion(segundos: number | null | undefined): string | null {
+  if (segundos === null || segundos === undefined) return null;
+  const m = Math.floor(segundos / 60);
+  const s = Math.floor(segundos % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 /** "35 MB". James necesita saber cuánto va a subir antes de empezar. */

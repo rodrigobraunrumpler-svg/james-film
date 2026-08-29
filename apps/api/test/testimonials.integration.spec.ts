@@ -120,7 +120,11 @@ describe('la puerta del consentimiento', () => {
     // Se comprueba el estado RESULTANTE, no solo el campo que llega: si no,
     // este camino dejaría un publicado sin consentimiento.
     const t = await crear({ hasConsent: true, isActive: false });
-    await http().patch(`/admin/testimonials/${t.id}`).set(auth()).send({ isActive: true }).expect(200);
+    await http()
+      .patch(`/admin/testimonials/${t.id}`)
+      .set(auth())
+      .send({ isActive: true })
+      .expect(200);
 
     const { body } = await http()
       .patch(`/admin/testimonials/${t.id}`)
@@ -133,7 +137,11 @@ describe('la puerta del consentimiento', () => {
 
   it('despublicar y quitar el consentimiento A LA VEZ sí se puede', async () => {
     const t = await crear({ hasConsent: true });
-    await http().patch(`/admin/testimonials/${t.id}`).set(auth()).send({ isActive: true }).expect(200);
+    await http()
+      .patch(`/admin/testimonials/${t.id}`)
+      .set(auth())
+      .send({ isActive: true })
+      .expect(200);
 
     await http()
       .patch(`/admin/testimonials/${t.id}`)
@@ -159,7 +167,11 @@ describe('el controller público', () => {
 
   it('no expone `hasConsent`: es una condición para publicar, no un dato', async () => {
     const t = await crear({ hasConsent: true });
-    await http().patch(`/admin/testimonials/${t.id}`).set(auth()).send({ isActive: true }).expect(200);
+    await http()
+      .patch(`/admin/testimonials/${t.id}`)
+      .set(auth())
+      .send({ isActive: true })
+      .expect(200);
 
     const { body } = await http().get('/testimonials').expect(200);
     expect(body.data[0]).not.toHaveProperty('hasConsent');
@@ -168,7 +180,11 @@ describe('el controller público', () => {
 
   it('`galleryId` solo ACOTA, nunca amplía lo que se ve', async () => {
     const t = await crear({ hasConsent: true });
-    await http().patch(`/admin/testimonials/${t.id}`).set(auth()).send({ isActive: true }).expect(200);
+    await http()
+      .patch(`/admin/testimonials/${t.id}`)
+      .set(auth())
+      .send({ isActive: true })
+      .expect(200);
 
     const { body } = await http().get('/testimonials?galleryId=no-existe').expect(200);
     expect(body.data).toHaveLength(0);
@@ -206,7 +222,11 @@ describe('destacado', () => {
     const a = await crear({ authorName: 'Ana', hasConsent: true });
     const b = await crear({ authorName: 'Bea', hasConsent: true });
     for (const t of [a, b]) {
-      await http().patch(`/admin/testimonials/${t.id}`).set(auth()).send({ isActive: true }).expect(200);
+      await http()
+        .patch(`/admin/testimonials/${t.id}`)
+        .set(auth())
+        .send({ isActive: true })
+        .expect(200);
     }
     await http().patch(`/admin/testimonials/${b.id}/feature`).set(auth()).expect(200);
 
@@ -240,8 +260,16 @@ describe('borrado', () => {
 describe('validación', () => {
   it('rechaza un rating fuera de 1..5', async () => {
     // El schema lo declara Int? sin tope: un 7 pintaría siete estrellas.
-    await http().post('/admin/testimonials').set(auth()).send({ authorName: 'X', rating: 7 }).expect(422);
-    await http().post('/admin/testimonials').set(auth()).send({ authorName: 'X', rating: 0 }).expect(422);
+    await http()
+      .post('/admin/testimonials')
+      .set(auth())
+      .send({ authorName: 'X', rating: 7 })
+      .expect(422);
+    await http()
+      .post('/admin/testimonials')
+      .set(auth())
+      .send({ authorName: 'X', rating: 0 })
+      .expect(422);
     await crear({ rating: 5 });
   });
 

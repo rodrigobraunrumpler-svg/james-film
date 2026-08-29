@@ -1,4 +1,5 @@
 import type {
+  AdminMediaDto,
   MediaConfirmResult,
   PresignItemInput,
   PresignItemResult,
@@ -26,6 +27,10 @@ export const medios = {
     }),
 
   confirmar: (mediaId: string) => api.post<MediaConfirmResult>(`/admin/media/${mediaId}/confirm`),
+
+  /** Lo ÚNICO editable de un medio subido: el resto lo determina el archivo. */
+  actualizar: (mediaId: string, datos: { alt?: string | null; caption?: string | null }) =>
+    api.patch<AdminMediaDto>(`/admin/media/${mediaId}`, datos),
 
   /** Soft delete. Cancelar sin esto deja una tarjeta muerta hasta el cron. */
   borrar: (mediaId: string) => api.delete<void>(`/admin/media/${mediaId}`),

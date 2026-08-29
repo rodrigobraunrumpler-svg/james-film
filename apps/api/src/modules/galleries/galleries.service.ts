@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AdminGalleryDto,
   AdminGalleryListItemDto,
+  GalleryCountsDto,
   GalleryDto,
   GalleryListItemDto,
 } from '@james-film/contracts';
@@ -21,8 +22,11 @@ import {
   SELECT_MEDIA_ADMIN,
   mapGaleria,
   mapGaleriaAdmin,
+  mapGaleriaLista,
   mapGaleriaListaAdmin,
+  SELECT_GALERIA_ADMIN,
 } from './galleries.mapper.js';
+import type { EstadoGaleria } from './dto/list-galleries.dto.js';
 
 /** Lo que la landing puede ver: publicada, no borrada. */
 const VISIBLE = { isPublished: true, deletedAt: null } as const;
@@ -60,7 +64,7 @@ export class GalleriesService {
     ]);
 
     return paginar(
-      filas.map((f) => mapGaleriaListaAdmin(f, this.storage)),
+      filas.map((f) => mapGaleriaLista(f, this.storage)),
       total,
       page,
       pageSize,
@@ -91,13 +95,22 @@ export class GalleriesService {
   async listarTodas(
     page: number,
     pageSize: number,
+    estado: EstadoGaleria = 'todas',
+    q?: string,
   ): Promise<ListaPaginada<AdminGalleryListItemDto>> {
-    const where = { deletedAt: null };
+    // `undefined` deja el campo fuera del WHERE; `true`/`false` lo filtran.
+    const where = {
+      deletedAt: null,
+      isPublished: estado === 'todas' ? undefined : estado === 'publicadas',
+      // `mode: 'insensitive'` porque James escribe «camila» buscando «XV de Camila».
+      // Sin índice: con decenas de filas el seq scan es más rápido que un GIN.
+      title: q ? { contains: q, mode: 'insensitive' as const } : undefined,
+    };
     const [filas, total] = await this.prisma.$transaction([
       this.prisma.gallery.findMany({
         where,
         select: {
-          ...SELECT_GALERIA,
+          ...SELECT_GALERIA_ADMIN,
           // Solo READY: si no, "Medios · 8" cuenta también los que fallaron.
           _count: { select: { media: { where: { deletedAt: null, status: 'READY' } } } },
           media: { where: { deletedAt: null, isFeatured: true }, select: SELECT_MEDIA, take: 1 },
@@ -115,6 +128,22 @@ export class GalleriesService {
       page,
       pageSize,
     );
+  }
+
+  /**
+   * Los tres números de las pestañas, en UNA consulta. Endpoint aparte y no un
+   * campo del meta paginado: los recuentos NO dependen del filtro activo, y
+   * meterlos en la respuesta filtrada obligaría a recalcularlos en cada página.
+   */
+  async contar(): Promise<GalleryCountsDto> {
+    const grupos = await this.prisma.gallery.groupBy({
+      by: ['isPublished'],
+      where: { deletedAt: null },
+      _count: { _all: true },
+    });
+    const publicadas = grupos.find((g) => g.isPublished)?._count._all ?? 0;
+    const borradores = grupos.find((g) => !g.isPublished)?._count._all ?? 0;
+    return { todas: publicadas + borradores, publicadas, borradores };
   }
 
   /**

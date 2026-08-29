@@ -2,11 +2,19 @@ import type {
   AdminGalleryDto,
   CategoryRefDto,
   AdminGalleryListItemDto,
+  GalleryCountsDto,
   MediaConfirmResult,
 } from '@james-film/contracts';
 import { api, type RequestOptions } from '@/lib/api/http';
 
+/** La misma lista cerrada que valida `?estado=` en la API. Una sola fuente. */
+export const ESTADOS_GALERIA = ['todas', 'publicadas', 'borradores'] as const;
+export type EstadoGaleria = (typeof ESTADOS_GALERIA)[number];
+
 export interface FiltrosGalerias {
+  estado: EstadoGaleria;
+  /** Búsqueda por título. Cadena vacía = sin filtro; la API la recorta igual. */
+  q: string;
   page: number;
   pageSize: number;
 }
@@ -19,11 +27,20 @@ export const galerias = {
   listar: (filtros: FiltrosGalerias, opts?: RequestOptions) =>
     api.get<AdminGalleryListItemDto[]>('/admin/galleries', { ...opts, query: { ...filtros } }),
 
+  /** Los tres números de las pestañas. No dependen del filtro: caché propia. */
+  contar: (opts?: RequestOptions) => api.get<GalleryCountsDto>('/admin/galleries/counts', opts),
+
   porId: (id: string, opts?: RequestOptions) =>
     api.get<AdminGalleryDto>(`/admin/galleries/${id}`, opts),
 
   crear: (datos: { title: string; categoryId: string }) =>
     api.post<AdminGalleryDto>('/admin/galleries', datos),
+
+  /** Soft delete: los objetos siguen en R2 hasta que el cron los purgue. */
+  borrar: (id: string) => api.delete<void>(`/admin/galleries/${id}`),
+
+  destacar: (id: string, isFeatured: boolean) =>
+    api.patch<AdminGalleryDto>(`/admin/galleries/${id}`, { isFeatured }),
 
   publicar: (id: string, isPublished: boolean) =>
     api.patch<AdminGalleryDto>(`/admin/galleries/${id}`, { isPublished }),

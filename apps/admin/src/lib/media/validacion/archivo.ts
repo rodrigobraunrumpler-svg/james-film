@@ -44,7 +44,7 @@ export function validarArchivo(a: ArchivoElegido): string | null {
 
   if (esVideo(a) && !VIDEO.has(a.type)) {
     return (
-      `«${a.name}» no es un MP4. En CapCut, en Exportar, elige formato MP4 ` +
+      `«${a.name}» no es un MP4. Al exportar el vídeo, elige formato MP4 ` +
       `y códec H.264, y vuelve a subirlo.`
     );
   }
@@ -62,7 +62,7 @@ export function validarArchivo(a: ArchivoElegido): string | null {
     // Los DOS números: sin el suyo, James no sabe cuánto tiene que recortar.
     return esVideo(a)
       ? `«${a.name}» pesa ${mb(a.size)} y el máximo son ${mb(techo)}. ` +
-          `Recórtalo, o expórtalo a 1080p desde CapCut.`
+          `Recórtalo, o vuelve a exportarlo a 1080p.`
       : `«${a.name}» pesa ${mb(a.size)} y el máximo son ${mb(techo)}.`;
   }
 
@@ -85,7 +85,7 @@ export function validarMetadatosVideo(a: ArchivoElegido, meta: MetadatosVideo): 
     // subir 200 MB para descubrir el problema en el servidor.
     return (
       `No se pudieron leer los datos de «${a.name}». ` +
-      `Vuelve a exportarlo como MP4 (H.264) desde CapCut.`
+      `Vuelve a exportarlo en MP4 con códec H.264.`
     );
   }
 
@@ -93,7 +93,7 @@ export function validarMetadatosVideo(a: ArchivoElegido, meta: MetadatosVideo): 
   if (ladoLargo > MAX_LADO_LARGO) {
     return (
       `«${a.name}» es de ${width}×${height} y el máximo es ${MAX_LADO_LARGO}px de lado largo. ` +
-      `En CapCut, en Exportar, baja la resolución a 1080p.`
+      `Vuelve a exportarlo a 1080p.`
     );
   }
 
@@ -101,7 +101,7 @@ export function validarMetadatosVideo(a: ArchivoElegido, meta: MetadatosVideo): 
   if (bitrate > MAX_BITRATE_MBPS) {
     return (
       `«${a.name}» va a ${bitrate.toFixed(1)} Mbps y se trabaría en datos móviles ` +
-      `(máximo ${MAX_BITRATE_MBPS}). En CapCut, en Exportar, baja la calidad a Recomendada.`
+      `(máximo ${MAX_BITRATE_MBPS}). Vuelve a exportarlo con menos calidad, o a 1080p.`
     );
   }
 

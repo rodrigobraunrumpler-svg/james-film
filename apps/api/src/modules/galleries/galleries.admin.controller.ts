@@ -1,10 +1,10 @@
 import { Body, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { AdminController } from '../../common/decorators/admin-controller.decorator.js';
-import { PaginationDto } from '../../common/dto/pagination.dto.js';
 import { ReorderDto } from '../../common/dto/reorder.dto.js';
 import {
   DocActualizarGaleria,
   DocBorrarGaleria,
+  DocContarGalerias,
   DocCrearGaleria,
   DocGaleriaPorId,
   DocListarGaleriasAdmin,
@@ -12,6 +12,7 @@ import {
   DocReordenarMedios,
 } from './docs/galleries.docs.js';
 import { CreateGalleryDto } from './dto/create-gallery.dto.js';
+import { ListGalleriesDto } from './dto/list-galleries.dto.js';
 import { UpdateGalleryDto } from './dto/update-gallery.dto.js';
 import { GalleriesService } from './galleries.service.js';
 
@@ -21,8 +22,19 @@ export class GalleriesAdminController {
 
   @DocListarGaleriasAdmin()
   @Get()
-  listar(@Query() query: PaginationDto) {
-    return this.galleries.listarTodas(query.page, query.pageSize);
+  listar(@Query() query: ListGalleriesDto) {
+    return this.galleries.listarTodas(query.page, query.pageSize, query.estado, query.q);
+  }
+
+  /**
+   * ANTES de `@Get(':id')`, y no es estilo: Nest resuelve por orden de
+   * declaración, así que abajo `:id` capturaría «counts» y buscaría una galería
+   * con ese id. Devolvería 404 y el fallo parecería del cliente.
+   */
+  @DocContarGalerias()
+  @Get('counts')
+  contar() {
+    return this.galleries.contar();
   }
 
   @DocGaleriaPorId()

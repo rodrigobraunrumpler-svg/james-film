@@ -90,13 +90,19 @@ const Envoltorio = ({ children }: { children: ReactNode }) => (
 
 const ESPERA = { timeout: 5000 } as const;
 
-/** Los nombres visibles de las tarjetas, en el orden en que están pintadas. */
+/**
+ * Los nombres de las tarjetas, en el orden en que están pintadas. Se leen del
+ * `aria-label` de «Mover X antes» y no de un texto visible: la miniatura ya no
+ * lleva el nombre escrito debajo —es una tesela 3:4 como en el prototipo— pero
+ * el nombre sigue siendo el que anuncia un lector de pantalla, que es lo que
+ * esta aserción quiere comprobar.
+ */
 const ordenEnPantalla = (): string[] =>
   within(screen.getByRole('list'))
     .getAllByRole('listitem')
     .map((li) => {
-      const nombre = li.querySelector('p');
-      return nombre?.textContent ?? '';
+      const mover = li.querySelector('[aria-label^="Mover "]');
+      return mover?.getAttribute('aria-label')?.replace(/^Mover (.*) (antes|después)$/, '$1') ?? '';
     });
 
 beforeEach(() => {
@@ -156,6 +162,50 @@ describe('grilla de medios', () => {
 
     await waitFor(() => expect(api.de('PATCH', '/media/reorder')).toHaveLength(1), ESPERA);
     expect(api.de('PATCH', '/media/reorder')[0].cuerpo).toEqual({ ids: ['m2', 'm3', 'm1'] });
+  });
+
+  it('al pulsar una miniatura se abre el visor con el archivo entero', async () => {
+    const usuario = userEvent.setup();
+    servidor({
+      media: [medio('m1', { type: 'PHOTO', url: 'https://cdn.test/m1.jpg' }), medio('m2')],
+    });
+    render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+    await screen.findByLabelText('Título');
+
+    await usuario.click(screen.getByRole('button', { name: 'Ver m1' }));
+
+    const visor = await screen.findByRole('dialog');
+    // `contain` y no `cover`: el visor existe justo para ver lo que la tesela
+    // recorta. Si aquí también recortara, no serviría de nada.
+    expect(within(visor).getByRole('img')).toHaveClass('object-contain');
+    expect(within(visor).getByText('1 de 2')).toBeInTheDocument();
+  });
+
+  it('el visor pasa al siguiente sin cerrarse', async () => {
+    const usuario = userEvent.setup();
+    servidor({ media: [medio('m1'), medio('m2')] });
+    render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+    await screen.findByLabelText('Título');
+
+    await usuario.click(screen.getByRole('button', { name: 'Ver m1' }));
+    const visor = await screen.findByRole('dialog');
+
+    // Revisar ocho reels no puede ser ocho aperturas y ocho cierres.
+    await usuario.click(within(visor).getByRole('button', { name: 'Siguiente' }));
+    expect(within(visor).getByText('2 de 2')).toBeInTheDocument();
+    // En el último ya no hay «Siguiente», pero el hueco se reserva: si no, el
+    // archivo salta de sitio al llegar al extremo.
+    expect(within(visor).queryByRole('button', { name: 'Siguiente' })).not.toBeInTheDocument();
+  });
+
+  it('un medio a medio subir NO se puede abrir', async () => {
+    servidor({ media: [medio('m1', { status: 'PENDING' })] });
+    render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+    await screen.findByLabelText('Título');
+
+    // Sin nada en R2 no hay nada que enseñar, y un botón que no hace nada es
+    // una parada muerta en el tabulador.
+    expect(screen.queryByRole('button', { name: /^Ver / })).not.toBeInTheDocument();
   });
 
   it('si el PATCH falla, revierte al orden que había y lo dice', async () => {

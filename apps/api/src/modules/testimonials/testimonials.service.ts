@@ -24,11 +24,7 @@ const PUBLICABLE = { isActive: true, hasConsent: true } as const;
  * El destacado primero y el resto por orden, **sin salirse de la lista**: la
  * landing decide cómo pintarlo sin que la API prejuzgue el diseño.
  */
-const ORDEN = [
-  { isFeatured: 'desc' as const },
-  { order: 'asc' as const },
-  { id: 'asc' as const },
-];
+const ORDEN = [{ isFeatured: 'desc' as const }, { order: 'asc' as const }, { id: 'asc' as const }];
 
 @Injectable()
 export class TestimonialsService {

@@ -116,24 +116,37 @@ describe('inspeccionarMp4', () => {
 describe('validarMp4', () => {
   const archivo = { name: 'reel.mp4', size: 1000, type: 'video/mp4' };
 
-  it('acepta H.264 con faststart', () => {
-    expect(validarMp4(archivo, { faststart: true, codec: 'h264' })).toBeNull();
+  it('acepta H.264 con faststart, sin error ni aviso', () => {
+    expect(validarMp4(archivo, { faststart: true, codec: 'h264' })).toEqual({
+      error: null,
+      aviso: null,
+    });
   });
 
-  it('rechaza HEVC nombrando H.264, no "formato inválido"', () => {
-    const error = validarMp4(archivo, { faststart: true, codec: 'hevc' });
+  it('HEVC BLOQUEA, nombrando H.264 y no "formato inválido"', () => {
+    // Chrome y Firefox no lo reproducen: subirlo es publicar un vídeo que media
+    // web no puede abrir. Aquí no hay grado, no sirve.
+    const { error, aviso } = validarMp4(archivo, { faststart: true, codec: 'hevc' });
 
     expect(error).toContain('H.264');
-    expect(error).toContain('CapCut');
+    expect(aviso).toBeNull();
   });
 
-  it('rechaza sin faststart explicando el síntoma que causaría', () => {
-    const error = validarMp4(archivo, { faststart: false, codec: 'h264' });
+  it('sin faststart AVISA, no bloquea', () => {
+    // Se reproduce perfectamente; lo único es que el primer play tarda porque
+    // el navegador no puede empezar hasta tenerlo entero. Bloquearlo dejaba a
+    // James sin salida cuando su editor no ofrece esa opción — y varios no la
+    // ofrecen —, cambiando un inconveniente por una imposibilidad.
+    const { error, aviso } = validarMp4(archivo, { faststart: false, codec: 'h264' });
 
-    expect(error).toContain('CapCut');
+    expect(error).toBeNull();
+    expect(aviso).toMatch(/inicio rápido|optimizar para web/);
   });
 
   it('el códec desconocido pasa: la API tiene la última palabra', () => {
-    expect(validarMp4(archivo, { faststart: true, codec: 'desconocido' })).toBeNull();
+    expect(validarMp4(archivo, { faststart: true, codec: 'desconocido' })).toEqual({
+      error: null,
+      aviso: null,
+    });
   });
 });

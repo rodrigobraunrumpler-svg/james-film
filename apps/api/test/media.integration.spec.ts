@@ -95,9 +95,9 @@ describe('presign: valida ANTES de firmar', () => {
   });
 
   it('el poster también se valida, y el error llega atado a su campo', async () => {
-    const res = await presign([
-      reel({ posterMimeType: 'text/html', posterSizeBytes: 10 }),
-    ]).expect(422);
+    const res = await presign([reel({ posterMimeType: 'text/html', posterSizeBytes: 10 })]).expect(
+      422,
+    );
 
     expect(res.body.code).toBe('VALIDATION_FAILED');
     // La ruta con índice es lo que permite al editor marcar EL archivo concreto
@@ -254,6 +254,90 @@ describe('borrado', () => {
 
 describe('auth', () => {
   it('presign sin token da 401', async () => {
-    await http().post(`/admin/galleries/${galeriaId}/media/presign`).send({ items: [] }).expect(401);
+    await http()
+      .post(`/admin/galleries/${galeriaId}/media/presign`)
+      .send({ items: [] })
+      .expect(401);
+  });
+});
+
+describe('editar el alt y el pie de un medio', () => {
+  /** Firma un reel y devuelve su id. Sin subir nada: para editar alt no hace falta. */
+  const unMedio = async (): Promise<string> => {
+    const { body } = await presign([reel()]).expect(201);
+    return body.data[0].mediaId as string;
+  };
+
+  it('guarda el alt, que es accesibilidad de la landing', async () => {
+    const id = await unMedio();
+
+    const { body } = await http()
+      .patch(`/admin/media/${id}`)
+      .set(auth())
+      .send({ alt: 'Novios bailando en la recepción', caption: 'El primer baile' })
+      .expect(200);
+
+    expect(body.data.alt).toBe('Novios bailando en la recepción');
+    expect(body.data.caption).toBe('El primer baile');
+  });
+
+  it('vaciarlos los borra; omitirlos NO los toca', async () => {
+    const id = await unMedio();
+    await http()
+      .patch(`/admin/media/${id}`)
+      .set(auth())
+      .send({ alt: 'algo', caption: 'algo' })
+      .expect(200);
+
+    const sinTocar = await http().patch(`/admin/media/${id}`).set(auth()).send({}).expect(200);
+    expect(sinTocar.body.data.alt).toBe('algo');
+
+    const vaciado = await http()
+      .patch(`/admin/media/${id}`)
+      .set(auth())
+      .send({ alt: null, caption: null })
+      .expect(200);
+    expect({ alt: vaciado.body.data.alt, caption: vaciado.body.data.caption }).toEqual({
+      alt: null,
+      caption: null,
+    });
+  });
+
+  it('NO deja tocar nada más que alt y caption', async () => {
+    // El resto lo determina el archivo: dejarlo editar sería permitir que la
+    // fila contradiga al objeto del bucket.
+    const id = await unMedio();
+
+    await http()
+      .patch(`/admin/media/${id}`)
+      .set(auth())
+      .send({ storageKey: 'videos/otro.mp4' })
+      .expect(422);
+  });
+
+  it('un medio inexistente da 404', async () => {
+    await http().patch('/admin/media/no-existe').set(auth()).send({ alt: 'x' }).expect(404);
+  });
+});
+
+describe('uso de almacenamiento', () => {
+  it('suma solo los READY sin borrar, y devuelve el techo en bytes', async () => {
+    const antes = await http().get('/admin/storage').set(auth()).expect(200);
+    expect(antes.body.data.quotaBytes).toBe(10 * 1024 ** 3);
+
+    const { body: firmado } = await presign([reel()]).expect(201);
+    const id = firmado.data[0].mediaId as string;
+    await prisma.media.update({
+      where: { id },
+      data: { status: 'READY', sizeBytes: 5_000_000 },
+    });
+    const conUno = await http().get('/admin/storage').set(auth()).expect(200);
+    expect(conUno.body.data.usedBytes).toBe(antes.body.data.usedBytes + 5_000_000);
+
+    // Un borrado blando deja de contar aunque el objeto siga en R2: para James
+    // ese archivo ya no existe y verlo ocupando sitio no tendría arreglo.
+    await prisma.media.update({ where: { id }, data: { deletedAt: new Date() } });
+    const tras = await http().get('/admin/storage').set(auth()).expect(200);
+    expect(tras.body.data.usedBytes).toBe(antes.body.data.usedBytes);
   });
 });

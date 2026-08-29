@@ -87,20 +87,44 @@ export async function inspeccionarMp4(blob: BlobLeible): Promise<CabeceraMp4> {
   return analizarCabecera(await blob.slice(0, hasta).arrayBuffer());
 }
 
-export function validarMp4(a: ArchivoElegido, cabecera: CabeceraMp4): string | null {
+export interface RevisionMp4 {
+  /** Impide subir: el archivo no serviría en la web. */
+  error: string | null;
+  /** Se sube igual, pero conviene que James lo sepa. */
+  aviso: string | null;
+}
+
+/**
+ * HEVC BLOQUEA y faststart solo AVISA, y la diferencia es real:
+ *
+ * - Un H.265 no lo reproduce Chrome ni Firefox. Subirlo es publicar un vídeo
+ *   que media web no puede abrir: no hay grado, no sirve.
+ * - Un MP4 sin faststart **se reproduce perfectamente**; lo único que pasa es
+ *   que el navegador no puede empezar hasta tenerlo entero, así que el primer
+ *   play tarda. Es un inconveniente, no una imposibilidad.
+ *
+ * Bloquear el segundo dejaba a James SIN SALIDA cuando su editor no ofrece esa
+ * opción —y varios no la ofrecen—: el archivo estaba bien y no había forma de
+ * subirlo. Cambiar un inconveniente por una imposibilidad es peor negocio.
+ */
+export function validarMp4(a: ArchivoElegido, cabecera: CabeceraMp4): RevisionMp4 {
   if (cabecera.codec === 'hevc') {
-    return (
-      `«${a.name}» está en HEVC (H.265). Tu iPhone lo reproduce, pero la web no. ` +
-      `En CapCut, en Exportar, elige el códec H.264.`
-    );
+    return {
+      error:
+        `«${a.name}» está en HEVC (H.265). Tu iPhone lo reproduce, pero la web no. ` +
+        `Vuelve a exportarlo con códec H.264.`,
+      aviso: null,
+    };
   }
 
   if (!cabecera.faststart) {
-    return (
-      `«${a.name}» no está preparado para reproducirse en la web: quien lo abra ` +
-      `tendría que esperar a que se descargue entero. Vuelve a exportarlo desde CapCut.`
-    );
+    return {
+      error: null,
+      aviso:
+        'Tarda en arrancar la primera vez: al exportar, activa «inicio rápido» ' +
+        'u «optimizar para web» si tu editor lo ofrece.',
+    };
   }
 
-  return null;
+  return { error: null, aviso: null };
 }

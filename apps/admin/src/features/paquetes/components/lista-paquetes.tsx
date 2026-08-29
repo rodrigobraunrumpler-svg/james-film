@@ -3,6 +3,11 @@
 import type { AdminPackageDto } from '@james-film/contracts';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Package } from 'lucide-react';
+import { EstadoVacio } from '@/components/shared/estado-vacio';
+import { Hoja } from '@/components/shared/hoja';
+import { VerEnLaWeb } from '@/components/shared/ver-en-la-web';
+import { urlPaquetes } from '@/lib/enlaces';
 import { esApiError } from '@/lib/api/errors';
 import { moneda } from '@/lib/format';
 import { iconoDe } from '@/lib/iconos/mapa';
@@ -75,18 +80,33 @@ export function ListaPaquetes() {
 
   return (
     <div className="flex flex-col gap-4">
-      <button
-        type="button"
-        onClick={() => setEditando(null)}
-        className="min-h-11 self-start rounded-md bg-neutral-900 px-4 text-sm font-medium text-white"
-      >
-        Nuevo paquete
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setEditando(null)}
+          className="min-h-11 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white"
+        >
+          Nuevo paquete
+        </button>
+        {/* §9 lo pide para galerías Y paquetes. Aquí es la sección de la
+            portada, no una página propia: por eso el ancla. */}
+        <VerEnLaWeb url={urlPaquetes()} etiqueta="Ver los paquetes en la web" />
+      </div>
 
       {fallo && (
         <p role="alert" className="text-sm text-red-600">
           No se pudo guardar el orden. Se ha dejado como estaba.
         </p>
+      )}
+
+      {data.length === 0 && (
+        <EstadoVacio
+          Icono={Package}
+          titulo="Aún no tienes paquetes"
+          explicacion="Los paquetes son lo que vendes: cuántos reels, cuánto duran, cuánto cuestan. Es lo primero que mira quien entra en la web."
+          accion="Crear el primero"
+          onAccion={() => setEditando(null)}
+        />
       )}
 
       {/* auto-fit con minmax, NUNCA grid-cols-3: es la misma regla que la
@@ -189,18 +209,19 @@ export function ListaPaquetes() {
         })}
       </ul>
 
-      {editando !== undefined && (
-        <div className="rounded-lg border p-4">
-          <h2 className="mb-4 text-lg font-semibold">
-            {editando ? `Editar ${editando.name}` : 'Nuevo paquete'}
-          </h2>
+      <Hoja
+        abierta={editando !== undefined}
+        onCerrar={() => setEditando(undefined)}
+        titulo={editando ? `Editar ${editando.name}` : 'Nuevo paquete'}
+      >
+        {editando !== undefined && (
           <HojaPaquete
             paquete={editando}
             categorias={categorias.data ?? []}
             onCerrar={() => setEditando(undefined)}
           />
-        </div>
-      )}
+        )}
+      </Hoja>
     </div>
   );
 }

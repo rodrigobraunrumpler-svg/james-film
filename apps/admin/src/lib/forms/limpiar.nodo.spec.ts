@@ -19,9 +19,9 @@ describe('vacioANull', () => {
 
 describe('limpiar', () => {
   it('vacía las cadenas y deja el resto intacto', () => {
-    expect(limpiar({ title: ' Boda ', description: '', location: '   ', categoryId: 'c1' })).toEqual(
-      { title: 'Boda', description: null, location: null, categoryId: 'c1' },
-    );
+    expect(
+      limpiar({ title: ' Boda ', description: '', location: '   ', categoryId: 'c1' }),
+    ).toEqual({ title: 'Boda', description: null, location: null, categoryId: 'c1' });
   });
 
   it('no toca lo que no es cadena: un 0 y un false son valores, no ausencias', () => {

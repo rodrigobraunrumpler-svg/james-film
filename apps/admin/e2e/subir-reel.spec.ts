@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { abrirPrimeraGaleria, irAlPanel, REEL, REEL_HEVC } from './apoyo';
+import { abrirPrimeraGaleria, irAlPanel, REEL, REEL_HEVC, REEL_SIN_FASTSTART } from './apoyo';
 
 /**
  * Se comprueba la CAPACIDAD, no el canal. El plan daba por hecho que el
@@ -51,6 +51,23 @@ test.describe('subir un reel', () => {
     expect(puts.some((h) => h.includes('3001') || h.includes('3000'))).toBe(false);
   });
 
+  test('un MP4 sin faststart SÍ se sube, y solo avisa', async ({ page }) => {
+    // Un HEVC no lo reproduce media web: eso sí bloquea. Sin faststart el vídeo
+    // se ve perfectamente, solo tarda más el primer play — y bloquearlo dejaba
+    // a James sin salida si su editor no ofrece esa opción.
+    const tarjetas = page.getByRole('listitem');
+    const antes = await tarjetas.count();
+
+    await page.setInputFiles('input[type="file"]', REEL_SIN_FASTSTART);
+    await page.getByRole('button', { name: 'Subir el archivo' }).click();
+
+    // Llega a R2: si el fixture estuviera corrupto —los `stco` sin corregir al
+    // mover el `moov`— la extracción del póster fallaría y esto no pasaría.
+    await expect.poll(() => tarjetas.count(), { timeout: 60_000 }).toBe(antes + 1);
+    await expect(page.getByText('No se pudo subir')).toHaveCount(0);
+    await expect(page.getByText(/inicio rápido|optimizar para web/).first()).toBeVisible();
+  });
+
   test('un HEVC se rechaza ANTES de subir un byte', async ({ page }) => {
     // El iPhone lo reproduce, así que «el navegador puede con él» no vale de
     // criterio: se detecta por el FourCC de la cabecera.
@@ -65,7 +82,9 @@ test.describe('subir un reel', () => {
     const error = page.getByRole('alert').filter({ hasText: /HEVC|H\.264/ });
     await expect(error).toBeVisible({ timeout: 30_000 });
     // Y el mensaje dice qué hacer, no «formato inválido».
-    await expect(error).toContainText('CapCut');
+    // Lo que importa es que diga QUÉ HACER, no que nombre una aplicación:
+    // James puede haber exportado desde cualquier editor.
+    await expect(error).toContainText('H.264');
     expect(subidas).toHaveLength(0);
   });
 
@@ -91,7 +110,7 @@ test.describe('subir un reel', () => {
     // muerta en la grilla hasta el cron de la fase 6.
     await expect(page.getByRole('button', { name: 'Cancelar' })).toHaveCount(0);
     await page.reload();
-    await expect(page.getByLabel('Título')).toBeVisible();
+    await expect(page.getByLabel('Título', { exact: true })).toBeVisible();
     await expect.poll(() => tarjetas.count(), { timeout: 20_000 }).toBe(antes);
   });
 });

@@ -119,6 +119,9 @@ export interface PresignUploadResult {
 /** Fecha sin hora, formato `YYYY-MM-DD`. Formatear siempre con `timeZone: 'UTC'`. */
 export type IsoDate = string;
 
+/** Instante real en ISO-8601. Se muestra en `America/Lima`, no en UTC. */
+export type IsoDateTime = string;
+
 export interface GalleryDto {
   id: string;
   slug: string;
@@ -176,9 +179,31 @@ export interface GalleryListItemDto {
   mediaCount: number;
 }
 
-/** Lo que ve el admin en la lista: añade el estado de publicación. */
+/** Lo que ve el admin en la lista: estado, último cambio y datos de la portada. */
 export interface AdminGalleryListItemDto extends GalleryListItemDto {
   isPublished: boolean;
+  /**
+   * Para «Publicada hace 3 días» / «Editada hace 2 horas». No hay `publishedAt`
+   * en el schema: la frase cambia según `isPublished`, el instante es el mismo.
+   */
+  updatedAt: IsoDateTime;
+  /** Tipo del medio destacado. `null` si la galería aún no tiene portada. */
+  coverType: MediaType | null;
+  /** Duración de la portada en segundos, si es vídeo y se pudo medir. */
+  coverDurationSec: number | null;
+}
+
+/** Los tres números de las pestañas. Endpoint propio: no cabe en el meta paginado. */
+export interface GalleryCountsDto {
+  todas: number;
+  publicadas: number;
+  borradores: number;
+}
+
+/** Cuánto ocupa el trabajo de James en R2, para el medidor del sidebar. */
+export interface StorageUsageDto {
+  usedBytes: number;
+  quotaBytes: number;
 }
 
 export interface CategoryRefDto {

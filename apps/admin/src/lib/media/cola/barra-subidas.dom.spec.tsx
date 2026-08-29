@@ -38,6 +38,7 @@ const enVuelo = (id: string, size: number, bytesSubidos = 0) => ({
   bytesSubidos,
   mediaId: null,
   motivo: null,
+  aviso: null,
   intentos: 0,
   empezoEn: 0,
 });

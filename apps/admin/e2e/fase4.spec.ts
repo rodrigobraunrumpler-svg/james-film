@@ -30,6 +30,10 @@ test.describe('paquetes', () => {
 
 test.describe('testimonios', () => {
   test('NO deja publicar uno sin consentimiento', async ({ page }) => {
+    // Nombre único por ejecución: si una corrida anterior falló a mitad y dejó
+    // su fila, un nombre fijo encuentra dos y el localizador revienta. El test
+    // no debe depender de que la anterior terminara bien.
+    const nombre = `Clienta E2E ${Date.now()}`;
     // §19 y Ley 29733: es el único punto que puede traerle un problema real a
     // James. La puerta está en la interfaz Y en el servidor.
     await irAlPanel(page);
@@ -37,10 +41,10 @@ test.describe('testimonios', () => {
     await expect(page.getByRole('heading', { name: 'Testimonios' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Nuevo testimonio' }).click();
-    await page.getByLabel('Nombre').fill('Clienta E2E');
+    await page.getByLabel('Nombre').fill(nombre);
     await page.getByRole('button', { name: 'Guardar' }).click();
 
-    const fila = page.getByRole('listitem').filter({ hasText: 'Clienta E2E' });
+    const fila = page.getByRole('listitem').filter({ hasText: nombre });
     await expect(fila).toBeVisible({ timeout: 15_000 });
 
     // Nace en borrador y sin consentimiento: publicar está deshabilitado.
@@ -48,11 +52,16 @@ test.describe('testimonios', () => {
     await expect(fila.getByText('Sin consentimiento')).toBeVisible();
 
     // Y el motivo está escrito, no en un tooltip.
-    await expect(page.getByText(/hasta que confirmes que Clienta E2E dio su permiso/)).toBeVisible();
+    await expect(
+      page.getByText(new RegExp(`hasta que confirmes que ${nombre} dio su permiso`)),
+    ).toBeVisible();
 
-    // Limpieza: el E2E devuelve la base como la encontró.
-    page.once('dialog', (d) => void d.accept());
+    // Limpieza: el E2E devuelve la base como la encontró. El borrado ya no usa
+    // el confirm() nativo — exige escribir el nombre, porque se lleva del
+    // servidor la captura y la foto de una persona real.
     await fila.getByRole('button', { name: 'Borrar' }).click();
+    await page.getByLabel(/Escribe/).fill(nombre);
+    await page.getByRole('button', { name: 'Borrar para siempre' }).click();
     await expect(fila).toHaveCount(0, { timeout: 15_000 });
   });
 });

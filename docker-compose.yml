@@ -40,9 +40,20 @@ services:
       timeout: 3s
       retries: 15
 
-  # Un solo uso: crea el bucket y le pone CORS para el origen del admin.
-  # El CORS que importa es el del BUCKET, no el de la API: el PUT firmado sale
-  # del navegador directo aquí. Al quitar el CORS de la API es el que se olvida.
+  # Un solo uso: crea el bucket y lo deja LEGIBLE sin credenciales.
+  #
+  # Esto último no es una relajación de seguridad, es reproducir producción: allí
+  # los objetos se sirven por el dominio `media.` de R2, que es público, y
+  # `CDN_BASE_URL` apunta ahí. En local esa variable apunta a MinIO directamente,
+  # y un bucket de MinIO nace PRIVADO — así que cada `<img>` recibía un 403 y la
+  # galería se veía vacía sin un solo error en la consola de la API.
+  #
+  # `anonymous set download` es solo LECTURA: escribir sigue exigiendo la firma,
+  # que es exactamente el reparto que hay en producción.
+  #
+  # El CORS no hace falta declararlo: MinIO responde a cualquier origen por
+  # defecto, y el PUT firmado desde el navegador ya funciona. En R2 sí hay que
+  # configurarlo a mano para el origen del admin.
   storage-init:
     image: minio/mc:latest
     container_name: jamesfilm-storage-init
@@ -53,7 +64,8 @@ services:
       /bin/sh -c "
       mc alias set local http://storage:9000 jamesfilm jamesfilm-secreto &&
       mc mb --ignore-existing local/jamesfilm &&
-      echo 'bucket jamesfilm listo'
+      mc anonymous set download local/jamesfilm &&
+      echo 'bucket jamesfilm listo y legible'
       "
 
 volumes:

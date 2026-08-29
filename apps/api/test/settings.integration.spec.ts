@@ -123,7 +123,10 @@ describe('ajustes', () => {
 
 describe('diferenciadores', () => {
   const crear = (body: Record<string, unknown>) =>
-    http().post('/admin/differentiators').set(auth()).send({ icon: 'zap', ...body });
+    http()
+      .post('/admin/differentiators')
+      .set(auth())
+      .send({ icon: 'zap', ...body });
 
   it('un título repetido devuelve 409 NOMBRANDO el campo', async () => {
     // Hay dos `@unique` distintos en este módulo: sin decir cuál, el aviso no

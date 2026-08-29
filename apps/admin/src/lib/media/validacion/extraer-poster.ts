@@ -48,7 +48,7 @@ export interface PosterExtraido {
 }
 
 const NO_SE_PUDO =
-  'No se pudo leer este vídeo. Expórtalo como MP4 (H.264) desde CapCut y vuelve a intentarlo.';
+  'No se pudo leer este vídeo. Vuelve a exportarlo en MP4 con códec H.264 e inténtalo otra vez.';
 
 /** 15 s: lo que tarda un aftermovie grande en abrir en un iPhone con poca RAM. */
 const TIMEOUT_POR_DEFECTO = 15_000;

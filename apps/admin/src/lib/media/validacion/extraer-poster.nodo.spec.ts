@@ -161,7 +161,7 @@ describe('extraerPoster', () => {
     await respirar();
     m.emitir('error');
 
-    await expect(promesa).rejects.toThrow(/CapCut/);
+    await expect(promesa).rejects.toThrow(/H\.264/);
   });
 
   it('libera la URL y el decodificador TAMBIÉN en la rama de error', async () => {
@@ -186,7 +186,7 @@ describe('extraerPoster', () => {
     const m = montar({ timeoutMs: 20 });
     const promesa = extraerPoster(archivo(), m.deps);
 
-    await expect(promesa).rejects.toThrow(/CapCut/);
+    await expect(promesa).rejects.toThrow(/H\.264/);
     expect(m.revocarUrl).toHaveBeenCalled();
   });
 
@@ -211,7 +211,7 @@ describe('extraerPoster', () => {
     await respirar();
     m.emitir('loadedmetadata');
 
-    await expect(promesa).rejects.toThrow(/CapCut/);
+    await expect(promesa).rejects.toThrow(/H\.264/);
   });
 
   it('el canvas toma el tamaño real del vídeo', async () => {

@@ -56,16 +56,16 @@ afterAll(async () => {
  * maquinaria muerta con aspecto de protección.
  */
 describe('@AdminController aplica el rol', () => {
-  const RUTAS_ADMIN = [
-    '/admin/galleries',
-    '/admin/categories',
-  ];
+  const RUTAS_ADMIN = ['/admin/galleries', '/admin/categories'];
 
   it.each(RUTAS_ADMIN)('un EDITOR autenticado recibe 403 en %s', async (ruta) => {
     const token = await entrar(EDITOR.email, EDITOR.password);
 
     // 403 y no 401: la sesión es válida, lo que falta es el rol.
-    await http().get(ruta).set({ Authorization: `Bearer ${token}` }).expect(403);
+    await http()
+      .get(ruta)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(403);
   });
 
   it.each(RUTAS_ADMIN)('un ADMIN sí entra en %s', async (ruta) => {
@@ -74,7 +74,10 @@ describe('@AdminController aplica el rol', () => {
       process.env.SEED_ADMIN_PASSWORD ?? '',
     );
 
-    await http().get(ruta).set({ Authorization: `Bearer ${token}` }).expect(200);
+    await http()
+      .get(ruta)
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
   });
 
   it('sin sesión sigue siendo 401, no 403', async () => {
