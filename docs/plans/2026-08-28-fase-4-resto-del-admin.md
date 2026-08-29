@@ -12,8 +12,9 @@ contra su módulo de la API. La diferencia con la fase 3 es que **aquí casi tod
 riesgo no es técnico, es escribir la misma pantalla cuatro veces y que las cuatro se comporten
 distinto.
 
-**Tech Stack:** Sin dependencias nuevas. Todo lo de la fase 3 más `motion` para las
-transiciones de las hojas, que ya está instalado y aún no se usa.
+**Tech Stack:** Sin dependencias nuevas — y 🔶 **sin estrenar `motion` tampoco**. El borrador lo
+metía «ya que está instalado», que es el argumento equivocado: `vaul` ya anima el drawer y las
+hojas. Si al final ninguna pantalla lo necesita, sale del `package.json` en el Task 7.
 
 **Spec:** `CLAUDE.md` · `docs/admin.md` · `docs/proyecto.md` §8, §9, §11, §19 · `preview.webp`
 
@@ -194,9 +195,57 @@ Verificado en el schema, no supuesto:
 
 ---
 
-## Task 1 · Subidas fuera de la galería (API + admin)
+## Task 1 · Cimientos (API) 🔴
 
-Sale primero porque las cuatro pantallas lo necesitan y porque es lo único con riesgo real.
+Tres cosas que **no** son pantallas y que si se hacen después obligan a reescribir lo de antes.
+
+### 1A · El borrado de campos, que es un bug sistémico esperando 🔴
+
+En la fase 4 encontré que `PATCH /admin/galleries/:id` ignoraba `eventDate: null`: con
+`dto.campo ? valor : undefined`, **vaciar un campo se perdía en silencio**. Lo arreglé ahí con un
+helper local.
+
+**No era un caso de galerías.** Contados en el schema, los modelos de esta fase suman
+**42 campos opcionales** que James tiene que poder borrar:
+
+| Modelo | Opcionales |
+|---|---|
+| `SiteSettings` | 17 |
+| `Package` | 9 |
+| `Testimonial` | 9 |
+| `Category` | 5 |
+| `Differentiator` · `SocialLink` | 1 + 1 |
+
+El modo de fallo es el peor que existe: **la interfaz dice «Guardado» y el dato reaparece al
+recargar.** Nada falla, nada se registra, y quien lo sufre concluye que la herramienta no es de
+fiar.
+
+- [ ] Subir `fechaDeCalendario` de `galleries.service.ts` a `common/` — hoy es una función local
+      de un módulo, y testimonios necesita exactamente la misma para `eventDate @db.Date`.
+- [ ] Regla en `CLAUDE.md`: **en todo `PATCH`, `null` BORRA y `undefined` NO TOCA.** Nunca
+      `dto.campo ? x : undefined`, que colapsa los dos casos en uno.
+- [ ] Los DTO opcionales se tipan `campo?: T | null`. `@IsOptional()` ya deja pasar `null` en
+      runtime; lo que faltaba era el tipo.
+- [ ] **Un test por modelo que vacíe TODOS sus opcionales de una vez** y compruebe que quedan a
+      `null`. Es un test por modelo, no 42: barato de escribir y encuentra el olvido entero.
+- [ ] En el admin, la cadena vacía se manda como `null`, no se omite. Helper compartido, porque
+      son cuatro formularios y el que se olvide no dará error.
+
+### 1B · `@AdminController`, el decorador que §5 pide y que no existe 🔴
+
+- [ ] Verificado: **no existe.** `CLAUDE.md` lo da por hecho («`@AdminController('path')` =
+      decorador compuesto con guards, interceptors y Swagger») pero los tres controllers de
+      admin usan `@Controller('admin/...')` a pelo.
+- [ ] **Esta fase pasa de 3 a 7 controllers de admin**, y la fase 6 tiene que meter el
+      `TriggerDeployInterceptor` en todos. Con el decorador compuesto es **un fichero**; sin él,
+      siete — y el que se olvide no fallará: simplemente esa pantalla no marcará cambios sin
+      publicar, y James verá «0 cambios» tras editar sus precios.
+- [ ] Se construye ahora y **se migran los tres existentes** en el mismo commit. Después son
+      siete migraciones en vez de tres.
+
+### 1C · Subidas fuera de la galería
+
+Lo que era el Task 1 entero. Sale aquí porque las cuatro pantallas lo necesitan.
 
 - [ ] **Step 1: `POST /admin/uploads/presign`** según D1. Valida el `proposito`, el mime y el
       tamaño contra la tabla, genera clave UUID **bajo el prefijo que decide el servidor**, y
@@ -238,6 +287,9 @@ filas fijas (Bodas, XV Años, Cumpleaños, Eventos), así que **no hay paginaci�
 - [ ] **Step 2: el borrado cuenta primero** (D4). El servicio cuenta galerías y lanza un 409 con
       `code: 'CATEGORY_IN_USE'` y el número en el mensaje. **No se deja caer en el P2003**: el
       mensaje de Prisma no dice cuántas son, y ese número es justo lo accionable.
+- [ ] 🔶 **El conteo también mira los paquetes.** `PackageCategory` es **Cascade**, no Restrict:
+      borrar una categoría **desvincula los paquetes en silencio** sin que Postgres se queje. El
+      aviso los nombra: «4 galerías y 2 paquetes usan esta categoría».
 - [ ] **Step 3: pantalla.** Lista ordenable con los botones de mover de la fase 3 (mismo
       componente), toggle de `isActive` **optimista**, y una hoja lateral (`vaul` bajo `md`) para
       crear y editar: nombre, tagline, descripción, portada (`CampoImagen`), meta título y meta
@@ -303,6 +355,13 @@ Tres paquetes, dieciséis bullets, un destacado. Es donde está el precio, o sea
         el flyer enseña. Enteros es cómo se **edita**, no cómo se **muestra**.
 - [ ] **Step 6: destacar es un radio.** Marcar uno desmarca el otro en la caché al instante
       (optimista, exclusivo), igual que la portada de la fase 3.
+- [ ] 🔶 **Step 6 bis: desactivar el paquete destacado deja la landing SIN destacado.** El
+      controller público filtra `isActive`, así que un paquete `isHighlighted: true` +
+      `isActive: false` desaparece y **ningún otro hereda el destaque** — §8 da por hecho que
+      hay uno. No falla nada: la sección simplemente sale plana.
+      **El admin avisa al desactivar el destacado** («este es el paquete destacado; al
+      desactivarlo la web no destacará ninguno»). Mismo caso, literalmente, que el testimonio
+      destacado sin `isActive` del Task 4.
 - [ ] **Step 7: tests.** Que dos paquetes no puedan estar destacados a la vez ni siquiera
       mandando dos `PATCH` seguidos; que los ids de los bullets sobrevivan a un guardado; que
       quitar un bullet lo borre y renumere el resto; que `300` guarde `30000` y que un
@@ -324,6 +383,10 @@ real a James.** Hay menores en los XV años.
   - `hasConsent` **no sale en el DTO público**: es una condición para publicar, no un dato del
     visitante. Si un testimonio llega al contrato, es que lo tenía.
   - Admin: CRUD, reorden, y `isFeatured` con `ExclusiveFlagService` **sin scope**.
+  - [ ] 🔶 **`rating` no tiene tope en el schema.** Es `Int?` a secas: un 7 sobre 5 entra en la
+        base y la landing pintaría siete estrellas. `@Min(1) @Max(5)` en el DTO. No se cambia el
+        schema por esto —un CHECK saldría como 500 opaco con adapter-pg, ya lo comprobamos en la
+        fase 1— se valida en el DTO, que es donde el error sale legible.
   - [ ] ✅ **Decidido (Javier): uno destacado Y el resto por orden.** El destacado es **exclusivo
         —uno solo—** y los demás salen ordenados detrás. `ExclusiveFlagService` sin scope, igual
         que `Package.isHighlighted`.
@@ -407,6 +470,20 @@ WhatsApp: **el campo más importante de todo el producto.**
       P2002 → 409. El filtro global lo convierte en `CONFLICT` con mensaje genérico, que aquí no
       dice nada: el mensaje tiene que nombrar el campo («Ya hay un diferenciador con ese
       título»). Con test, porque es la clase de detalle que se descubre usándolo.
+- [ ] 🔶 **Step 6 ter: un `useForm` POR pestaña, no uno global.** Con un formulario único,
+      guardar SEO mandaría también el número de WhatsApp, y `whitelist` lo aceptaría tan
+      contento: pisaría un cambio hecho en otra pestaña o en otra sesión con el valor que esa
+      pestaña tenía cargado. Cada pestaña manda **solo sus campos**.
+- [ ] 🔶 **Step 6 quater: cambiar de pestaña con cambios sin guardar los pierde.** Es la
+      consecuencia directa de no tener autoguardado aquí (Step 7). Se avisa con
+      `formState.isDirty` antes de cambiar de pestaña; no se autoguarda, se pregunta.
+- [ ] 🔶 **Step 6 quinquies: `whatsappNumber` y `whatsappDisplay` pueden divergir.** Uno es el
+      que marca y el otro el que se enseña. Si James cambia el número y no el display, **la web
+      muestra un número y llama a otro** — que para un cliente es peor que no tener número.
+      El display se **propone** derivado del número (`51994724944` → `994 724 944`) y queda
+      editable; si al guardar los dígitos no coinciden, se avisa. Sin bloquear: puede haber un
+      motivo, pero no puede pasar sin que nadie lo vea.
+
 - [ ] **Step 7: autoguardado no.** Configuración se guarda con un botón explícito por pestaña.
       El autoguardado de la fase 3 tiene sentido sobre un borrador; aquí **cada campo está en
       vivo en la web**, y guardar a los dos segundos de escribir medio número de teléfono es
@@ -424,7 +501,11 @@ borrado + toggle de activo.
       por la que §5 abstrae *comportamientos* (`ReorderService`) y no *entidades*.
 - [ ] **Step 2: extraer solo lo que se repitió TRES veces.** Candidatos previstos —confirmar,
       no asumir—:
-  - `<ListaOrdenable>` con los botones de mover y el reorden optimista con debounce
+  - `<ListaOrdenable>` con los botones de mover y el reorden optimista con debounce.
+    🔶 **Lo que se extrae es el HOOK, no el componente.** `use-orden-medios.ts` está atado a
+    `keys.galleries.detail` y a `orden.reordenarMedios`: hay que parametrizar la clave de caché
+    y el servicio. Mover el JSX sin eso deja cuatro copias del hook, que es donde está la lógica
+    de reversión.
   - `<HojaEdicion>` (`vaul` bajo `md`, diálogo encima)
   - `<ConfirmarBorrado>` con texto de consecuencia, sin optimismo
   - `<ToggleActivo>` optimista con reversión
@@ -447,12 +528,28 @@ borrado + toggle de activo.
       lo de `/admin`.
 - [ ] **Step 2 bis: el snapshot pasa de 2 rutas a ~6, y el diff se revisa a mano** antes de
       commitearlo. Que el CI falle aquí es lo correcto: es la frontera con la landing.
+- [ ] 🔶 **Step 2 ter: `@SkipThrottle()` en los cuatro controllers públicos nuevos.** El build
+      de Astro va a pedir `/categories`, `/packages`, `/testimonials` y `/settings` además de
+      las galerías, todo desde una IP y en segundos. El throttler global es de 120/min: hoy
+      sobra, pero el modo de fallo es el peor —el build falla y la web se queda en la versión
+      vieja— y la regla de `CLAUDE.md` ya lo exige.
+- [ ] 🔶 **Step 2 quater: un helper de tests de integración.** Cuatro CRUD casi idénticos son
+      cuatro suites casi idénticas. Un `probarCrud({ ruta, crear, actualizar })` cubre el camino
+      común (401 sin sesión, 404 inexistente, 409 duplicado, borrado de opcionales) y cada
+      módulo añade solo lo suyo. Se escribe **con el segundo módulo**, no con el primero.
 - [ ] **Step 3: E2E, dos flujos más.** Editar un paquete y ver el precio formateado; intentar
       publicar un testimonio sin consentimiento y que no deje.
 - [ ] **Step 4: responsive.** Extender `responsive.spec.ts` a las cuatro pantallas nuevas: 320
       px sin scroll horizontal, tarjetas bajo `md`, targets de 44 px, y un texto de bullet de 80
       caracteres que no rompa la tarjeta del paquete.
 - [ ] **Step 5: `pnpm outdated` y `pnpm audit`**, como al cerrar cada fase.
+- [ ] 🔶 **Step 5 bis: decidir qué pasa con `Gallery.coverKey`.** Verificado: el mapper la
+      respeta (`g.coverKey ?? claveDePortada(...)`) pero **no la escribe nadie y ningún DTO la
+      expone**. Es una columna muerta con una lectura viva — el tipo de cosa que alguien
+      «arregla» cableándola sin saber que la portada se deriva a propósito (fase 3, Task 0).
+      O se cablea de verdad —y entonces entra en el barrido de huérfanos de D1— o se borra.
+      **Recomendación: borrarla**, porque `claveDePortada` ya cubre el caso y una portada manual
+      no está pedida en ningún sitio.
 - [ ] **Step 6: actualizar `CLAUDE.md`** con lo que se aprenda, especialmente la regla del cron
       para los huérfanos de `covers/`, `avatars/` y `brand/` (D1), los tres prefijos nuevos, y
       la ubicación nueva de `lib/media` (D2).
@@ -462,8 +559,10 @@ borrado + toggle de activo.
 ## Orden y por qué
 
 ```
-Task 0  decisiones          ─┐
-Task 1  subidas genéricas   ─┴─ bloquean a las cuatro pantallas
+Task 0  decisiones            ─┐
+Task 1A borrado de campos      │
+Task 1B @AdminController       ├─ cimientos: más caros cuanto más tarde
+Task 1C subidas genéricas     ─┘
 Task 2  categorías            ← fija el patrón, es la más simple
 Task 3  paquetes              ← el más complejo; con el patrón ya probado
 Task 4  testimonios           ← riesgo legal, merece cabeza descansada
@@ -472,7 +571,8 @@ Task 6  extraer lo repetido   ← con tres pantallas escritas, no antes
 Task 7  cierre
 ```
 
-**Duración estimada: ~3 días**, contra la semana de la fase 3. La diferencia es que aquí casi
+**Duración estimada: ~3 días y medio**, contra la semana de la fase 3. Medio día más que el
+borrador por los cimientos del Task 1A y 1B, que no estaban contados. La diferencia es que aquí casi
 toda la maquinaria dura ya existe: cliente HTTP, pasarela, sobre tipado, skeletons,
 `ReorderService`, `ExclusiveFlagService`, `SlugService`, formato con `Intl` y el patrón de
 reorden optimista. Lo único que se construye de cero es el presign genérico del Task 1.
@@ -499,6 +599,32 @@ barrido de huérfanos.** Ahí vive el trabajo de James, y un barrido que se equi
 referencias lo borra. El hero viejo se queda en el bucket; borrarlo a mano una vez al año es más
 barato que el riesgo.
 
+## Segunda pasada — análisis a profundidad
+
+Nueve hallazgos más, todos verificados contra el código y el schema, no de memoria. **Dos son
+cimientos que cambian el orden de los Tasks.**
+
+| # | Hallazgo | Verificado | Dónde |
+|---|---|---|---|
+| 11 🔴 | **El bug de `null` vs `undefined` es SISTÉMICO.** Lo arreglé en galerías creyéndolo un caso suelto; esta fase añade **42 campos opcionales** que James tiene que poder borrar. El modo de fallo es el peor: la interfaz dice «Guardado» y el dato vuelve al recargar | contados en el schema: 17 + 9 + 9 + 5 + 1 + 1 | Task 1A |
+| 12 🔴 | **`@AdminController` no existe.** `CLAUDE.md` lo da por hecho; los tres controllers usan `@Controller` a pelo. La fase 4 pasa de 3 a 7 y la fase 6 mete el interceptor de deploy en todos: un fichero contra siete | `grep AdminController` → nada | Task 1B |
+| 13 | Borrar una categoría **desvincula los paquetes en silencio**: `PackageCategory` es Cascade, no Restrict. El conteo previo solo miraba galerías | schema, línea 186 | Task 2 |
+| 14 | **Desactivar el paquete destacado deja la landing sin destacado**, y ninguno hereda el destaque. No falla nada: la sección sale plana | el público filtra `isActive` | Task 3 |
+| 15 | **`Testimonial.rating` no tiene tope.** `Int?` a secas: un 7 sobre 5 entra y la landing pinta siete estrellas | schema, línea 285 | Task 4 |
+| 16 | **Un `useForm` por pestaña, no uno global.** Con uno solo, guardar SEO mandaría el número de WhatsApp y pisaría un cambio de otra pestaña | — | Task 5 |
+| 17 | **`whatsappNumber` y `whatsappDisplay` pueden divergir**: la web mostraría un número y llamaría a otro. Para un cliente, peor que no tener número | dos columnas independientes | Task 5 |
+| 18 | Lo que hay que extraer del reorden es el **hook**, no el componente: está atado a `keys.galleries.detail` y al servicio | `use-orden-medios.ts` | Task 6 |
+| 19 | **`Gallery.coverKey` es una columna muerta con lectura viva**: el mapper la respeta, nadie la escribe, ningún DTO la expone | `grep` fuera de `src/generated` | Task 7 |
+
+Y dos de higiene: `@SkipThrottle()` en los cuatro controllers públicos nuevos (el build de Astro
+va a pedirlos todos desde una IP), y **`motion` no se estrena** «porque ya está instalado» —
+`vaul` ya anima las hojas; si nadie lo necesita, sale del `package.json`.
+
+**Consecuencia en el orden:** lo que era el Task 1 (subidas) pasa a ser **1C**. Delante van 1A
+—el borrado de campos— y 1B —`@AdminController`—, porque los dos son más caros cuanto más tarde
+se hagan: 1A se paga en cuatro pantallas con datos que se pierden en silencio, y 1B en siete
+controllers a migrar en vez de tres.
+
 ## Decisiones de Javier (cerradas)
 
 | # | Pregunta | Respuesta | Qué cambia en el plan |
@@ -516,4 +642,7 @@ barato que el riesgo.
 | Cuatro pantallas divergentes | la tercera se escribe distinta a la primera | Task 6, y hacerlo con tres, no con una |
 | El número de WhatsApp queda mal guardado | **ninguna: no falla, nadie escribe** | validación en la API + botón de probar |
 | Borrar un paquete pierde los clics | ninguna hasta el dashboard de la fase 6 | desactivar es la acción principal (D4) |
+| Un campo opcional no se puede vaciar | **ninguna**: la interfaz dice «Guardado» | Task 1A: la regla, el helper y un test por modelo que vacíe todos sus opcionales |
+| La fase 6 se olvida el interceptor en algún controller | «0 cambios sin publicar» tras editar precios | Task 1B: `@AdminController`, un fichero en vez de siete |
+| El display del WhatsApp diverge del número | ninguna hasta que un cliente marca y no es | se propone derivado y se avisa si los dígitos no cuadran |
 | El logo SVG se sube normalizado y sale rasterizado | «se ve borroso en pantallas grandes», y nadie lo ata a la subida | `CampoImagen` salta la normalización para `image/svg+xml`, con test |
