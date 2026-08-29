@@ -95,7 +95,9 @@ const Envoltorio = ({ children }: { children: ReactNode }) => (
 const ESPERA = { timeout: 5000 } as const;
 
 /**
- * Acotado a la LISTA: «Sin consentimiento» es a la vez la etiqueta de estado de
+ * Acotado a la LISTA: el filtro y las tarjetas comparten vocabulario —la
+ * pastilla dice «Sin permiso» y la pestaña «Sin consentimiento»— y acotar deja
+ * claro cuál de las dos se está comprobando. Antes de
  * una tarjeta y el nombre de un botón del filtro. Buscar en toda la pantalla
  * encuentra los dos.
  */
@@ -120,7 +122,7 @@ describe('la puerta del consentimiento, en la interfaz', () => {
 
     expect(await screen.findByRole('button', { name: 'Publicar' })).toBeDisabled();
     expect(screen.getByText(/hasta que confirmes que Ana dio su permiso/)).toBeInTheDocument();
-    expect(enLaLista().getByText('Sin consentimiento')).toBeInTheDocument();
+    expect(enLaLista().getByText('Sin permiso')).toBeInTheDocument();
   });
 
   it('marcar el consentimiento pide confirmación diciendo QUÉ se afirma', async () => {
@@ -186,7 +188,7 @@ describe('estados y filtro', () => {
     render(<ListaTestimonios />, { wrapper: Envoltorio });
 
     await screen.findByText('Ana');
-    expect(enLaLista().getByText('Sin consentimiento')).toBeInTheDocument();
+    expect(enLaLista().getByText('Sin permiso')).toBeInTheDocument();
     expect(enLaLista().getByText('Borrador')).toBeInTheDocument();
     expect(enLaLista().getByText('Publicado')).toBeInTheDocument();
   });

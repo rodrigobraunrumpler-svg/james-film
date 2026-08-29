@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useForm, type Path } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CampoImagen } from '@/components/shared/campo-imagen';
+import { clasesBoton } from '@/components/shared/boton';
 import { esApiError } from '@/lib/api/errors';
 import { limpiar } from '@/lib/forms/limpiar';
 import { useGuardarCategoria } from '../hooks/use-categorias';
@@ -82,7 +83,7 @@ export function HojaCategoria({
   return (
     <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="name" className="text-sm font-medium">
+        <label htmlFor="name" className="text-muted text-xs">
           Nombre
         </label>
         <input
@@ -95,27 +96,27 @@ export function HojaCategoria({
             },
           })}
           aria-invalid={Boolean(errores.name)}
-          className="min-h-11 rounded-md border px-3"
+          className="campo bg-well border-line"
         />
         {errores.name && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-danger text-sm">
             {errores.name.message}
           </p>
         )}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium">Enlace</span>
+        <span className="text-muted text-xs">Enlace</span>
         {!editandoSlug ? (
           <div className="flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-sm [overflow-wrap:anywhere] text-neutral-600">
+            <span className="dato text-ash min-w-0 flex-1 truncate text-sm">
               /galerias/{watch('slug') || sugerirSlug(nombre || '')}
             </span>
             {!esNueva && (
               <button
                 type="button"
                 onClick={() => setEditandoSlug(true)}
-                className="min-h-11 shrink-0 rounded-md border px-3 text-sm"
+                className={clasesBoton('secundario', 'shrink-0')}
               >
                 Editar
               </button>
@@ -127,15 +128,15 @@ export function HojaCategoria({
               id="slug"
               {...register('slug')}
               aria-invalid={Boolean(errores.slug)}
-              className="min-h-11 rounded-md border px-3"
+              className="campo bg-well border-line"
             />
             {/* El aviso, no un tooltip: cambiarlo rompe cada enlace que James
                 ya compartió, y no hay forma de enterarse después. */}
-            <p className="text-xs text-amber-700">
+            <p className="text-brass text-xs">
               Si lo cambias, los enlaces que ya hayas compartido dejarán de funcionar.
             </p>
             {errores.slug && (
-              <p role="alert" className="text-sm text-red-600">
+              <p role="alert" className="text-danger text-sm">
                 {errores.slug.message}
               </p>
             )}
@@ -144,21 +145,21 @@ export function HojaCategoria({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="tagline" className="text-sm font-medium">
+        <label htmlFor="tagline" className="text-muted text-xs">
           Frase corta
         </label>
-        <input id="tagline" {...register('tagline')} className="min-h-11 rounded-md border px-3" />
+        <input id="tagline" {...register('tagline')} className="campo bg-well border-line" />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="description" className="text-sm font-medium">
+        <label htmlFor="description" className="text-muted text-xs">
           Descripción
         </label>
         <textarea
           id="description"
           rows={3}
           {...register('description')}
-          className="rounded-md border p-3"
+          className="campo bg-well border-line min-h-0 px-2.5 py-2"
         />
       </div>
 
@@ -171,7 +172,7 @@ export function HojaCategoria({
         ayuda="Se usa en la landing como cabecera de la categoría."
       />
 
-      <details className="rounded-md border p-3">
+      <details className="campo bg-well border-line min-h-0 px-2.5 py-2">
         <summary className="cursor-pointer text-sm font-medium">SEO</summary>
         <div className="mt-3 flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
@@ -181,7 +182,7 @@ export function HojaCategoria({
             <input
               id="metaTitle"
               {...register('metaTitle')}
-              className="min-h-11 rounded-md border px-3"
+              className="campo bg-well border-line"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -192,24 +193,20 @@ export function HojaCategoria({
               id="metaDescription"
               rows={2}
               {...register('metaDescription')}
-              className="rounded-md border p-3"
+              className="campo bg-well border-line min-h-0 px-2.5 py-2"
             />
           </div>
         </div>
       </details>
 
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCerrar}
-          className="min-h-11 flex-1 rounded-md border px-4 font-medium"
-        >
+        <button type="button" onClick={onCerrar} className={clasesBoton('secundario', 'flex-1')}>
           Cancelar
         </button>
         <button
           type="submit"
           disabled={formState.isSubmitting}
-          className="min-h-11 flex-1 rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60"
+          className={clasesBoton('principal', 'flex-1')}
         >
           {/* Lo pendiente va DENTRO del botón, nunca en un overlay. */}
           {formState.isSubmitting ? 'Guardando…' : 'Guardar'}

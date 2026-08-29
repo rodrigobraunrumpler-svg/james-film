@@ -49,7 +49,9 @@ test.describe('testimonios', () => {
 
     // Nace en borrador y sin consentimiento: publicar está deshabilitado.
     await expect(fila.getByRole('button', { name: 'Publicar' })).toBeDisabled();
-    await expect(fila.getByText('Sin consentimiento')).toBeVisible();
+    // La pastilla dice «Sin permiso» —lo que cabe en la tarjeta— y la PESTAÑA
+    // del filtro dice «Sin consentimiento». Aquí se comprueba la tarjeta.
+    await expect(fila.getByText('Sin permiso')).toBeVisible();
 
     // Y el motivo está escrito, no en un tooltip.
     await expect(

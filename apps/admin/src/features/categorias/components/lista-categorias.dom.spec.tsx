@@ -90,10 +90,6 @@ const ordenEnPantalla = (): string[] =>
 beforeEach(() => {
   cliente = crearQueryClient(() => {});
   vi.clearAllMocks();
-  vi.stubGlobal(
-    'confirm',
-    vi.fn(() => true),
-  );
 });
 
 describe('lista de categorías', () => {
@@ -195,6 +191,12 @@ describe('lista de categorías', () => {
     await screen.findByText('Vacía');
 
     await usuario.click(screen.getByRole('button', { name: 'Borrar' }));
+
+    // Ya no es el `confirm()` del navegador: en iOS ese sale como un diálogo
+    // del SISTEMA y se acepta con el pulgar sin leerlo. Ahora es una hoja
+    // nuestra, y el segundo clic es el que borra.
+    expect(api.de('DELETE', '/admin/categories/c1')).toHaveLength(0);
+    await usuario.click(await screen.findByRole('button', { name: 'Borrar para siempre' }));
 
     await waitFor(() => expect(api.de('DELETE', '/admin/categories/c1')).toHaveLength(1), ESPERA);
   });

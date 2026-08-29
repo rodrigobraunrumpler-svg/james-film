@@ -154,9 +154,9 @@ describe('lista de paquetes', () => {
 
     await usuario.click(screen.getByRole('button', { name: 'Ocultar Pro' }));
 
-    expect(globalThis.confirm).toHaveBeenCalledWith(
-      expect.stringContaining('la web no destacará ninguno'),
-    );
+    // Ya no es el `confirm()` del navegador: en iOS ese sale como un diálogo
+    // del SISTEMA y se acepta con el pulgar sin leerlo.
+    expect(await screen.findByText(/la web no destacará ninguno/)).toBeInTheDocument();
   });
 
   it('ocultar uno normal NO pregunta nada', async () => {
@@ -191,6 +191,9 @@ describe('lista de paquetes', () => {
     await screen.findByText('Sin clics');
 
     await usuario.click(screen.getByRole('button', { name: 'Borrar' }));
+
+    expect(api.de('DELETE', '/admin/packages/p1')).toHaveLength(0);
+    await usuario.click(await screen.findByRole('button', { name: 'Borrar para siempre' }));
 
     await waitFor(() => expect(api.de('DELETE', '/admin/packages/p1')).toHaveLength(1), ESPERA);
   });

@@ -257,6 +257,17 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - **Nada `fixed` sobre el contenido del panel.** Un elemento fijo no ocupa sitio en el flujo:
   la barra de subidas tapaba el botón de Cancelar de la última tarjeta — justo el que hace falta
   mientras se sube. `sticky bottom-0` se pega abajo **y** reserva su hueco.
+- **Los recuentos de pestañas se calculan en el CLIENTE cuando la lista no está paginada.**
+  Galerías necesita `GET /admin/galleries/counts` porque su lista viene por páginas y contar el
+  trozo visible mentiría. `GET /admin/testimonials` devuelve TODO, así que ahí el contador es un
+  `array.filter().length`: copiar el patrón sin mirar la diferencia habría añadido un endpoint,
+  sus tests y su caché para nada.
+- **El `confirm()` del navegador no se usa en ninguna parte.** En iOS sale como un diálogo del
+  SISTEMA —no de la app— y se acepta con el pulgar sin leerlo. Lo que interrumpe va en `Hoja`.
+  Escribir el nombre (`ConfirmarBorrado`) se reserva a lo que se lleva archivos por delante:
+  pedirlo para todo entrena a confirmar sin leer, que es justo lo que se quiere evitar.
+- **El h1 de cada pantalla vive DENTRO de su lista, no en el `page.tsx`.** Comparte fila con el
+  botón de «Nuevo…», y separarlos los deja en dos líneas distintas.
 - **Un test de Testing Library que pulsa el nodo correcto NO demuestra que se pueda pulsar.**
   RTL no hace hit-testing: `getByRole(...).click()` dispara el evento sobre el elemento aunque
   tenga otra capa encima. La capa de acciones de la tesela cubría la miniatura entera y —con
@@ -425,6 +436,10 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   `RATE_LIMIT_ENABLED=false` no se aplica: a la tercera ejecución seguida, el login empieza a
   devolver «demasiados intentos» y parece un fallo de credenciales. Mata el proceso del 3000 y
   deja que Playwright lo levante.
+  **Y no se sondea el endpoint para ver si la ventana ya se abrió**: cada sondeo consume uno de
+  los cinco intentos, así que el sondeo es lo que impide que se abra. Se espera 70 s sin tocarlo.
+  El síntoma es inconfundible en el `error-context.md` que deja Playwright: el login pinta
+  «Demasiados intentos» con la cuenta atrás.
 - **Y si tienes un `next dev` en el 3001**, Next inyecta su botón de dev tools (32 px) y el test
   de objetivos táctiles falla. Está filtrado por `closest('nextjs-portal')`, pero conviene
   saberlo: un test que pasa o falla según qué tengas abierto es peor que no tenerlo.

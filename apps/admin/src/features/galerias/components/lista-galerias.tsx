@@ -139,7 +139,8 @@ export function ListaGalerias() {
     <div className="flex flex-col gap-5">
       {cabecera}
 
-      {creando && <NuevaGaleria onCerrar={() => setCreando(false)} />}
+      {/* Montada siempre: vaul necesita el nodo vivo para animar la salida. */}
+      <NuevaGaleria abierta={creando} onCerrar={() => setCreando(false)} />
 
       {vacia && !creando ? (
         filtros.q ? (

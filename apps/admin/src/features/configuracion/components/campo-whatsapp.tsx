@@ -44,7 +44,7 @@ export function CampoWhatsapp() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="whatsappNumber" className="text-sm font-medium">
+        <label htmlFor="whatsappNumber" className="text-muted text-xs">
           Número de WhatsApp
         </label>
         <input
@@ -64,13 +64,13 @@ export function CampoWhatsapp() {
             },
           })}
           aria-invalid={Boolean(formState.errors.whatsappNumber)}
-          className="min-h-11 rounded-md border px-3"
+          className="campo bg-well border-line"
         />
-        <p className="text-xs text-neutral-500">
+        <p className="text-muted text-xs">
           Con el prefijo del país y sin el «+». Para Perú: 51 y luego el número.
         </p>
         {formState.errors.whatsappNumber && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-danger text-sm">
             {formState.errors.whatsappNumber.message}
           </p>
         )}
@@ -88,17 +88,17 @@ export function CampoWhatsapp() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="whatsappDisplay" className="text-sm font-medium">
+        <label htmlFor="whatsappDisplay" className="text-muted text-xs">
           Cómo se muestra
         </label>
         <input
           id="whatsappDisplay"
           placeholder="994 724 944"
           {...register('whatsappDisplay')}
-          className="min-h-11 rounded-md border px-3"
+          className="campo bg-well border-line"
         />
         {divergen && (
-          <p role="alert" className="text-sm text-amber-700">
+          <p role="alert" className="text-ash text-sm">
             El número que se marca y el que se muestra no coinciden. Revísalo: la web enseñaría uno
             y llamaría a otro.
           </p>

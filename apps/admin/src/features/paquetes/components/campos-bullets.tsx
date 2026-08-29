@@ -19,7 +19,7 @@ export function CamposBullets({ form }: { form: UseFormReturn<DatosFormularioPaq
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium">Qué incluye</span>
+      <span className="text-muted text-xs">Qué incluye</span>
 
       <ul className="flex flex-col gap-2">
         {fields.map((campo, i) => (
@@ -65,7 +65,7 @@ export function CamposBullets({ form }: { form: UseFormReturn<DatosFormularioPaq
       </ul>
 
       {form.formState.errors.items && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-danger text-sm">
           {form.formState.errors.items.message ?? 'Revisa los puntos'}
         </p>
       )}

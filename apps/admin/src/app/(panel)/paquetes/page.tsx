@@ -3,10 +3,6 @@ import { ListaPaquetes } from '@/features/paquetes/components/lista-paquetes';
 export const metadata = { title: 'Paquetes · James Film' };
 
 export default function Page() {
-  return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Paquetes</h1>
-      <ListaPaquetes />
-    </div>
-  );
+  // El h1 vive dentro de la lista: comparte fila con «Nuevo paquete».
+  return <ListaPaquetes />;
 }

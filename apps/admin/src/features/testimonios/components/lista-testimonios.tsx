@@ -3,12 +3,15 @@
 import type { AdminTestimonialDto } from '@james-film/contracts';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { MessageSquareQuote } from 'lucide-react';
+import { ArrowDown, ArrowUp, Lock, MessageSquareQuote, Plus, Star } from 'lucide-react';
+import { Boton, clasesBoton } from '@/components/shared/boton';
 import { ConfirmarBorrado } from '@/components/shared/confirmar-borrado';
 import { EstadoVacio } from '@/components/shared/estado-vacio';
 import { Hoja } from '@/components/shared/hoja';
 import { esApiError } from '@/lib/api/errors';
 import { fecha } from '@/lib/format';
+import { ocultarSiFalla } from '@/lib/imagen';
+import { cn } from '@/lib/utils/cn';
 import {
   useBorrarTestimonio,
   useDestacarTestimonio,
@@ -32,6 +35,10 @@ const cumple = (t: AdminTestimonialDto, estado: EstadoFiltro): boolean => {
   if (estado === 'sin-consentimiento') return !t.hasConsent;
   return true;
 };
+
+/** Icono cuadrado de la tarjeta: 44px en táctil, 30 en escritorio. */
+const ICONO =
+  'flex size-11 shrink-0 items-center justify-center rounded-control border border-line-strong bg-card text-bone transition-colors duration-150 hover:border-line-hover disabled:opacity-35 lg:size-[30px]';
 
 export function ListaTestimonios() {
   const { data, isPending, isError, refetch } = useTestimonios();
@@ -97,31 +104,59 @@ export function ListaTestimonios() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setEditando(null)}
-          className="min-h-11 rounded-md bg-neutral-900 px-4 text-sm font-medium text-white"
-        >
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h1 className="text-xl font-semibold tracking-[-0.01em]">Testimonios</h1>
+          <p className="text-ash text-sm">
+            Una captura de una clienta contenta vende más que cualquier texto.
+          </p>
+        </div>
+        <Boton variante="principal" onClick={() => setEditando(null)}>
+          <Plus className="size-3.5" aria-hidden />
           Nuevo testimonio
-        </button>
+        </Boton>
+      </div>
 
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Filtrar por estado">
-          {ESTADOS.map((e) => (
+      {/* Pestañas con recuento. No hacen falta endpoints como en Galerías: allí
+          la lista está PAGINADA y contar el trozo visible mentiría; aquí la API
+          devuelve todos y el número sale del array que ya está en memoria. */}
+      <div className="border-line flex items-center gap-5 overflow-x-auto border-b" role="tablist">
+        {ESTADOS.map((e) => {
+          const seleccionada = estado === e;
+          const cuantos = data.filter((t) => cumple(t, e)).length;
+          return (
             <button
               key={e}
               type="button"
-              aria-pressed={estado === e}
+              role="tab"
+              aria-selected={seleccionada}
               onClick={() => void setEstado(e)}
-              className={`min-h-11 rounded-md border px-3 text-sm ${
-                estado === e ? 'bg-neutral-900 text-white' : ''
-              }`}
+              className={cn(
+                '-mb-px flex h-11 shrink-0 items-center gap-1.75 border-b-2 transition-colors duration-150 lg:h-10',
+                seleccionada
+                  ? 'border-brass text-bone font-medium'
+                  : 'text-ash hover:text-bone border-transparent',
+              )}
             >
               {ETIQUETA[e]}
+              <span
+                className={cn(
+                  'text-sm tabular-nums',
+                  // El de «sin consentimiento» en rojo aunque la pestaña no esté
+                  // activa: es el único que pide una acción legal (§19).
+                  e === 'sin-consentimiento' && cuantos > 0
+                    ? 'text-danger'
+                    : seleccionada
+                      ? 'text-ash'
+                      : 'text-muted',
+                )}
+              >
+                {cuantos}
+              </span>
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       {hayFiltro && (
@@ -129,13 +164,13 @@ export function ListaTestimonios() {
         // lista filtrada mandaría un subconjunto y los que no se ven quedarían
         // con órdenes que colisionan. La lista pública saldría barajada, sin
         // ningún error.
-        <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <p className="border-line-strong bg-card text-ash rounded-card border p-3 text-sm">
           Quita el filtro para poder reordenar.
         </p>
       )}
 
       {fallo && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-danger text-sm">
           No se pudo guardar el orden. Se ha dejado como estaba.
         </p>
       )}
@@ -149,140 +184,163 @@ export function ListaTestimonios() {
           onAccion={() => setEditando(null)}
         />
       ) : visibles.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-neutral-500">
+        <p className="border-line-strong text-ash rounded-card border border-dashed p-6 text-center text-sm">
           No hay testimonios con este filtro.
         </p>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {visibles.map((t, i) => (
-            <li key={t.id} className="flex flex-col gap-3 rounded-lg border p-3">
-              <div className="flex min-w-0 items-start gap-3">
-                <div className="size-12 shrink-0 overflow-hidden rounded-full bg-neutral-100">
-                  {t.avatarUrl && (
+            <li
+              key={t.id}
+              className={cn(
+                'rounded-card flex flex-col overflow-hidden border transition-colors duration-150',
+                // El sin consentimiento se distingue por el CONTINENTE, no por
+                // una etiqueta más: es lo que no se puede publicar (§19).
+                !t.hasConsent
+                  ? 'border-danger-line bg-danger-bg'
+                  : t.isFeatured
+                    ? 'border-brass bg-card'
+                    : 'border-line bg-card hover:border-line-hover',
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-3 p-3.5 pb-3">
+                <span className="bg-active border-line-strong size-9 shrink-0 overflow-hidden rounded-full border">
+                  {t.avatarUrl ? (
                     <img
                       src={t.avatarUrl}
                       alt=""
-                      className="h-full w-full object-cover"
                       loading="lazy"
+                      onError={ocultarSiFalla}
+                      className="h-full w-full object-cover"
                     />
+                  ) : (
+                    <span className="text-brass flex h-full w-full items-center justify-center text-sm">
+                      {t.authorName.trim().charAt(0).toUpperCase()}
+                    </span>
                   )}
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="flex flex-wrap items-center gap-2 font-medium">
-                    <span className="[overflow-wrap:anywhere]">{t.authorName}</span>
-                    {!t.hasConsent ? (
-                      <span className="rounded bg-red-100 px-1.5 py-0.5 text-[11px] font-medium text-red-800">
-                        Sin consentimiento
-                      </span>
-                    ) : t.isActive ? (
-                      <span className="rounded bg-green-100 px-1.5 py-0.5 text-[11px] font-medium text-green-800">
-                        Publicado
-                      </span>
-                    ) : (
-                      <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] font-medium text-neutral-700">
-                        Borrador
-                      </span>
-                    )}
-                    {t.isFeatured && (
-                      <span className="rounded bg-neutral-900 px-1.5 py-0.5 text-[11px] font-medium text-white">
-                        Destacado
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-sm text-neutral-500">
+                </span>
+
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="dato font-medium">{t.authorName}</span>
+                  <span className="text-ash truncate text-sm">
                     {t.eventType ?? t.source}
                     {t.eventDate ? ` · ${fecha(t.eventDate)}` : ''}
                   </span>
-                  {t.quote && (
-                    <p className="mt-1 line-clamp-2 text-sm [overflow-wrap:anywhere] text-neutral-600">
-                      {t.quote}
-                    </p>
-                  )}
                 </div>
+
+                <Estado testimonio={t} />
               </div>
 
+              {t.screenshotUrl && (
+                <div className="bg-well border-line relative mx-3.5 max-h-44 overflow-hidden rounded-[6px] border">
+                  <img
+                    src={t.screenshotUrl}
+                    alt=""
+                    loading="lazy"
+                    onError={ocultarSiFalla}
+                    className={cn(
+                      'aspect-3/4 w-full object-cover object-top',
+                      // Difuminada mientras no haya permiso: se ve que hay algo,
+                      // no se lee lo que dijo alguien que no ha dado el sí.
+                      !t.hasConsent && 'blur-[6px]',
+                    )}
+                  />
+                  {!t.hasConsent && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <Lock className="text-danger size-5" aria-hidden />
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {t.quote && (
+                <p className="text-ash dato line-clamp-3 px-3.5 pt-3 text-sm">«{t.quote}»</p>
+              )}
+
               {!t.hasConsent && (
-                // El motivo escrito al lado, no un tooltip: es lo único que
-                // explica por qué el botón de publicar no se puede pulsar.
-                <p className="text-xs text-neutral-600">
-                  No se puede publicar hasta que confirmes que {t.authorName} dio su permiso.
+                // El motivo escrito, no un tooltip: es lo único que explica por
+                // qué el botón de publicar no se puede pulsar.
+                <p className="text-danger px-3.5 pt-3 text-xs">
+                  No se puede publicar hasta que confirmes que {t.authorName} dio su permiso para
+                  usar su nombre, su foto y su mensaje.
                 </p>
               )}
 
-              <div className="flex flex-wrap gap-1">
+              <div className="border-line mt-auto flex flex-wrap gap-1.5 border-t p-2.5 pt-3">
                 <button
                   type="button"
                   aria-label={`Mover ${t.authorName} antes`}
                   disabled={i === 0 || hayFiltro}
                   onClick={() => reordenar(i, i - 1)}
-                  className="min-h-11 min-w-11 rounded-md border text-sm disabled:opacity-40"
+                  className={ICONO}
                 >
-                  ↑
+                  <ArrowUp className="size-3.5" aria-hidden />
                 </button>
                 <button
                   type="button"
                   aria-label={`Mover ${t.authorName} después`}
                   disabled={i >= visibles.length - 1 || hayFiltro}
                   onClick={() => reordenar(i, i + 1)}
-                  className="min-h-11 min-w-11 rounded-md border text-sm disabled:opacity-40"
+                  className={ICONO}
                 >
-                  ↓
+                  <ArrowDown className="size-3.5" aria-hidden />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => marcarConsentimiento(t)}
-                  className="min-h-11 rounded-md border px-3 text-sm"
-                >
+                <Boton onClick={() => marcarConsentimiento(t)}>
                   {t.hasConsent ? 'Quitar consentimiento' : 'Marcar consentimiento'}
-                </button>
-                <button
-                  type="button"
+                </Boton>
+                <Boton
                   // Deshabilitado, no oculto: si desaparece, no se entiende por qué.
+                  variante={t.hasConsent && !t.isActive ? 'principal' : 'secundario'}
                   disabled={!t.hasConsent}
                   onClick={() => publicar(t)}
-                  className="min-h-11 rounded-md border px-3 text-sm disabled:opacity-40"
                 >
                   {t.isActive ? 'Despublicar' : 'Publicar'}
-                </button>
-                <label className="flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm">
+                </Boton>
+                <label className="relative">
                   <input
                     type="radio"
                     name="destacado-testimonio"
                     checked={t.isFeatured}
                     onChange={() => destacar.mutate(t.id)}
                     aria-label={`Destacar ${t.authorName}`}
+                    className="peer sr-only"
                   />
-                  Destacar
+                  <span
+                    className={clasesBoton(
+                      'secundario',
+                      'peer-checked:border-brass peer-checked:text-brass peer-focus-visible:outline-brass cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2',
+                    )}
+                  >
+                    <Star className={cn('size-3.5', t.isFeatured && 'fill-current')} aria-hidden />
+                    Destacar
+                  </span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setEditando(t)}
-                  className="min-h-11 rounded-md border px-3 text-sm"
-                >
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBorrando(t)}
-                  className="min-h-11 rounded-md border px-3 text-sm"
-                >
+                <Boton onClick={() => setEditando(t)}>Editar</Boton>
+                <Boton variante="peligro" onClick={() => setBorrando(t)}>
                   Borrar
-                </button>
+                </Boton>
               </div>
             </li>
           ))}
         </ul>
       )}
 
-      {borrando && (
-        <ConfirmarBorrado
-          nombre={borrando.authorName}
-          descripcion="También se borrarán del servidor su captura y su foto. No se puede deshacer."
-          cargando={borrar.isPending}
-          onCancelar={() => setBorrando(null)}
-          onConfirmar={() => void confirmarBorrado(borrando)}
-        />
-      )}
+      <Hoja
+        abierta={borrando !== null}
+        onCerrar={() => setBorrando(null)}
+        titulo={borrando ? `Borrar «${borrando.authorName}»` : 'Borrar'}
+        descripcion="Se borran también su captura y su foto del servidor."
+      >
+        {borrando && (
+          <ConfirmarBorrado
+            nombre={borrando.authorName}
+            descripcion="También se borrarán del servidor su captura y su foto. No se puede deshacer."
+            cargando={borrar.isPending}
+            onCancelar={() => setBorrando(null)}
+            onConfirmar={() => void confirmarBorrado(borrando)}
+          />
+        )}
+      </Hoja>
 
       <Hoja
         abierta={editando !== undefined}
@@ -298,17 +356,40 @@ export function ListaTestimonios() {
   );
 }
 
+/** El estado, en una pastilla. Tres valores excluyentes, nunca dos a la vez. */
+function Estado({ testimonio: t }: { testimonio: AdminTestimonialDto }) {
+  if (!t.hasConsent) {
+    return (
+      <span className="text-danger bg-danger-line/30 shrink-0 rounded px-1.5 py-0.5 text-[10px]">
+        Sin permiso
+      </span>
+    );
+  }
+  if (t.isActive) {
+    return (
+      <span className="text-brass border-brass/40 shrink-0 rounded border px-1.5 py-0.5 text-[10px]">
+        Publicado
+      </span>
+    );
+  }
+  return (
+    <span className="text-ash bg-active shrink-0 rounded px-1.5 py-0.5 text-[10px]">Borrador</span>
+  );
+}
+
 export function SkeletonTestimonios() {
   return (
-    <ul className="flex flex-col gap-3" aria-hidden>
-      {Array.from({ length: 4 }, (_, i) => (
-        <li key={i} className="flex items-start gap-3 rounded-lg border p-3">
-          <div className="size-12 shrink-0 animate-pulse rounded-full bg-neutral-200" />
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <div className="h-4 w-1/3 animate-pulse rounded bg-neutral-200" />
-            <div className="h-3 w-1/4 animate-pulse rounded bg-neutral-100" />
-            <div className="h-3 w-full animate-pulse rounded bg-neutral-100" />
+    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-hidden>
+      {Array.from({ length: 3 }, (_, i) => (
+        <li key={i} className="border-line bg-card rounded-card flex flex-col gap-3 border p-3.5">
+          <div className="flex items-center gap-3">
+            <div className="bg-active size-9 shrink-0 animate-pulse rounded-full" />
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <div className="bg-active h-3.5 w-1/2 animate-pulse rounded" />
+              <div className="bg-line h-3 w-1/3 animate-pulse rounded" />
+            </div>
           </div>
+          <div className="bg-well aspect-3/4 max-h-44 animate-pulse rounded-[6px]" />
         </li>
       ))}
     </ul>

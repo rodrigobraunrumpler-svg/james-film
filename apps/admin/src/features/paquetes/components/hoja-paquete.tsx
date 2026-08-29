@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useForm, type Path } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CampoImagen } from '@/components/shared/campo-imagen';
+import { clasesBoton } from '@/components/shared/boton';
 import { esApiError } from '@/lib/api/errors';
 import { aCentimos, aSoles } from '@/lib/format';
 import { limpiar } from '@/lib/forms/limpiar';
@@ -85,12 +86,12 @@ export function HojaPaquete({
   return (
     <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="name" className="text-sm font-medium">
+        <label htmlFor="name" className="text-muted text-xs">
           Nombre
         </label>
-        <input id="name" {...register('name')} className="min-h-11 rounded-md border px-3" />
+        <input id="name" {...register('name')} className="campo bg-well border-line" />
         {errores.name && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-danger text-sm">
             {errores.name.message}
           </p>
         )}
@@ -98,7 +99,7 @@ export function HojaPaquete({
 
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="precioSoles" className="text-sm font-medium">
+          <label htmlFor="precioSoles" className="text-muted text-xs">
             Precio en soles
           </label>
           <input
@@ -109,46 +110,42 @@ export function HojaPaquete({
             min="0"
             inputMode="numeric"
             {...register('precioSoles')}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
           {errores.precioSoles && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-danger text-sm">
               {errores.precioSoles.message}
             </p>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="priceNote" className="text-sm font-medium">
+          <label htmlFor="priceNote" className="text-muted text-xs">
             Nota del precio
           </label>
           <input
             id="priceNote"
             placeholder="desde"
             {...register('priceNote')}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="subtitle" className="text-sm font-medium">
+          <label htmlFor="subtitle" className="text-muted text-xs">
             Subtítulo
           </label>
-          <input
-            id="subtitle"
-            {...register('subtitle')}
-            className="min-h-11 rounded-md border px-3"
-          />
+          <input id="subtitle" {...register('subtitle')} className="campo bg-well border-line" />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="icon" className="text-sm font-medium">
+          <label htmlFor="icon" className="text-muted text-xs">
             Ícono
           </label>
           {/* Lista cerrada que da la API: la misma contra la que valida. */}
-          <select id="icon" {...register('icon')} className="min-h-11 rounded-md border px-3">
+          <select id="icon" {...register('icon')} className="campo bg-well border-line">
             <option value="">Ninguno</option>
             {(iconosDisponibles ?? []).map((nombre) => (
               <option key={nombre} value={nombre}>
@@ -160,20 +157,16 @@ export function HojaPaquete({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="idealFor" className="text-sm font-medium">
+        <label htmlFor="idealFor" className="text-muted text-xs">
           Ideal para
         </label>
-        <input
-          id="idealFor"
-          {...register('idealFor')}
-          className="min-h-11 rounded-md border px-3"
-        />
+        <input id="idealFor" {...register('idealFor')} className="campo bg-well border-line" />
       </div>
 
       <CamposBullets form={form} />
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium">Categorías</legend>
+        <legend className="text-muted text-xs">Categorías</legend>
         <div className="flex flex-wrap gap-3">
           {categorias.map((c) => (
             <label key={c.id} className="flex min-h-11 items-center gap-2 text-sm">
@@ -197,25 +190,25 @@ export function HojaPaquete({
 
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="badgeText" className="text-sm font-medium">
+          <label htmlFor="badgeText" className="text-muted text-xs">
             Etiqueta
           </label>
           <input
             id="badgeText"
             placeholder="NUESTRO MÁS VENDIDO"
             {...register('badgeText')}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="whatsappMessage" className="text-sm font-medium">
+          <label htmlFor="whatsappMessage" className="text-muted text-xs">
             Mensaje de WhatsApp
           </label>
           <input
             id="whatsappMessage"
             {...register('whatsappMessage')}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
       </div>
@@ -229,17 +222,13 @@ export function HojaPaquete({
       />
 
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCerrar}
-          className="min-h-11 flex-1 rounded-md border px-4 font-medium"
-        >
+        <button type="button" onClick={onCerrar} className={clasesBoton('secundario', 'flex-1')}>
           Cancelar
         </button>
         <button
           type="submit"
           disabled={formState.isSubmitting}
-          className="min-h-11 flex-1 rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60"
+          className={clasesBoton('principal', 'flex-1')}
         >
           {formState.isSubmitting ? 'Guardando…' : 'Guardar'}
         </button>

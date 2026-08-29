@@ -6,6 +6,8 @@ import { useState, type ReactNode } from 'react';
 import { FormProvider, useForm, type FieldValues, type UseFormReturn } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CampoImagen } from '@/components/shared/campo-imagen';
+import { Boton } from '@/components/shared/boton';
+import { cn } from '@/lib/utils/cn';
 import { esApiError } from '@/lib/api/errors';
 import { limpiar } from '@/lib/forms/limpiar';
 import { useAjustes, useGuardarAjustes } from '../hooks/use-ajustes';
@@ -59,7 +61,11 @@ export function PanelConfiguracion() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div role="tablist" aria-label="Secciones" className="flex flex-wrap gap-1">
+      <div
+        role="tablist"
+        aria-label="Secciones"
+        className="border-line flex items-center gap-5 overflow-x-auto border-b"
+      >
         {PESTANAS.map((p) => (
           <button
             key={p}
@@ -67,9 +73,12 @@ export function PanelConfiguracion() {
             type="button"
             aria-selected={pestana === p}
             onClick={() => cambiarPestana(p)}
-            className={`min-h-11 rounded-md border px-3 text-sm ${
-              pestana === p ? 'bg-neutral-900 text-white' : ''
-            }`}
+            className={cn(
+              '-mb-px flex h-11 shrink-0 items-center border-b-2 transition-colors duration-150 lg:h-10',
+              pestana === p
+                ? 'border-brass text-bone font-medium'
+                : 'text-ash hover:text-bone border-transparent',
+            )}
           >
             {ETIQUETAS[p]}
           </button>
@@ -151,14 +160,10 @@ function Marco<T extends FieldValues>({
         className="flex max-w-2xl flex-col gap-4"
       >
         {children}
-        <button
-          type="submit"
-          disabled={guardando}
-          className="min-h-11 self-start rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60"
-        >
-          {/* Lo pendiente DENTRO del botón, nunca en un overlay. */}
+        {/* Lo pendiente DENTRO del botón, nunca en un overlay. */}
+        <Boton variante="principal" type="submit" className="self-start" disabled={guardando}>
           {guardando ? 'Guardando…' : 'Guardar'}
-        </button>
+        </Boton>
       </form>
     </FormProvider>
   );
@@ -176,12 +181,12 @@ const Campo = ({
   error?: string;
 }) => (
   <div className="flex flex-col gap-1.5">
-    <label htmlFor={id} className="text-sm font-medium">
+    <label htmlFor={id} className="text-muted text-xs">
       {etiqueta}
     </label>
     {children}
     {error && (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-danger text-sm">
         {error}
       </p>
     )}
@@ -245,11 +250,11 @@ function Identidad({
           id="aboutText"
           rows={5}
           {...register('aboutText')}
-          className="rounded-md border p-3"
+          className="campo bg-well border-line min-h-0 px-2.5 py-2"
         />
       </Campo>
-      <div className="rounded-md border bg-neutral-50 p-3">
-        <p className="mb-1 text-xs font-medium text-neutral-500">
+      <div className="border-line bg-card rounded-control border p-3">
+        <p className="text-muted mb-1.5 text-xs">
           Así se verá. Pon **dos asteriscos** alrededor de lo que quieras resaltar.
         </p>
         <p className="text-sm">
@@ -378,7 +383,7 @@ function Seo({ ajustes, onSucio }: { ajustes: SiteSettingsDto; onSucio: (v: bool
           id="metaDescription"
           rows={2}
           {...register('metaDescription')}
-          className="rounded-md border p-3"
+          className="campo bg-well border-line min-h-0 px-2.5 py-2"
         />
       </Campo>
       <CampoImagen
@@ -398,13 +403,13 @@ export function SkeletonConfiguracion() {
     <div className="flex max-w-2xl flex-col gap-4" aria-hidden>
       <div className="flex gap-1">
         {Array.from({ length: 5 }, (_, i) => (
-          <div key={i} className="h-11 w-24 animate-pulse rounded-md bg-neutral-200" />
+          <div key={i} className="rounded-control bg-active h-11 w-24 animate-pulse" />
         ))}
       </div>
       {Array.from({ length: 4 }, (_, i) => (
         <div key={i} className="flex flex-col gap-1.5">
-          <div className="h-4 w-32 animate-pulse rounded bg-neutral-100" />
-          <div className="h-11 animate-pulse rounded-md bg-neutral-200" />
+          <div className="bg-line h-4 w-32 animate-pulse rounded" />
+          <div className="rounded-control bg-active h-11 animate-pulse" />
         </div>
       ))}
     </div>

@@ -3,6 +3,7 @@
 import type { AdminSocialLinkDto } from '@james-film/contracts';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { clasesBoton } from '@/components/shared/boton';
 import { esApiError } from '@/lib/api/errors';
 import { useBorrarRed, useGuardarRed, useOrdenRedes, useRedes } from '../hooks/use-listas';
 
@@ -17,7 +18,7 @@ export function ListaRedes() {
 
   // `!data` además de `isPending`: TypeScript no estrecha `data` solo con el
   // booleano, y sin esto el resto del componente iría con `data!`.
-  if (isPending || !data) return <p className="text-sm text-neutral-500">Cargando…</p>;
+  if (isPending || !data) return <p className="text-ash text-sm">Cargando…</p>;
 
   const anadir = async (): Promise<void> => {
     if (!nueva.platform.trim() || !nueva.url.trim()) return;
@@ -41,7 +42,7 @@ export function ListaRedes() {
       <h2 className="text-lg font-semibold">Redes</h2>
 
       {fallo && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-danger text-sm">
           No se pudo guardar el orden. Se ha dejado como estaba.
         </p>
       )}
@@ -55,13 +56,13 @@ export function ListaRedes() {
                 href={r.url}
                 target="_blank"
                 rel="noreferrer"
-                className="truncate text-sm [overflow-wrap:anywhere] text-neutral-500 underline"
+                className="dato text-ash truncate text-sm underline"
               >
                 {r.handle}
               </a>
             </div>
             {!r.isActive && (
-              <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[11px]">Oculta</span>
+              <span className="bg-active text-ash rounded px-1.5 py-0.5 text-[10px]">Oculta</span>
             )}
             <button
               type="button"
@@ -85,7 +86,7 @@ export function ListaRedes() {
               type="button"
               aria-label={`${r.isActive ? 'Ocultar' : 'Mostrar'} ${r.platform}`}
               onClick={() => guardar.mutate({ id: r.id, datos: { isActive: !r.isActive } })}
-              className="min-h-11 rounded-md border px-3 text-sm"
+              className={clasesBoton()}
             >
               {r.isActive ? 'Ocultar' : 'Mostrar'}
             </button>
@@ -93,7 +94,7 @@ export function ListaRedes() {
               type="button"
               aria-label={`Borrar ${r.platform}`}
               onClick={() => void eliminar(r)}
-              className="min-h-11 rounded-md border px-3 text-sm"
+              className={clasesBoton()}
             >
               Borrar
             </button>
@@ -103,7 +104,7 @@ export function ListaRedes() {
 
       <div className="flex flex-wrap items-end gap-2 rounded-md border border-dashed p-3">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="red-platform" className="text-sm font-medium">
+          <label htmlFor="red-platform" className="text-muted text-xs">
             Red
           </label>
           <input
@@ -111,11 +112,11 @@ export function ListaRedes() {
             placeholder="instagram"
             value={nueva.platform}
             onChange={(e) => setNueva({ ...nueva, platform: e.target.value })}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="red-handle" className="text-sm font-medium">
+          <label htmlFor="red-handle" className="text-muted text-xs">
             Usuario
           </label>
           <input
@@ -123,11 +124,11 @@ export function ListaRedes() {
             placeholder="James_film30"
             value={nueva.handle}
             onChange={(e) => setNueva({ ...nueva, handle: e.target.value })}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <label htmlFor="red-url" className="text-sm font-medium">
+          <label htmlFor="red-url" className="text-muted text-xs">
             Enlace completo
           </label>
           <input
@@ -135,7 +136,7 @@ export function ListaRedes() {
             placeholder="https://instagram.com/James_film30"
             value={nueva.url}
             onChange={(e) => setNueva({ ...nueva, url: e.target.value })}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
         <button

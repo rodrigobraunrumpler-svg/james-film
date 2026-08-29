@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useForm, type Path } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CampoImagen } from '@/components/shared/campo-imagen';
+import { clasesBoton } from '@/components/shared/boton';
 import { esApiError } from '@/lib/api/errors';
 import { limpiar } from '@/lib/forms/limpiar';
 import { useGuardarTestimonio } from '../hooks/use-testimonios';
@@ -80,50 +81,50 @@ export function HojaTestimonio({
     <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="authorName" className="text-sm font-medium">
+          <label htmlFor="authorName" className="text-muted text-xs">
             Nombre
           </label>
           <input
             id="authorName"
             {...register('authorName')}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
           {errores.authorName && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-danger text-sm">
               {errores.authorName.message}
             </p>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="authorHandle" className="text-sm font-medium">
+          <label htmlFor="authorHandle" className="text-muted text-xs">
             Usuario
           </label>
           <input
             id="authorHandle"
             placeholder="@ana"
             {...register('authorHandle')}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="format" className="text-sm font-medium">
+          <label htmlFor="format" className="text-muted text-xs">
             Formato
           </label>
-          <select id="format" {...register('format')} className="min-h-11 rounded-md border px-3">
+          <select id="format" {...register('format')} className="campo bg-well border-line">
             <option value="SCREENSHOT">Captura</option>
             <option value="TEXT">Texto</option>
           </select>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="source" className="text-sm font-medium">
+          <label htmlFor="source" className="text-muted text-xs">
             De dónde viene
           </label>
-          <select id="source" {...register('source')} className="min-h-11 rounded-md border px-3">
+          <select id="source" {...register('source')} className="campo bg-well border-line">
             <option value="WHATSAPP">WhatsApp</option>
             <option value="INSTAGRAM">Instagram</option>
             <option value="TIKTOK">TikTok</option>
@@ -134,43 +135,48 @@ export function HojaTestimonio({
 
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="eventType" className="text-sm font-medium">
+          <label htmlFor="eventType" className="text-muted text-xs">
             Tipo de evento
           </label>
           <input
             id="eventType"
             placeholder="Boda"
             {...register('eventType')}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="eventDate" className="text-sm font-medium">
+          <label htmlFor="eventDate" className="text-muted text-xs">
             Fecha del evento
           </label>
           <input
             id="eventDate"
             type="date"
             {...register('eventDate')}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="quote" className="text-sm font-medium">
+        <label htmlFor="quote" className="text-muted text-xs">
           Lo que dijo
         </label>
-        <textarea id="quote" rows={3} {...register('quote')} className="rounded-md border p-3" />
+        <textarea
+          id="quote"
+          rows={3}
+          {...register('quote')}
+          className="campo bg-well border-line min-h-0 px-2.5 py-2"
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="rating" className="text-sm font-medium">
+          <label htmlFor="rating" className="text-muted text-xs">
             Estrellas
           </label>
-          <select id="rating" {...register('rating')} className="min-h-11 rounded-md border px-3">
+          <select id="rating" {...register('rating')} className="campo bg-well border-line">
             <option value="">Sin valoración</option>
             {[1, 2, 3, 4, 5].map((n) => (
               <option key={n} value={n}>
@@ -181,16 +187,16 @@ export function HojaTestimonio({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="externalUrl" className="text-sm font-medium">
+          <label htmlFor="externalUrl" className="text-muted text-xs">
             Enlace original
           </label>
           <input
             id="externalUrl"
             {...register('externalUrl')}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
           {errores.externalUrl && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-danger text-sm">
               {errores.externalUrl.message}
             </p>
           )}
@@ -217,17 +223,13 @@ export function HojaTestimonio({
       )}
 
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCerrar}
-          className="min-h-11 flex-1 rounded-md border px-4 font-medium"
-        >
+        <button type="button" onClick={onCerrar} className={clasesBoton('secundario', 'flex-1')}>
           Cancelar
         </button>
         <button
           type="submit"
           disabled={formState.isSubmitting}
-          className="min-h-11 flex-1 rounded-md bg-neutral-900 px-4 font-medium text-white disabled:opacity-60"
+          className={clasesBoton('principal', 'flex-1')}
         >
           {formState.isSubmitting ? 'Guardando…' : 'Guardar'}
         </button>

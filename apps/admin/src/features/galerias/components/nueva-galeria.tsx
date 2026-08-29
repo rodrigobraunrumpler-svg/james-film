@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Boton } from '@/components/shared/boton';
+import { Hoja } from '@/components/shared/hoja';
+import { Selector } from '@/components/shared/selector';
 import { esApiError } from '@/lib/api/errors';
 import { useCategoriasComoOpciones } from '@/lib/catalogo/categorias';
 import { useCrearGaleria } from '../hooks/use-crear-galeria';
@@ -11,8 +13,12 @@ import { useCrearGaleria } from '../hooks/use-crear-galeria';
  * Lo mínimo para empezar: título y categoría. El resto —fecha, lugar,
  * descripción— se rellena luego en el editor, porque el día de la boda James
  * solo quiere subir los reels.
+ *
+ * En hoja, no en línea: intercalado en la lista empujaba las tarjetas hacia
+ * abajo y en el móvil aparecía fuera de la pantalla. Es además lo que ya hace
+ * el resto del admin con cualquier formulario.
  */
-export function NuevaGaleria({ onCerrar }: { onCerrar: () => void }) {
+export function NuevaGaleria({ abierta, onCerrar }: { abierta: boolean; onCerrar: () => void }) {
   const { data: categorias, isPending } = useCategoriasComoOpciones();
   const crear = useCrearGaleria();
   const [title, setTitle] = useState('');
@@ -34,75 +40,78 @@ export function NuevaGaleria({ onCerrar }: { onCerrar: () => void }) {
     }
   };
 
-  if (isPending) return <p className="text-ash text-sm">Cargando categorías…</p>;
-
-  if (activas.length === 0) {
-    // Sin categorías no hay galería posible: se dice qué hacer, no «error».
-    return (
-      <div role="alert" className="border-line-strong bg-card rounded-card border p-4">
-        Antes de crear una galería necesitas al menos una categoría activa. Créala en{' '}
-        <a href="/categorias" className="text-brass underline">
-          Categorías
-        </a>
-        .
-      </div>
-    );
-  }
-
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        void enviar();
-      }}
-      noValidate
-      className="border-line-strong bg-card rounded-card flex flex-col gap-4 border p-4"
+    <Hoja
+      abierta={abierta}
+      onCerrar={onCerrar}
+      titulo="Nueva galería"
+      descripcion="Una galería es un evento: los reels de una boda, unos XV, un cumpleaños."
     >
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="nueva-title" className="text-muted text-xs">
-          Nombre del evento
-        </label>
-        <input
-          id="nueva-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="XV de Camila"
-          autoFocus
-          className="campo bg-well border-line"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="nueva-categoria" className="text-muted text-xs">
-          Categoría
-        </label>
-        <select
-          id="nueva-categoria"
-          value={elegida}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="campo bg-well border-line"
+      {isPending ? (
+        <p className="text-ash pb-2">Cargando categorías…</p>
+      ) : activas.length === 0 ? (
+        // Sin categorías no hay galería posible: se dice qué hacer, no «error».
+        <p role="alert" className="text-ash pb-2">
+          Antes de crear una galería necesitas al menos una categoría activa. Créala en{' '}
+          <a href="/categorias" className="text-brass underline">
+            Categorías
+          </a>
+          .
+        </p>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void enviar();
+          }}
+          noValidate
+          className="flex flex-col gap-4 pb-2"
         >
-          {activas.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="flex flex-col gap-1.25">
+            <label htmlFor="nueva-title" className="text-muted text-xs">
+              Nombre del evento
+            </label>
+            <input
+              id="nueva-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="XV de Camila"
+              autoFocus
+              className="campo bg-well border-line"
+            />
+            <p className="text-muted text-xs">
+              El que uses para reconocerlo. Se puede cambiar luego; el enlace no.
+            </p>
+          </div>
 
-      <div className="flex gap-2">
-        <Boton className="flex-1" onClick={onCerrar}>
-          Cancelar
-        </Boton>
-        <Boton
-          variante="principal"
-          type="submit"
-          className="flex-1"
-          disabled={!puedeCrear || crear.isPending}
-        >
-          {crear.isPending ? 'Creando…' : 'Crear y subir reels'}
-        </Boton>
-      </div>
-    </form>
+          <div className="flex flex-col gap-1.25">
+            <label htmlFor="nueva-categoria" className="text-muted text-xs">
+              Categoría
+            </label>
+            <Selector
+              id="nueva-categoria"
+              nombre="Categoría"
+              valor={elegida}
+              onCambiar={setCategoryId}
+              opciones={activas.map((c) => ({ valor: c.id, etiqueta: c.name }))}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Boton className="flex-1" onClick={onCerrar}>
+              Cancelar
+            </Boton>
+            <Boton
+              variante="principal"
+              type="submit"
+              className="flex-1"
+              disabled={!puedeCrear || crear.isPending}
+            >
+              {crear.isPending ? 'Creando…' : 'Crear y subir reels'}
+            </Boton>
+          </div>
+        </form>
+      )}
+    </Hoja>
   );
 }

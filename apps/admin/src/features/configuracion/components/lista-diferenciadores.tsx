@@ -3,6 +3,7 @@
 import type { AdminDifferentiatorDto } from '@james-film/contracts';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { clasesBoton } from '@/components/shared/boton';
 import { esApiError } from '@/lib/api/errors';
 import { iconoDe } from '@/lib/iconos/mapa';
 import { useIconosDisponibles } from '../hooks/use-iconos';
@@ -23,7 +24,7 @@ export function ListaDiferenciadores() {
 
   // `!data` además de `isPending`: TypeScript no estrecha `data` solo con el
   // booleano, y sin esto el resto del componente iría con `data!`.
-  if (isPending || !data) return <p className="text-sm text-neutral-500">Cargando…</p>;
+  if (isPending || !data) return <p className="text-ash text-sm">Cargando…</p>;
 
   const anadir = async (): Promise<void> => {
     if (!nuevo.title.trim()) return;
@@ -48,7 +49,7 @@ export function ListaDiferenciadores() {
       <h2 className="text-lg font-semibold">Diferenciadores</h2>
 
       {fallo && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-danger text-sm">
           No se pudo guardar el orden. Se ha dejado como estaba.
         </p>
       )}
@@ -58,15 +59,13 @@ export function ListaDiferenciadores() {
           const Icono = iconoDe(d.icon);
           return (
             <li key={d.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
-              <Icono aria-hidden className="size-5 shrink-0 text-neutral-500" />
+              <Icono aria-hidden className="text-ash size-5 shrink-0" />
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate font-medium [overflow-wrap:anywhere]">{d.title}</span>
-                {d.subtitle && (
-                  <span className="truncate text-sm text-neutral-500">{d.subtitle}</span>
-                )}
+                {d.subtitle && <span className="text-ash truncate text-sm">{d.subtitle}</span>}
               </div>
               {!d.isActive && (
-                <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[11px]">Oculto</span>
+                <span className="bg-active text-ash rounded px-1.5 py-0.5 text-[10px]">Oculto</span>
               )}
               <button
                 type="button"
@@ -90,7 +89,7 @@ export function ListaDiferenciadores() {
                 type="button"
                 aria-label={`${d.isActive ? 'Ocultar' : 'Mostrar'} ${d.title}`}
                 onClick={() => guardar.mutate({ id: d.id, datos: { isActive: !d.isActive } })}
-                className="min-h-11 rounded-md border px-3 text-sm"
+                className={clasesBoton()}
               >
                 {d.isActive ? 'Ocultar' : 'Mostrar'}
               </button>
@@ -98,7 +97,7 @@ export function ListaDiferenciadores() {
                 type="button"
                 aria-label={`Borrar ${d.title}`}
                 onClick={() => void eliminar(d)}
-                className="min-h-11 rounded-md border px-3 text-sm"
+                className={clasesBoton()}
               >
                 Borrar
               </button>
@@ -109,36 +108,36 @@ export function ListaDiferenciadores() {
 
       <div className="flex flex-wrap items-end gap-2 rounded-md border border-dashed p-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <label htmlFor="dif-title" className="text-sm font-medium">
+          <label htmlFor="dif-title" className="text-muted text-xs">
             Título
           </label>
           <input
             id="dif-title"
             value={nuevo.title}
             onChange={(e) => setNuevo({ ...nuevo, title: e.target.value })}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <label htmlFor="dif-subtitle" className="text-sm font-medium">
+          <label htmlFor="dif-subtitle" className="text-muted text-xs">
             Subtítulo
           </label>
           <input
             id="dif-subtitle"
             value={nuevo.subtitle}
             onChange={(e) => setNuevo({ ...nuevo, subtitle: e.target.value })}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="dif-icon" className="text-sm font-medium">
+          <label htmlFor="dif-icon" className="text-muted text-xs">
             Ícono
           </label>
           <select
             id="dif-icon"
             value={nuevo.icon}
             onChange={(e) => setNuevo({ ...nuevo, icon: e.target.value })}
-            className="min-h-11 rounded-md border px-3"
+            className="campo bg-well border-line"
           >
             {(iconos ?? []).map((n) => (
               <option key={n} value={n}>
