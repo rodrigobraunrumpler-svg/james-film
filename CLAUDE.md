@@ -272,6 +272,15 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   En `apps/admin` y `apps/web` se añade `no-restricted-imports` (la frontera arquitectónica).
 - `src/generated/**` va en `ignorePatterns`.
 
+**Commits: conventional, en inglés, asunto ≤100**
+- `commitlint.config.mjs` con `@commitlint/config-conventional`. Asunto, líneas de cuerpo y
+  de pie, todo a **100**. `scope-enum` cerrado a `api · admin · web · contracts · deps · ci ·
+  docs`: un ámbito con typo no agrupa nada al leer el historial.
+- **Sin husky.** `prepare` apunta `core.hooksPath` a `.githooks/` y pnpm lo ejecuta al
+  instalar. Una dependencia menos para lo que hace una línea de config.
+- El cuerpo se mide **por línea**, no entero: un commit largo está bien mientras ninguna
+  línea pase de 100. Es lo que permite explicar el *porqué*, que es para lo que sirven.
+
 **Testing: Vitest, no Jest**
 - NestJS 12 trae **Vitest 4**. Sustituye a Jest en §15, y de paso unifica: §15 ya quería Vitest
   para el admin, así que ahora todo el repo usa el mismo runner.
