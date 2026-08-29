@@ -106,6 +106,13 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   versión es una línea, no cuatro archivos.
 - **`"strict": true` en los cuatro `tsconfig.json`.** El scaffold de NestJS no lo trae completo,
   y sería el único sitio del monorepo sin cobertura de tipos — justo donde vive la lógica.
+- **`@types/node` se queda en 24 y TypeScript en 6, y este es el motivo** (que antes no estaba
+  escrito): `@types/node` sigue la major de Node, fijada en 24 LTS. **TypeScript 7 es el port
+  nativo (tsgo) y NestJS resuelve la inyección con `emitDecoratorMetadata`**; subir sin
+  comprobarlo repetiría el fallo de `consistent-type-imports` — el typecheck y los tests
+  unitarios pasan igual porque construyen los servicios a mano, y lo que revienta es el
+  arranque. El criterio para subir es **la API arrancando sin `UnknownDependenciesException`**
+  con la integración en verde, no que compile.
 - **Dependabot semanal**, minor y patch agrupados en un PR. Es la automatización de la regla
   de no-deprecación; el CI es lo que la hace segura.
 

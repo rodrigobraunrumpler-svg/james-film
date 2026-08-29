@@ -734,6 +734,58 @@ repo.
 2. El cron de `pg_dump` a R2 **restaurado una vez** a una branch de Neon (21). `CLAUDE.md` ya lo
    pedía «antes de datos reales»; esta es esa fase.
 
+## Cuarta pasada — librerías 2026 y rendimiento
+
+Con datos, no con opiniones: `pnpm -r outdated`, `pnpm audit --prod` y el tamaño real de los
+chunks del build de hoy.
+
+### Lo que SÍ hay que mirar
+
+| # | Hallazgo | Evidencia |
+|---|---|---|
+| 29 | **TypeScript 7.0.2 es `latest` y estamos en 6.0.3.** `CLAUDE.md` lo retiene a propósito y Dependabot lo ignora — **pero el motivo no está escrito en ningún sitio** | `npm view typescript dist-tags.latest` |
+| 31 | **`staleTime: 30_000` global es el defecto equivocado para esta fase.** Las categorías cambian una vez al año y los ajustes cada varios meses; con 30 s, cada navegación entre pantallas lo re-pide todo. En el 4G de James eso es latencia y datos gastados sin que él pida nada | `lib/query/cliente.ts` |
+| 32 | **El admin sirve 1,13 MB de JS sin comprimir y no hay techo.** La fase 4 mete cuatro pantallas más, `zustand` ya entró y el mapa de íconos hará crecer `lucide-react` | medido sobre `.next/static/chunks` |
+
+- [ ] **29 · Spike de TypeScript 7, con criterio de aceptación explícito.** TS 7 es el port nativo
+      (tsgo) y NestJS resuelve la inyección con `emitDecoratorMetadata`. **Ya nos comimos ese
+      fallo una vez** con `consistent-type-imports`: el linter pedía un cambio que rompía
+      producción y ni el typecheck ni los tests unitarios lo detectaban, porque los tests
+      construyen los servicios a mano. El criterio no es "compila", es:
+      **la API arranca sin `UnknownDependenciesException` y los 94 tests de integración pasan.**
+      Si falla, se escribe el motivo en `CLAUDE.md` — hoy solo dice «deliberadamente atrasadas»,
+      que no le sirve a nadie dentro de seis meses.
+- [ ] **31 · `staleTime` por recurso, cinco líneas y ninguna dependencia.** `Infinity` para los
+      íconos, 5-10 min para categorías, paquetes y testimonios, y **0 solo para Configuración**
+      (hallazgo 23: es donde una pestaña vieja hace más daño).
+- [ ] **32 · Presupuesto de bundle en CI.** Un paso que sume el tamaño de `.next/static/chunks`
+      y falle si sube más de un umbral. **Cero dependencias**: `find` + `awk`, que es
+      exactamente como se midió el 1,13 MB de arriba. Sin techo, esto crece hasta que se nota en
+      el móvil de James, que es el peor sitio para enterarse.
+
+### Lo que NO se añade, y por qué
+
+| Candidato | Veredicto |
+|---|---|
+| **React Compiler 1.0** | **No.** Es estable —`1.0.0`— y Next 16 lo declara en `peerDependencies`, así que la tentación es real. Pero lo que compra es memoización automática, y **el admin no tiene presupuesto de INP** (`CLAUDE.md`: no se indexa), mientras que la landing, que sí lo tiene y es dura, **es Astro, no React**. Optimizaría justo la app que no lo necesita. Y no habría evitado ninguno de los tres bugs de render de esta fase: los tres eran **identidad de snapshot** en `useSyncExternalStore`, no memoización |
+| `@types/node` 24 → 26 | **No.** Debe seguir la major de Node, fijada en 24 LTS. Bien retenido; lo que falta es que `CLAUDE.md` diga por qué |
+| `prisma` 8 | **No.** Sigue en `8.0.0-rc.12`. La regla de no-RC está para esto |
+| TanStack Table | **No.** §7 obliga a tarjetas apiladas bajo `md` igual, y hablamos de ≤50 filas |
+| Una librería de Markdown | **No.** Se usa **una** marca (negrita). Se parte por `**` y se devuelven nodos React |
+| DOMPurify para el SVG | **No.** La frontera del SVG es **el origen** (`media.`), no el saneado. Un saneador da sensación de seguridad y se esquiva |
+| `@tanstack/react-form` | **No.** `react-hook-form` funciona y ya está integrado con zod en cuatro pantallas |
+| `prisma-extension-pagination` | **No.** `paginar()` es propio y son 30 líneas; de esa librería solo se tomaron prestados **los nombres** de los campos |
+
+### Índices: explícitamente, no tocar
+
+Verificado: `@@index([isActive, order])` existe en `Category`, `Package`, `Testimonial`,
+`Differentiator` y `SocialLink`. Y aunque no existiera: son 4 + 3 + decenas + 1 filas. Postgres
+las recorre en microsegundos. **Se deja escrito que NO hay que tocarlos**, para que nadie los
+"optimice" en una revisión futura creyendo que ayuda.
+
+`pnpm audit --prod`: **sin vulnerabilidades**. Las minor pendientes
+(`@vitejs/plugin-react` 6.1.0→6.1.1, `@aws-sdk` 3.1119→3.1120) ya están aplicadas.
+
 ## Decisiones de Javier (cerradas)
 
 | # | Pregunta | Respuesta | Qué cambia en el plan |
