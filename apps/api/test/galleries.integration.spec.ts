@@ -376,3 +376,54 @@ describe('categorías para el selector del editor', () => {
     await http().get('/admin/categories').expect(401);
   });
 });
+
+describe('isPublished: lo ve el admin, no la landing', () => {
+  it('el detalle de admin lo trae', async () => {
+    const g = await crear({ title: 'Borrador' });
+
+    const { body } = await http().get(`/admin/galleries/${g.id}`).set(auth()).expect(200);
+
+    // Sin esto el admin no distingue un borrador de una galería en vivo.
+    expect(body.data.isPublished).toBe(false);
+  });
+
+  it('la lista de admin lo trae en cada fila', async () => {
+    await crear({ title: 'Borrador de lista' });
+
+    const { body } = await http().get('/admin/galleries').set(auth()).expect(200);
+
+    expect(body.data[0]).toHaveProperty('isPublished', false);
+  });
+
+  it('el controller público NO lo expone', async () => {
+    // Allí siempre valdría true —el controller filtra— y añadirlo movería el
+    // openapi-public.json que el CI congela.
+    const g = await crear({ title: 'Publicada' });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true }).expect(200);
+
+    const { body } = await http().get(`/galleries/${g.slug}`).expect(200);
+
+    expect(body.data).not.toHaveProperty('isPublished');
+  });
+
+  it('publicar y despublicar va y vuelve', async () => {
+    const g = await crear({ title: 'Ida y vuelta' });
+
+    const publicada = await http()
+      .patch(`/admin/galleries/${g.id}`)
+      .set(auth())
+      .send({ isPublished: true })
+      .expect(200);
+    expect(publicada.body.data.isPublished).toBe(true);
+    await http().get(`/galleries/${g.slug}`).expect(200);
+
+    const borrador = await http()
+      .patch(`/admin/galleries/${g.id}`)
+      .set(auth())
+      .send({ isPublished: false })
+      .expect(200);
+    expect(borrador.body.data.isPublished).toBe(false);
+    // 404 y no 403: un 403 confirmaría que ese enlace existe.
+    await http().get(`/galleries/${g.slug}`).expect(404);
+  });
+});

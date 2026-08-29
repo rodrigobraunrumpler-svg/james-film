@@ -1,5 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { MediaConfirmResult, MediaStatus, Orientation, PresignItemResult } from '@james-film/contracts';
+import type {
+  MediaConfirmResult,
+  MediaStatus,
+  Orientation,
+  PresignItemResult,
+} from '@james-film/contracts';
 import { ApiDoc } from '../../../common/swagger/api-doc.decorator.js';
 
 export class PresignItemResultEntity implements PresignItemResult {

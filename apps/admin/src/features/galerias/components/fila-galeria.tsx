@@ -1,4 +1,4 @@
-import type { GalleryListItemDto } from '@james-film/contracts';
+import type { AdminGalleryListItemDto } from '@james-film/contracts';
 import Image from 'next/image';
 import Link from 'next/link';
 import { fecha } from '@/lib/format';
@@ -7,7 +7,7 @@ import { fecha } from '@/lib/format';
  * Una fila que en móvil es una tarjeta apilada. §7: nada de scroll horizontal
  * dentro de una página que ya scrollea vertical.
  */
-export function FilaGaleria({ galeria }: { galeria: GalleryListItemDto }) {
+export function FilaGaleria({ galeria }: { galeria: AdminGalleryListItemDto }) {
   return (
     <li>
       <Link
@@ -30,7 +30,14 @@ export function FilaGaleria({ galeria }: { galeria: GalleryListItemDto }) {
         <div className="flex min-w-0 flex-1 flex-col">
           {/* break-words: un título de 60 caracteres no debe romper la tarjeta (§7). */}
           <span className="truncate font-medium">{galeria.title}</span>
-          <span className="truncate text-sm text-neutral-600">
+          <span className="flex items-center gap-2 truncate text-sm text-neutral-600">
+            {!galeria.isPublished && (
+              // El estado va donde James mira primero: sin esto, un borrador y
+              // una galería en vivo se leen exactamente igual.
+              <span className="shrink-0 rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] font-medium text-neutral-700">
+                Borrador
+              </span>
+            )}
             {galeria.category.name}
             {galeria.eventDate ? ` · ${fecha(galeria.eventDate)}` : ''}
           </span>

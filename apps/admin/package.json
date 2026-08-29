@@ -8,7 +8,10 @@
     "lint": "oxlint --type-aware src/",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "pretest:e2e": "pnpm -w db:up && pnpm --filter api db:deploy && pnpm --filter api db:seed && pnpm build",
+    "test:e2e": "dotenv -e ../../.env -- playwright test",
+    "test:e2e:ui": "dotenv -e ../../.env -- playwright test --ui"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -31,6 +34,7 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query-devtools": "^5.102.8",
     "@testing-library/jest-dom": "^7.0.1",
@@ -40,6 +44,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.0",
+    "dotenv-cli": "11.0.0",
     "happy-dom": "^20.11.12",
     "msw": "^2.15.0",
     "oxlint": "^1.80.0",

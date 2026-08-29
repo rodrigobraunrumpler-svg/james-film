@@ -1,7 +1,7 @@
 import type {
   AdminGalleryDto,
   CategoryRefDto,
-  GalleryListItemDto,
+  AdminGalleryListItemDto,
   MediaConfirmResult,
   PresignItemInput,
   PresignItemResult,
@@ -19,13 +19,16 @@ export interface FiltrosGalerias {
  */
 export const galerias = {
   listar: (filtros: FiltrosGalerias, opts?: RequestOptions) =>
-    api.get<GalleryListItemDto[]>('/admin/galleries', { ...opts, query: { ...filtros } }),
+    api.get<AdminGalleryListItemDto[]>('/admin/galleries', { ...opts, query: { ...filtros } }),
 
   porId: (id: string, opts?: RequestOptions) =>
     api.get<AdminGalleryDto>(`/admin/galleries/${id}`, opts),
 
   crear: (datos: { title: string; categoryId: string }) =>
     api.post<AdminGalleryDto>('/admin/galleries', datos),
+
+  publicar: (id: string, isPublished: boolean) =>
+    api.patch<AdminGalleryDto>(`/admin/galleries/${id}`, { isPublished }),
 
   actualizar: (id: string, datos: DatosGaleria) =>
     api.patch<AdminGalleryDto>(`/admin/galleries/${id}`, datos),

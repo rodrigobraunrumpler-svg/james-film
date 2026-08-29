@@ -641,7 +641,16 @@ ahorra el refetch y elimina la ventana en que caché y servidor discrepan.
 
 ## Task 8 · Cierre
 
-- [ ] **Step 1: Playwright**, tres flujos y nada más (§15): login, subir un reel, publicar.
+- [x] **Step 1: Playwright**, tres flujos y nada más (§15): login, subir un reel, publicar.
+  Más el checklist responsive del Step 4, que resultó ser automatizable entero.
+  **13 tests, todos en verde.**
+
+  > **La premisa del canal era falsa, comprobada.** El plan daba por hecho que el Chromium
+  > empaquetado no trae códecs propietarios. Medido en Playwright 1.62:
+  > `canPlayType('video/mp4; codecs="avc1.42E01E"')` devuelve **`probably`** — se descarga un
+  > bundle de ffmpeg aparte. Así que el skip no mira el canal sino la **capacidad real**, y la
+  > suite corre también donde no se pueda instalar Chrome (hace falta root). `channel: 'chrome'`
+  > sigue siendo el defecto, con `PW_CANAL=chromium` como salida.
 
   **Canal `chrome`, no el Chromium empaquetado**: no incluye códecs propietarios, y "subir un
   reel" pasa por `extraerPoster`, que exige decodificar H.264. Con el canal por defecto falla
@@ -659,7 +668,8 @@ webServer: [
   `"pretest:e2e": "pnpm -w db:up && pnpm --filter api db:deploy && pnpm --filter api db:seed"`.
   El login usa `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`, sin fixture de usuario. En CI,
   `playwright install --with-deps chrome`.
-- [ ] **Step 2: Probar en el iPhone REAL de James.** Wake Lock, HEIC, decodificación de vídeo y
+- [ ] **Step 2: Probar en el iPhone REAL de James.** Guion escrito en
+  [`docs/checklist-iphone.md`](../checklist-iphone.md); ejecutarlo requiere el teléfono. Wake Lock, HEIC, decodificación de vídeo y
   el file picker se comportan distinto en Safari de verdad; el modo dispositivo de DevTools no
   reproduce ninguno de los cuatro.
 - [ ] **Step 2.5: Verificar que un export REAL de CapCut trae faststart.** 🔴 La validación
@@ -670,5 +680,5 @@ webServer: [
   quitarla.
 - [ ] **Step 3: DECIDIR multipart** con el dato en la mano: subir un aftermovie real por 4G. Si
   funciona, nos hemos ahorrado la pieza más frágil del editor.
-- [ ] **Step 4: Checklist responsive** — 320 px sin scroll horizontal, 768 px vertical, zoom 200%,
+- [x] **Step 4: Checklist responsive** — automatizado en `e2e/responsive.spec.ts` — 320 px sin scroll horizontal, 768 px vertical, zoom 200%,
   móvil en horizontal, nombre de 60 caracteres sin romper la tarjeta.

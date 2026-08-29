@@ -122,6 +122,13 @@ export interface AdminMediaDto extends MediaDto {
 
 export interface AdminGalleryDto extends Omit<GalleryDto, 'media'> {
   media: AdminMediaDto[];
+  /**
+   * Sin esto el admin no distingue una galería publicada de un borrador, que es
+   * lo primero que hay que ver en la lista. Fuera del DTO público a propósito:
+   * allí siempre valdría `true` —el controller filtra— y añadirlo movería el
+   * `openapi-public.json` que el CI congela.
+   */
+  isPublished: boolean;
 }
 
 export interface GalleryListItemDto {
@@ -134,6 +141,11 @@ export interface GalleryListItemDto {
   isFeatured: boolean;
   category: CategoryRefDto;
   mediaCount: number;
+}
+
+/** Lo que ve el admin en la lista: añade el estado de publicación. */
+export interface AdminGalleryListItemDto extends GalleryListItemDto {
+  isPublished: boolean;
 }
 
 export interface CategoryRefDto {

@@ -202,6 +202,23 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   - Subidas → **progreso real**, nunca indeterminado.
   - No ser optimista cuando el servidor decide algo impredecible (el slug con desambiguación) o
     en borrados con confirmación fuerte.
+- **`AdminGalleryDto` y `AdminGalleryListItemDto` llevan `isPublished`; los públicos no.** Sin él
+  el admin no distingue un borrador de una galería en vivo, que es lo primero que hay que ver en
+  la lista. Fuera del DTO público a propósito: allí siempre valdría `true` —el controller filtra—
+  y añadirlo movería el `openapi-public.json` que el CI congela.
+- **Ningún selector de zustand devuelve un objeto o un array nuevo.** Se selecciona el *record* y
+  se deriva fuera. Un selector que allocate es un snapshot distinto en cada lectura para
+  `useSyncExternalStore`: React lo detecta al confirmar, fuerza otro render y la pantalla se cae
+  con «Maximum update depth exceeded». Pasó dos veces, y la segunda **solo con la barra de subidas
+  visible**, o sea únicamente durante una subida de verdad.
+- **Nada `fixed` sobre el contenido del panel.** Un elemento fijo no ocupa sitio en el flujo:
+  la barra de subidas tapaba el botón de Cancelar de la última tarjeta — justo el que hace falta
+  mientras se sube. `sticky bottom-0` se pega abajo **y** reserva su hueco.
+- **`@dnd-kit` NO se usa** y no es un olvido: su estable lleva 21 meses sin publicar y su línea
+  nueva va en `beta` pre-1.0, así que no pasa la regla de dependencias. El reorden va con arrastre
+  nativo HTML5 en escritorio y **botones de mover** en táctil, que es además el único camino
+  testeable: en happy-dom `getBoundingClientRect()` devuelve ceros y un test de arrastre no falla,
+  no hace nada y pasa.
 - **`XMLHttpRequest` solo para subir a R2** — `fetch` no emite progreso de subida (§17).
 - `nuqs` para filtros y pestañas: la URL **es** la clave de TanStack Query. Una fuente, no dos.
 - `zustand` solo para la cola de subidas: con Context, cada tick de progreso re-renderiza a todos
@@ -258,6 +275,16 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 **Testing: Vitest, no Jest**
 - NestJS 12 trae **Vitest 4**. Sustituye a Jest en §15, y de paso unifica: §15 ya quería Vitest
   para el admin, así que ahora todo el repo usa el mismo runner.
+- **Playwright para E2E**, en `apps/admin/e2e`, solo en `main` (levanta API y admin). Los fixtures
+  `reel.mp4` y `reel-hevc.mp4` se generaron con ffmpeg y están commiteados: 41 KB cada uno.
+  `faststart.fixtures.nodo.spec.ts` valida el parser contra ELLOS y no contra cajas fabricadas por
+  el propio test — una cabecera inventada solo demuestra que el parser lee lo que el test escribe.
+- **El Chromium empaquetado SÍ decodifica H.264** (`canPlayType` → `probably` en Playwright 1.62;
+  trae su propio bundle de ffmpeg). El spec de subida se salta comprobando la **capacidad**, no el
+  canal. `channel: 'chrome'` sigue siendo el defecto —es lo más parecido a lo que usa James— con
+  `PW_CANAL=chromium` para máquinas donde no se pueda instalar Chrome, que pide root.
+- **El E2E entra UNA vez** y reutiliza la sesión con `storageState`. El login limita a 5 intentos
+  por minuto, y hace bien: sin esto la suite se autobloquea y el fallo parece de credenciales.
 
 **Prisma 7 — cuatro cosas que cambiaron respecto a lo que describe §13 y §16**
 - Generador **`prisma-client`** (no `prisma-client-js`), con salida a **`apps/api/src/generated/prisma`**.
@@ -537,8 +564,9 @@ que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
 
 Planes: [fase 1 — base](docs/plans/2026-08-28-fase-1-base.md) ✅ ·
 [fase 2 — API mínima](docs/plans/2026-08-28-fase-2-api-minima.md) ✅ ·
-[fase 3 — editor de galería](docs/plans/2026-08-28-fase-3-editor-galeria.md)
-([informe de revisión](docs/plans/2026-08-28-fase-3-revision.md))
+[fase 3 — editor de galería](docs/plans/2026-08-28-fase-3-editor-galeria.md) ✅ (código)
+([informe de revisión](docs/plans/2026-08-28-fase-3-revision.md)) ·
+**pendiente el [checklist del iPhone](docs/checklist-iphone.md)**, que es la fase 3.5
 
 | # | Fase | Duración |
 |---|---|---|

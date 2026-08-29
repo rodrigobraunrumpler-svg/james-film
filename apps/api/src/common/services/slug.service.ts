@@ -14,7 +14,8 @@ export class SlugService {
   async unique(base: string, exists: (slug: string) => Promise<boolean>): Promise<string> {
     // Un título de solo emoji o solo símbolos slugifica a "": sin este respaldo
     // la galería quedaría en `/galeria/` y colisionaría con la siguiente igual.
-    const raiz = slugify(base, { lower: true, strict: true, locale: 'es', trim: true }) || 'sin-titulo';
+    const raiz =
+      slugify(base, { lower: true, strict: true, locale: 'es', trim: true }) || 'sin-titulo';
 
     let candidato = raiz;
     let n = 2;

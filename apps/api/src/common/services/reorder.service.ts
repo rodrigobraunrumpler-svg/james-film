@@ -4,10 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 
 /** `$transaction` con array exige PrismaPromise, no Promise a secas. */
 type OrderableDelegate = {
-  update(args: {
-    where: { id: string };
-    data: { order: number };
-  }): Prisma.PrismaPromise<unknown>;
+  update(args: { where: { id: string }; data: { order: number } }): Prisma.PrismaPromise<unknown>;
 };
 
 /**

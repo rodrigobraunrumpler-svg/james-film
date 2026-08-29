@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type {
+  AdminGalleryListItemDto,
   CategoryRefDto,
   GalleryDto,
   GalleryListItemDto,
@@ -63,4 +64,13 @@ export class GalleryListItemEntity implements GalleryListItemDto {
     example: 3,
   })
   mediaCount!: number;
+}
+
+/** Lo que ve el admin: añade el estado de publicación al item de la lista. */
+export class AdminGalleryListItemEntity
+  extends GalleryListItemEntity
+  implements AdminGalleryListItemDto
+{
+  @ApiProperty({ description: 'false = borrador. La landing no lo ve.' })
+  isPublished!: boolean;
 }

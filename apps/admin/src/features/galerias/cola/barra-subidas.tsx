@@ -18,23 +18,23 @@ export function BarraSubidas() {
   const qc = useQueryClient();
   useEffect(() => conectarCache(qc), [qc]);
 
-  const resumen = useCola((estado) => {
-    const items = Object.values(estado.items);
-    const activos = items.filter(estaEnCurso);
-    if (activos.length === 0) return null;
-
-    const total = items.reduce((n, i) => n + i.archivo.size, 0);
-    const subido = items.reduce(
-      (n, i) => n + (i.estado === 'LISTO' ? i.archivo.size : i.bytesSubidos),
-      0,
-    );
-    return {
-      hechos: items.filter((i) => i.estado === 'LISTO').length,
-      totalItems: items.length,
-      subido,
-      total,
-    };
-  });
+  // El selector devuelve el RECORD y el cálculo va FUERA. Devolviendo un objeto
+  // derivado, cada lectura es un snapshot distinto para useSyncExternalStore:
+  // React lo detecta al confirmar, fuerza otro render, vuelve a diferir… y la
+  // pantalla se cae con «Maximum update depth exceeded». Solo pasaba con la
+  // barra visible, o sea únicamente durante una subida de verdad.
+  const items = Object.values(useCola((e) => e.items));
+  const resumen = items.some(estaEnCurso)
+    ? {
+        hechos: items.filter((i) => i.estado === 'LISTO').length,
+        totalItems: items.length,
+        subido: items.reduce(
+          (n, i) => n + (i.estado === 'LISTO' ? i.archivo.size : i.bytesSubidos),
+          0,
+        ),
+        total: items.reduce((n, i) => n + i.archivo.size, 0),
+      }
+    : null;
 
   const activo = useCola(hayEnCurso);
 
@@ -61,7 +61,11 @@ export function BarraSubidas() {
   return (
     <div
       role="status"
-      className="fixed inset-x-0 bottom-0 z-40 border-t bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:left-64"
+      // `sticky`, NO `fixed`: un elemento fijo no ocupa sitio en el flujo y
+      // tapaba el botón de Cancelar de la última tarjeta — justo el que hace
+      // falta durante una subida. Sticky se pega abajo Y reserva su hueco.
+      // Lo encontró el E2E, que no pudo pulsar ese botón.
+      className="sticky bottom-0 z-40 mt-6 border-t bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium">

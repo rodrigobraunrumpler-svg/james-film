@@ -2,6 +2,7 @@
 
 import { esApiError } from '@/lib/api/errors';
 import { useCategorias, useGaleria, useReconciliarPendientes } from '../hooks/use-galeria';
+import { BotonPublicar } from './boton-publicar';
 import { FormularioGaleria } from './formulario-galeria';
 import { GrillaMedios } from './grilla-medios';
 import { ZonaSoltar } from './zona-soltar';
@@ -44,7 +45,10 @@ export function EditorGaleria({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold [overflow-wrap:anywhere]">{galeria.data.title}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold [overflow-wrap:anywhere]">{galeria.data.title}</h1>
+        <BotonPublicar galeria={galeria.data} />
+      </div>
       {/* key por id: navegar de una galería a otra REMONTA el formulario en vez
           de reusar el estado de la anterior, que es cómo se guardan los datos
           de una galería sobre otra. */}

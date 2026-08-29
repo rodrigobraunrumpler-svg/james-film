@@ -13,7 +13,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from '../app.module.js';
 import { construirDocPublico } from '../common/swagger/setup.js';
 
-const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger: ["error"] });
+const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger: ['error'] });
 await app.init();
 
 const doc = construirDocPublico(app);

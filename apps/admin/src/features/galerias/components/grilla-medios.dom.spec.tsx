@@ -66,7 +66,10 @@ function servidor(opciones: { media?: unknown[]; reorder?: () => Response } = {}
       }
       if (url.pathname.endsWith('/cover')) {
         const mediaId = url.pathname.split('/').at(-2);
-        media = media.map((m) => ({ ...(m as object), isFeatured: (m as { id: string }).id === mediaId }));
+        media = media.map((m) => ({
+          ...(m as object),
+          isFeatured: (m as { id: string }).id === mediaId,
+        }));
         return Promise.resolve(ok(galeria(media)));
       }
       return Promise.resolve(ok(galeria(media)));
@@ -89,10 +92,12 @@ const ESPERA = { timeout: 5000 } as const;
 
 /** Los nombres visibles de las tarjetas, en el orden en que están pintadas. */
 const ordenEnPantalla = (): string[] =>
-  within(screen.getByRole('list')).getAllByRole('listitem').map((li) => {
-    const nombre = li.querySelector('p');
-    return nombre?.textContent ?? '';
-  });
+  within(screen.getByRole('list'))
+    .getAllByRole('listitem')
+    .map((li) => {
+      const nombre = li.querySelector('p');
+      return nombre?.textContent ?? '';
+    });
 
 beforeEach(() => {
   cliente = crearQueryClient(() => {});
@@ -158,7 +163,13 @@ describe('grilla de medios', () => {
     servidor({
       reorder: () =>
         new Response(
-          JSON.stringify({ success: false, statusCode: 500, code: 'INTERNAL', message: 'x', timestamp: 'x' }),
+          JSON.stringify({
+            success: false,
+            statusCode: 500,
+            code: 'INTERNAL',
+            message: 'x',
+            timestamp: 'x',
+          }),
           { status: 500, headers: { 'content-type': 'application/json' } },
         ),
     });

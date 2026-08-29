@@ -16,7 +16,11 @@ function crearDobles() {
   const service = new ExclusiveFlagService(
     prisma as unknown as ConstructorParameters<typeof ExclusiveFlagService>[0],
   );
-  return { llamadas, delegate: delegate as unknown as Parameters<typeof service.setOnly>[0], service };
+  return {
+    llamadas,
+    delegate: delegate as unknown as Parameters<typeof service.setOnly>[0],
+    service,
+  };
 }
 
 describe('ExclusiveFlagService', () => {

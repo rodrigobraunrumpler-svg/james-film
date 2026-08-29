@@ -1,5 +1,10 @@
 import { ApiDoc } from '../../../common/swagger/api-doc.decorator.js';
-import { CategoryRefEntity, GalleryEntity, GalleryListItemEntity } from './galleries.entities.js';
+import {
+  AdminGalleryListItemEntity,
+  CategoryRefEntity,
+  GalleryEntity,
+  GalleryListItemEntity,
+} from './galleries.entities.js';
 
 // --- público ---
 
@@ -28,7 +33,7 @@ export const DocGaleriaPorSlug = (): MethodDecorator =>
 export const DocListarGaleriasAdmin = (): MethodDecorator =>
   ApiDoc({
     summary: 'Lista todas las galerías, incluidos los borradores',
-    paginated: GalleryListItemEntity,
+    paginated: AdminGalleryListItemEntity,
     auth: true,
   });
 

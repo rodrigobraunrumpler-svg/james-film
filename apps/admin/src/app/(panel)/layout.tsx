@@ -13,12 +13,16 @@ export default function LayoutPanel({ children }: { children: React.ReactNode })
         <Navegacion />
         {/* El padding inferior deja sitio a la barra de publicación (fase 4),
             respetando el área segura del iPhone. */}
-        <main className="min-w-0 flex-1 px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:px-8">
-          {children}
-        </main>
-        {/* En el layout, no en el editor: navegar a otra pantalla no debe
-            liberar el Wake Lock ni ocultar el progreso. */}
-        <BarraSubidas />
+        {/* Columna propia para que la barra pueda ser `sticky`: pegada abajo
+            mientras se scrollea, pero ocupando su hueco en vez de taparlo. */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <main className="flex-1 px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] lg:px-8">
+            {children}
+          </main>
+          {/* En el layout, no en el editor: navegar a otra pantalla no debe
+              liberar el Wake Lock ni ocultar el progreso. */}
+          <BarraSubidas />
+        </div>
       </div>
     </ProveedorQuery>
   );

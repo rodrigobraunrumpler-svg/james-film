@@ -1,5 +1,6 @@
 import type {
   AdminGalleryDto,
+  AdminGalleryListItemDto,
   AdminMediaDto,
   GalleryDto,
   GalleryListItemDto,
@@ -42,6 +43,7 @@ export const SELECT_GALERIA = {
   location: true,
   coverKey: true,
   isFeatured: true,
+  isPublished: true,
   category: { select: SELECT_CATEGORIA },
 } as const;
 
@@ -75,6 +77,7 @@ interface FilaGaleria {
   location: string | null;
   coverKey: string | null;
   isFeatured: boolean;
+  isPublished: boolean;
   category: FilaCategoria;
 }
 
@@ -108,7 +111,12 @@ export function mapMedia(m: FilaMedia, storage: StorageService): MediaDto {
  * justo cuando el poster falla—, además de duplicar estado que se puede calcular.
  */
 function claveDePortada(
-  media: { isFeatured: boolean; posterKey: string | null; storageKey: string; type: MediaDto['type'] }[],
+  media: {
+    isFeatured: boolean;
+    posterKey: string | null;
+    storageKey: string;
+    type: MediaDto['type'];
+  }[],
 ): string | null {
   const portada = media.find((m) => m.isFeatured);
   if (!portada) return null;
@@ -137,6 +145,7 @@ export function mapGaleriaAdmin(
     location: g.location,
     coverUrl: clave ? storage.getPublicUrl(clave) : null,
     isFeatured: g.isFeatured,
+    isPublished: g.isPublished,
     category: g.category,
     media: g.media.map((m) => mapMediaAdmin(m, storage)),
   };
@@ -161,6 +170,13 @@ export function mapGaleria(
     category: g.category,
     media: g.media.map((m) => mapMedia(m, storage)),
   };
+}
+
+export function mapGaleriaListaAdmin(
+  g: FilaGaleria & { _count: { media: number }; media: FilaMedia[] },
+  storage: StorageService,
+): AdminGalleryListItemDto {
+  return { ...mapGaleriaLista(g, storage), isPublished: g.isPublished };
 }
 
 export function mapGaleriaLista(

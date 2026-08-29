@@ -60,9 +60,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     res.status(failure.statusCode).json(failure);
   }
 
-  private normalizar(
-    e: unknown,
-  ): Pick<ApiFailure, 'statusCode' | 'code' | 'message' | 'details'> {
+  private normalizar(e: unknown): Pick<ApiFailure, 'statusCode' | 'code' | 'message' | 'details'> {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
       const [statusCode, code, message] = this.prismaMap[e.code] ?? [
         500,
@@ -107,7 +105,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
             message: 'La petición supera el tamaño permitido',
           };
         }
-        return { statusCode: status, code: this.httpMap[status] ?? 'INTERNAL', message: 'Petición inválida' };
+        return {
+          statusCode: status,
+          code: this.httpMap[status] ?? 'INTERNAL',
+          message: 'Petición inválida',
+        };
       }
     }
 

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AdminGalleryDto,
+  AdminGalleryListItemDto,
   CategoryRefDto,
   GalleryDto,
   GalleryListItemDto,
@@ -21,7 +22,7 @@ import {
   SELECT_MEDIA_ADMIN,
   mapGaleria,
   mapGaleriaAdmin,
-  mapGaleriaLista,
+  mapGaleriaListaAdmin,
 } from './galleries.mapper.js';
 
 /**
@@ -79,7 +80,7 @@ export class GalleriesService {
     ]);
 
     return paginar(
-      filas.map((f) => mapGaleriaLista(f, this.storage)),
+      filas.map((f) => mapGaleriaListaAdmin(f, this.storage)),
       total,
       page,
       pageSize,
@@ -107,7 +108,10 @@ export class GalleriesService {
 
   // ---------------------------------------------------------------- admin
 
-  async listarTodas(page: number, pageSize: number): Promise<ListaPaginada<GalleryListItemDto>> {
+  async listarTodas(
+    page: number,
+    pageSize: number,
+  ): Promise<ListaPaginada<AdminGalleryListItemDto>> {
     const where = { deletedAt: null };
     const [filas, total] = await this.prisma.$transaction([
       this.prisma.gallery.findMany({
@@ -126,7 +130,7 @@ export class GalleriesService {
     ]);
 
     return paginar(
-      filas.map((f) => mapGaleriaLista(f, this.storage)),
+      filas.map((f) => mapGaleriaListaAdmin(f, this.storage)),
       total,
       page,
       pageSize,
