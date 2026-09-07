@@ -13,7 +13,13 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 10 no daba: se escribió cuando el bloque de Playwright no se ejecutaba
+    # nunca, y ahora este job descarga dos navegadores, construye Next y Astro y
+    # corre 101 tests E2E que suben reels de verdad. Cortaba a los ~80 tests, sin
+    # un solo fallo, con un «The operation was canceled» que no dice que fue el
+    # reloj. Es un cortafuegos contra un cuelgue, no un presupuesto: los PR
+    # siguen bajando de 5 minutos porque el E2E solo corre en `main`.
+    timeout-minutes: 30
 
     services:
       postgres:
