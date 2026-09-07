@@ -35,7 +35,7 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # La segunda base sale del MISMO fichero que usa el docker-compose, que la
       # monta en docker-entrypoint-initdb.d. Una sola fuente de verdad para las
@@ -231,7 +231,7 @@ jobs:
       cancel-in-progress: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
