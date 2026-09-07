@@ -141,12 +141,47 @@ export async function limpiarTestimoniosDePrueba(page: Page): Promise<void> {
 /** El prefijo por el que se reconocen. Lo comparten el test y la limpieza. */
 export const PREFIJO_TESTIMONIO = 'Clienta E2E';
 
-/** Abre la primera galería de la lista. El seed deja al menos una. */
+/** El estado vacío de Galerías, que es lo que se ve sobre una base limpia. */
+const SIN_GALERIAS = 'Aún no tienes galerías';
+
+/**
+ * Crea una galería por el formulario y vuelve a la lista.
+ *
+ * La categoría no se toca: el formulario preselecciona la primera activa
+ * (`activas[0]`), y el seed deja cuatro. Con el nombre basta.
+ */
+export async function crearGaleria(page: Page, nombre = 'Galería E2E'): Promise<void> {
+  await page.goto('/galerias?nueva=1');
+  await page.getByLabel('Nombre del evento').fill(nombre);
+  await page.getByRole('button', { name: 'Crear y subir reels' }).click();
+  // Al crear se entra al editor: esperar al campo del título confirma que la
+  // fila existe de verdad, no que la petición salió.
+  await expect(page.getByLabel('Título', { exact: true })).toBeVisible();
+  await page.goto('/galerias');
+}
+
+/**
+ * Abre la primera galería de la lista, CREÁNDOLA si no hay ninguna.
+ *
+ * Aquí ponía «el seed deja al menos una» y era falso: el seed crea el contenido
+ * del flyer --categorías, paquetes, redes-- y CERO galerías, porque corre
+ * también en producción y una galería de mentira acabaría en la web de James.
+ * En una máquina de desarrollo siempre hay alguna de sesiones anteriores, así
+ * que el fallo solo aparece sobre una base limpia: en CI, esperando 60 s a un
+ * enlace que no iba a existir nunca.
+ */
 export async function abrirPrimeraGaleria(page: Page): Promise<void> {
-  // Se espera a que la lista tenga datos: `irAlPanel` solo garantiza el título
-  // de la pantalla, que se pinta con el skeleton todavía puesto.
-  await page.getByRole('list').getByRole('link').first().waitFor();
-  await page.getByRole('list').getByRole('link').first().click();
+  const enlaces = page.getByRole('list').getByRole('link');
+  const vacio = page.getByText(SIN_GALERIAS);
+
+  // Se espera a un estado DEFINIDO --hay galerías o no las hay--, no al enlace
+  // a secas: `irAlPanel` solo garantiza el título de la pantalla, que se pinta
+  // con el skeleton todavía puesto. Con `waitFor()` sobre el enlace, «vacía» y
+  // «todavía cargando» son indistinguibles y las dos agotan el timeout.
+  await expect(enlaces.first().or(vacio)).toBeVisible();
+  if (await vacio.isVisible()) await crearGaleria(page);
+
+  await enlaces.first().click();
   await expect(page.getByLabel('Título', { exact: true })).toBeVisible();
 }
 
@@ -156,7 +191,13 @@ export async function abrirPrimeraGaleria(page: Page): Promise<void> {
  * test se salta solo, que es la peor forma de pasar.
  */
 export async function abrirGaleriaConMedios(page: Page): Promise<boolean> {
-  await page.getByRole('list').getByRole('link').first().waitFor();
+  // Mismo motivo que en `abrirPrimeraGaleria`: sobre una base limpia no hay
+  // ningún enlace, y esperarlo a secas agota el timeout en vez de devolver
+  // `false`, que es lo que este helper promete a quien lo llama.
+  const vacio = page.getByText(SIN_GALERIAS);
+  await expect(page.getByRole('list').getByRole('link').first().or(vacio)).toBeVisible();
+  if (await vacio.isVisible()) return false;
+
   const enlaces = await page.getByRole('list').getByRole('link').all();
 
   for (const enlace of enlaces) {
