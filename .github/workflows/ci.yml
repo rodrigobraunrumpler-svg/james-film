@@ -98,7 +98,18 @@ jobs:
 
       # prisma7.config.ts lee el .env de la raíz. `prisma generate` no toca la base,
       # pero exige que la URL esté definida.
-      - run: cp .env.example .env
+      #
+      # El enlace de `apps/admin/.env.local` NO es un adorno: Next no lee el .env
+      # de la raíz de un monorepo, solo el del directorio de su app. En local ese
+      # enlace existe desde la fase 4, pero `.gitignore` tiene `.env.*`, así que
+      # no viaja en el repo y el runner se queda sin él. Sin ese enlace,
+      # `next build` revienta al recolectar `/api/[...ruta]` con «API_URL:
+      # expected string, received undefined» -- el módulo de la pasarela valida
+      # su entorno al cargarse, que es justo lo que queremos que haga.
+      - name: Preparar el entorno
+        run: |
+          cp .env.example .env
+          ln -sfn ../../.env apps/admin/.env.local
 
       # Genera el cliente de Prisma y los tipos de ruta de Next, y comprueba tipos.
       # Va antes del lint porque las reglas type-aware necesitan esos tipos.
