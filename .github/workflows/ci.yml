@@ -59,11 +59,20 @@ jobs:
       # `--entrypoint sh` no es opcional: el entrypoint de minio/mc es `mc`, así
       # que sin sobrescribirlo el `sh -c` llega como argumento suyo y responde
       # «`sh` is not a recognized command». Comprobado ejecutándolo.
+      # `mc anonymous set download` reproduce lo que hace `storage-init` en el
+      # docker-compose, y no es relajar la seguridad: en producción los objetos
+      # se sirven por el dominio media. de R2, que es público, y CDN_BASE_URL
+      # apunta ahí. Sin esta línea el bucket nace PRIVADO, las subidas siguen
+      # funcionando -- el PUT va firmado -- y lo que falla es la LECTURA sin
+      # firmar: los tests de media leían "el archivo ya no está en el bucket"
+      # cuando seguía ahí. Escribir sin firma sigue dando 403, que es el mismo
+      # reparto que en producción.
       - name: Crear el bucket
         run: |
           docker run --rm --network host --entrypoint sh minio/mc:latest -c "
             mc alias set local http://localhost:9000 jamesfilm jamesfilm-secreto &&
-            mc mb --ignore-existing local/jamesfilm
+            mc mb --ignore-existing local/jamesfilm &&
+            mc anonymous set download local/jamesfilm
           "
 
       # Lee la versión de `packageManager` en el package.json raíz.
@@ -160,6 +169,11 @@ jobs:
             apps/admin/playwright-report/
             apps/web/playwright-report/
           retention-days: 7
+          # El paso corre ante CUALQUIER fallo del job, y la mayoría ocurren
+          # antes de que Playwright llegue a existir. Sin esto avisa en amarillo
+          # de que no encontró informes, y ese aviso se lee como un segundo
+          # error mientras buscas el primero.
+          if-no-files-found: ignore
 
       # El contrato público es lo que consume Astro en build time. Si cambia sin
       # querer, la landing se rompe en el siguiente deploy y el error aparece
