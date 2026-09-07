@@ -163,7 +163,7 @@ const og = new URL(imagen || OG_DE_RESPALDO, Astro.site).href;
       }
     </script>
 
-    <script define:vars={{ CLAVE: CLAVE_TEMA, COLORES: COLOR_BARRA }}>
+    <script is:inline define:vars={{ CLAVE: CLAVE_TEMA, COLORES: COLOR_BARRA }}>
       /**
        * El interruptor de tema, delegado y en UN solo sitio.
        *
@@ -350,7 +350,7 @@ const og = new URL(imagen || OG_DE_RESPALDO, Astro.site).href;
       }
     </script>
 
-    <script define:vars={{ API: import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000' }}>
+    <script is:inline define:vars={{ API: import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000' }}>
       /**
        * El clic a WhatsApp. Es el ÚNICO número que mide este proyecto.
        *

@@ -21,18 +21,29 @@ jobs:
         env:
           POSTGRES_USER: jamesfilm
           POSTGRES_PASSWORD: jamesfilm
-          # Mismo nombre, usuario y puerto que el Docker local: el CI corre
-          # exactamente lo mismo que tú, sin una segunda configuración que mantener.
-          POSTGRES_DB: jamesfilm_test
+          # `jamesfilm`, igual que el docker-compose -- y aquí decía
+          # `jamesfilm_test`, que es lo que rompía el seed. Son DOS bases y hacen
+          # falta las dos: los tests de integración van por .env.test a
+          # `jamesfilm_test`, y el seed y el E2E van por .env a `jamesfilm`.
+          # Con solo la de tests, `db:seed` se conectaba a una base inexistente.
+          POSTGRES_DB: jamesfilm
         ports: ['5433:5432']
         options: >-
-          --health-cmd "pg_isready -U jamesfilm -d jamesfilm_test"
+          --health-cmd "pg_isready -U jamesfilm -d jamesfilm"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
 
     steps:
       - uses: actions/checkout@v4
+
+      # La segunda base sale del MISMO fichero que usa el docker-compose, que la
+      # monta en docker-entrypoint-initdb.d. Una sola fuente de verdad para las
+      # dos máquinas: si mañana hace falta otra base, se añade ahí y ya está.
+      - name: Crear la base de tests
+        env:
+          PGPASSWORD: jamesfilm
+        run: psql -h localhost -p 5433 -U jamesfilm -d jamesfilm -f docker/initdb.sql
 
       # MinIO NO puede ir en `services:`, y es la razón por la que este workflow
       # falló en «Initialize containers» la primera vez que llegó a ejecutarse.
@@ -124,6 +135,10 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           pnpm --filter admin exec playwright install --with-deps chrome
+          # `db:deploy` antes del seed: en el runner `jamesfilm` nace vacía, sin
+          # una sola tabla. En tu máquina ya está migrada de hace semanas, y por
+          # eso este paso no hacía falta en local y sí aquí.
+          pnpm --filter api db:deploy
           pnpm --filter api db:seed
           pnpm --filter admin build
           pnpm --filter admin test:e2e
