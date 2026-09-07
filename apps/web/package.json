@@ -16,10 +16,10 @@
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@astrojs/sitemap": "^3.7.3",
+    "@astrojs/sitemap": "^3.7.4",
     "@james-film/contracts": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
-    "astro": "^7.2.9",
+    "astro": "^7.3.1",
     "tailwindcss": "^4.3.3"
   },
   "allowScripts": {
@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "oxlint": "^1.80.0",
+    "oxlint": "^1.81.0",
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "catalog:",
     "vitest": "^4.0.18",
