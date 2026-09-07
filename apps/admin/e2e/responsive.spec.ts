@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
-  abrirGaleriaConMedios,
+  asegurarGaleriaConMedios,
   abrirPrimeraGaleria,
   esperarAnimaciones,
   irAlPanel,
@@ -192,7 +192,7 @@ test.describe('el editor y el visor en todos los anchos', () => {
       await irAlPanel(page);
       // `count()` NO espera: llamarlo justo después de abrir devuelve 0 y el
       // test se salta solo, que es la peor forma de pasar.
-      expect(await abrirGaleriaConMedios(page), 'ninguna galería tiene medios').toBe(true);
+      await asegurarGaleriaConMedios(page);
       expect(await desbordaHorizontal(page), `el editor desborda a ${width}px`).toBe(false);
 
       await page.getByRole('button', { name: /^Ver / }).first().click();
@@ -218,7 +218,7 @@ test.describe('el editor y el visor en todos los anchos', () => {
     // pasaba en verde con la pantalla rota.
     await page.setViewportSize({ width: 390, height: 844 });
     await irAlPanel(page);
-    expect(await abrirGaleriaConMedios(page)).toBe(true);
+    await asegurarGaleriaConMedios(page);
 
     const desbordes = await page.evaluate(() =>
       [...document.querySelectorAll('li')]
@@ -261,7 +261,7 @@ test.describe('el editor y el visor en todos los anchos', () => {
   test('en el visor, los controles llegan a 44 px en táctil', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     await irAlPanel(page);
-    expect(await abrirGaleriaConMedios(page)).toBe(true);
+    await asegurarGaleriaConMedios(page);
     await page.getByRole('button', { name: /^Ver / }).first().click();
 
     const visor = page.getByRole('dialog');
@@ -284,7 +284,7 @@ test.describe('el editor y el visor en todos los anchos', () => {
     // invisible por encima, que es justo lo que pasó con el overlay de acciones.
     await page.setViewportSize({ width: 1440, height: 900 });
     await irAlPanel(page);
-    expect(await abrirGaleriaConMedios(page)).toBe(true);
+    await asegurarGaleriaConMedios(page);
 
     // `click()` de Playwright hace hit-testing: si algo tapa la miniatura, falla.
     // Testing Library pulsa el nodo directamente y no se entera — que es

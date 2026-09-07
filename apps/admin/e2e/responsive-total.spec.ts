@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { abrirGaleriaConMedios, bajarDelTodo, esperarAnimaciones, irAlPanel } from './apoyo';
+import { asegurarGaleriaConMedios, bajarDelTodo, esperarAnimaciones, irAlPanel } from './apoyo';
 
 /**
  * La revisión responsive COMPLETA: todas las pantallas por todos los anchos que
@@ -240,12 +240,14 @@ test.describe('las capas que se abren tampoco desbordan', () => {
 
       // El visor de medios, que es donde más cosas se apilan.
       await page.goto('/');
-      if (await abrirGaleriaConMedios(page)) {
-        await page.getByRole('button', { name: /^Ver / }).first().click();
-        await page.getByRole('dialog').waitFor();
-        await esperarAnimaciones(page);
-        expect(await desbordaHorizontal(page), `el visor desborda a ${w}px`).toBe(false);
-      }
+      // Antes iba dentro de un `if (await abrirGaleriaConMedios(page))`, así que
+      // sin medios el visor no se comprobaba y el test pasaba igual: un salto
+      // en silencio es la peor forma de aprobar.
+      await asegurarGaleriaConMedios(page);
+      await page.getByRole('button', { name: /^Ver / }).first().click();
+      await page.getByRole('dialog').waitFor();
+      await esperarAnimaciones(page);
+      expect(await desbordaHorizontal(page), `el visor desborda a ${w}px`).toBe(false);
     });
   }
 });

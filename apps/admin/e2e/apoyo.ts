@@ -193,6 +193,31 @@ export async function abrirPrimeraGaleria(page: Page): Promise<void> {
  * pintada. `count()` no espera: llamarlo justo después de abrir devuelve 0 y el
  * test se salta solo, que es la peor forma de pasar.
  */
+/**
+ * Como `abrirGaleriaConMedios`, pero SUBE un reel si no hay ninguno en ninguna
+ * galería. Deja el editor abierto con la grilla ya pintada.
+ *
+ * Hace falta por una dependencia de ORDEN que en local no se ve: Playwright
+ * ejecuta los ficheros por orden alfabético, así que `responsive*` corre ANTES
+ * que `subir-reel`, que es el único que sube medios de verdad. En una máquina
+ * de desarrollo siempre hay medios de corridas anteriores y la dependencia
+ * queda tapada; sobre una base limpia, `responsive` exige medios que todavía
+ * no existen y afirma `toBe(true)` sobre un `false`.
+ */
+export async function asegurarGaleriaConMedios(page: Page): Promise<void> {
+  if (await abrirGaleriaConMedios(page)) return;
+
+  await abrirPrimeraGaleria(page);
+  const tarjetas = page.getByRole('listitem');
+  const antes = await recuentoEstable(tarjetas);
+  await page.setInputFiles('input[type="file"]', REEL);
+  await page.getByRole('button', { name: 'Subir el archivo' }).click();
+  // Se espera a la TARJETA, no al fin de la barra: la fila ya existe cuando
+  // aparece, que es lo único que estos tests necesitan.
+  await expect.poll(() => tarjetas.count(), { timeout: 60_000 }).toBe(antes + 1);
+  await page.getByRole('button', { name: /^Ver / }).first().waitFor({ timeout: 30_000 });
+}
+
 export async function abrirGaleriaConMedios(page: Page): Promise<boolean> {
   // Mismo motivo que en `abrirPrimeraGaleria`: sobre una base limpia no hay
   // ningún enlace, y esperarlo a secas agota el timeout en vez de devolver

@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { abrirGaleriaConMedios, esperarAnimaciones, irAlPanel, REEL } from './apoyo';
+import { asegurarGaleriaConMedios, esperarAnimaciones, irAlPanel, REEL } from './apoyo';
 
 /**
  * NO es un test: es la herramienta para MIRAR las pantallas y compararlas con
@@ -149,7 +149,7 @@ test.describe('capturas', () => {
       }, tema);
       await page.setViewportSize({ width: 900, height: 900 });
       await irAlPanel(page);
-      await abrirGaleriaConMedios(page);
+      await asegurarGaleriaConMedios(page);
 
       await page.setInputFiles('input[type="file"]', REEL);
       await page.getByRole('button', { name: 'Subir el archivo' }).click();

@@ -26,6 +26,21 @@ test.describe('publicar', () => {
     }
 
     await page.getByRole('button', { name: 'Publicar galería' }).click();
+
+    /**
+     * Una galería SIN consentimiento no se publica de un clic: abre la hoja de
+     * la Ley 29733. Es lo correcto —en una galería salen caras de gente real, y
+     * en los XV años salen menores— y el test tiene que pasarla como la pasa
+     * James, no saltársela.
+     *
+     * Se espera a un estado DEFINIDO: o la hoja, o el badge ya puesto si la
+     * galería venía con el permiso marcado. Con un `isVisible()` a secas se
+     * mira antes de que la hoja termine de entrar y se decide en falso.
+     */
+    const firmada = page.getByRole('button', { name: 'Sí, la tengo firmada' });
+    await expect(firmada.or(estado(page, 'Publicada'))).toBeVisible();
+    if (await firmada.isVisible()) await firmada.click();
+
     await expect(estado(page, 'Publicada')).toBeVisible();
 
     // La comprobación de verdad es contra la API pública: el badge del admin
