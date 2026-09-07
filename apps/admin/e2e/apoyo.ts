@@ -151,13 +151,16 @@ const SIN_GALERIAS = 'Aún no tienes galerías';
  * (`activas[0]`), y el seed deja cuatro. Con el nombre basta.
  */
 export async function crearGaleria(page: Page, nombre = 'Galería E2E'): Promise<void> {
-  await page.goto('/galerias?nueva=1');
+  // La lista de galerías es la RAÍZ, no `/galerias`: esa ruta solo existe como
+  // `/galerias/[id]` para el editor. Los atajos del panel y del ⌘K apuntan a
+  // `/?nueva=1`, y ese es el camino bueno.
+  await page.goto('/?nueva=1');
   await page.getByLabel('Nombre del evento').fill(nombre);
   await page.getByRole('button', { name: 'Crear y subir reels' }).click();
   // Al crear se entra al editor: esperar al campo del título confirma que la
   // fila existe de verdad, no que la petición salió.
   await expect(page.getByLabel('Título', { exact: true })).toBeVisible();
-  await page.goto('/galerias');
+  await page.goto('/');
 }
 
 /**
