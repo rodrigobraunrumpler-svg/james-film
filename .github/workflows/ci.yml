@@ -152,7 +152,14 @@ jobs:
           pnpm --filter api db:deploy
           pnpm --filter api db:seed
           pnpm --filter admin build
-          pnpm --filter admin test:e2e
+          # Playwright se invoca DIRECTAMENTE, no por `test:e2e`: pnpm dispara
+          # antes su `pretest:e2e`, que hace `docker compose up` y choca con los
+          # servicios que este job ya tiene -- «address already in use» en el
+          # 9000. Ese pre-script es para tu máquina, donde no hay nada
+          # levantado; sus otros tres pasos (migrar, sembrar, construir) son las
+          # tres líneas de aquí arriba. El `dotenv` sí se conserva: los tests
+          # leen del .env de la raíz las credenciales con las que entran.
+          cd apps/admin && pnpm exec dotenv -e ../../.env -- playwright test
 
       # La landing tiene su PROPIO Playwright y su propio pipeline: prueba
       # `dist/` con `astro preview`, nunca el servidor de desarrollo. Ahí viven
