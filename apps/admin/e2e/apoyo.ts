@@ -153,8 +153,8 @@ const SIN_GALERIAS = 'Aún no tienes galerías';
 export async function crearGaleria(page: Page, nombre = 'Galería E2E'): Promise<void> {
   // La lista de galerías es la RAÍZ, no `/galerias`: esa ruta solo existe como
   // `/galerias/[id]` para el editor. Los atajos del panel y del ⌘K apuntan a
-  // `/?nueva=1`, y ese es el camino bueno.
-  await page.goto('/?nueva=1');
+  // `/?nueva=true`, y ese es el camino bueno.
+  await page.goto('/?nueva=true');
   await page.getByLabel('Nombre del evento').fill(nombre);
   await page.getByRole('button', { name: 'Crear y subir reels' }).click();
   // Al crear se entra al editor: esperar al campo del título confirma que la

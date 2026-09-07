@@ -334,7 +334,7 @@ describe('lo que se mira, no lo que se toca', () => {
     expect(screen.getByText(/XV de Rosa/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Crear su galería/ })).toHaveAttribute(
       'href',
-      '/?nueva=1',
+      '/?nueva=true',
     );
   });
 

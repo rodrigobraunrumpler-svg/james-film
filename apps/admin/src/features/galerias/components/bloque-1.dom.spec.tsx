@@ -129,7 +129,7 @@ const Envoltorio = ({ children }: { children: ReactNode }) => (
 const ESPERA = { timeout: 5000 } as const;
 
 beforeEach(() => {
-  // `?nueva=1` sobrevive entre tests del mismo fichero: sin esto, el test que
+  // `?nueva=true` sobrevive entre tests del mismo fichero: sin esto, el test que
   // abre el formulario deja al siguiente empezando con la hoja ya abierta.
   window.history.replaceState(null, '', '/');
   cliente = crearQueryClient(() => {});

@@ -70,7 +70,7 @@ function Pestanas({
 
 export function ListaGalerias() {
   /**
-   * `?nueva=1` abre el formulario nada más entrar. Es lo que hace que el atajo
+   * `?nueva=true` abre el formulario nada más entrar. Es lo que hace que el atajo
    * «Nueva galería» del panel y del ⌘K NO acaben soltando a James en la lista
    * a buscar el botón: llegan con el formulario ya abierto.
    *

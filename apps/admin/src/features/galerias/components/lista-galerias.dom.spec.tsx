@@ -57,7 +57,7 @@ const envuelto = (data: unknown, m: unknown) =>
 // keepPreviousData no probaría nada.
 let cliente = crearQueryClient(() => {});
 const Envoltorio = ({ children }: { children: ReactNode }) => (
-  // `?nueva=1` abre el formulario, y eso vive en la URL: sin el adaptador de
+  // `?nueva=true` abre el formulario, y eso vive en la URL: sin el adaptador de
   // nuqs el componente lanza. En la app lo pone el layout raíz.
   <NuqsAdapter>
     <QueryClientProvider client={cliente}>{children}</QueryClientProvider>
@@ -65,7 +65,7 @@ const Envoltorio = ({ children }: { children: ReactNode }) => (
 );
 
 beforeEach(() => {
-  // `?nueva=1` sobrevive entre tests del mismo fichero: sin esto, el test que
+  // `?nueva=true` sobrevive entre tests del mismo fichero: sin esto, el test que
   // abre el formulario deja al siguiente empezando con la hoja ya abierta.
   window.history.replaceState(null, '', '/');
   filtrosActuales = { estado: 'todas', q: '', page: 1, pageSize: 20 };

@@ -62,7 +62,7 @@ const HACER = [
   {
     id: 'do:nueva',
     label: 'Nueva galería',
-    href: '/?nueva=1',
+    href: '/?nueva=true',
     busca: 'nueva galeria crear evento',
   },
   {

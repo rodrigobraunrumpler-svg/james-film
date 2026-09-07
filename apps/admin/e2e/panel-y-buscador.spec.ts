@@ -124,7 +124,12 @@ test.describe('el panel', () => {
     await page.goto('/panel');
     await page.getByLabel('Atajos').getByRole('link', { name: 'Nueva galería' }).click();
 
-    await expect(page).toHaveURL(/nueva=1/);
+    await expect(page).toHaveURL(/nueva=true/);
+    // La URL NO basta, y afirmar solo eso es lo que dejó pasar el fallo: el
+    // enlace mandaba `nueva=1`, el parámetro llegaba, este test pasaba... y la
+    // hoja no se abría, porque `parseAsBoolean` de nuqs solo acepta la cadena
+    // "true". Hay que afirmar lo que dice el nombre del test.
+    await expect(page.getByLabel('Nombre del evento')).toBeVisible();
   });
 });
 

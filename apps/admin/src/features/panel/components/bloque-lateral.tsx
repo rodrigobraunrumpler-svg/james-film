@@ -125,7 +125,7 @@ export function BloqueAtajos({
     >
       <h2 className="text-muted text-xs">Lo de siempre</h2>
 
-      <Link href="/?nueva=1" className={clasesBoton('principal', 'h-[38px] justify-start')}>
+      <Link href="/?nueva=true" className={clasesBoton('principal', 'h-[38px] justify-start')}>
         <Plus className="size-3.5" aria-hidden />
         Nueva galería
       </Link>

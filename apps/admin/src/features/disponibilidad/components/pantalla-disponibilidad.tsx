@@ -334,7 +334,7 @@ function SinPublicar({ reservas, hoy }: { reservas: BookingDto[]; hoy: IsoDate }
               {r.note ?? 'Sin nota'} · {cuantoFalta(r.to, hoy).toLowerCase()}
             </span>
             <Link
-              href="/?nueva=1"
+              href="/?nueva=true"
               className="text-brass mt-0.5 flex w-fit items-center gap-1.5 text-xs"
             >
               <Plus className="size-3" aria-hidden />
