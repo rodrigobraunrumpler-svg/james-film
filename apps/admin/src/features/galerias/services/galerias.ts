@@ -39,11 +39,32 @@ export const galerias = {
   /** Soft delete: los objetos siguen en R2 hasta que el cron los purgue. */
   borrar: (id: string) => api.delete<void>(`/admin/galleries/${id}`),
 
+  /**
+   * RETIRAR un medio por solicitud de quien aparece en él.
+   *
+   * No es el `DELETE` de siempre: aquel deja el archivo servido en el dominio
+   * `media.` hasta que el cron lo purgue a los 30 días, y quien pide que quiten
+   * su cara no acepta «en 30 días» — ni la Ley 29733, que llama a eso
+   * cancelación y oposición. Éste lo borra del bucket ahora, y **no se deshace**.
+   */
+  retirarMedio: (mediaId: string) => api.post<void>(`/admin/media/${mediaId}/retirar`),
+
   destacar: (id: string, isFeatured: boolean) =>
     api.patch<AdminGalleryDto>(`/admin/galleries/${id}`, { isFeatured }),
 
-  publicar: (id: string, isPublished: boolean) =>
-    api.patch<AdminGalleryDto>(`/admin/galleries/${id}`, { isPublished }),
+  /**
+   * Publicar, y con el consentimiento en el MISMO patch cuando hace falta.
+   *
+   * La API rechaza `isPublished: true` sin `hasConsent` (422 `CONSENT_REQUIRED`),
+   * y acepta los dos a la vez: así la confirmación de la hoja es un solo
+   * guardado y no deja a la galería con el permiso marcado pero sin publicar si
+   * la segunda petición falla.
+   */
+  publicar: (id: string, isPublished: boolean, hasConsent?: boolean) =>
+    api.patch<AdminGalleryDto>(`/admin/galleries/${id}`, {
+      isPublished,
+      ...(hasConsent === undefined ? {} : { hasConsent }),
+    }),
 
   actualizar: (id: string, datos: DatosGaleria) =>
     api.patch<AdminGalleryDto>(`/admin/galleries/${id}`, datos),

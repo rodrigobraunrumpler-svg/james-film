@@ -76,8 +76,8 @@ export function VisorMedio({
           identificaba a ese medio en la grilla, así que al abrirlo se reconoce. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{ background: degradadoMedio(medio.id) }}
+        className="degradado pointer-events-none absolute inset-0 opacity-40"
+        style={degradadoMedio(medio.id)}
       />
 
       <div className="relative flex min-h-0 flex-1 flex-col">
@@ -161,7 +161,7 @@ function Paso({
       onClick={onClick}
       aria-label={hacia === 'anterior' ? 'Anterior' : 'Siguiente'}
       className={cn(
-        'border-line-strong hover:border-line-hover text-bone rounded-control absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center border backdrop-blur-sm transition-colors duration-150 [background:rgba(8,7,6,.72)] lg:size-10',
+        'border-line-strong hover:border-line-hover text-bone rounded-control absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center border backdrop-blur-sm transition-colors duration-150 [background:var(--color-velo)] lg:size-10',
         hacia === 'anterior' ? 'left-2 lg:left-4' : 'right-2 lg:right-4',
       )}
     >

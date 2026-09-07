@@ -1,5 +1,10 @@
-import type { AdminCategoryDto, CategoryDto } from '@james-film/contracts';
+import type {
+  AdminCategoryDto,
+  CategoryClickShareDto,
+  CategoryDto,
+} from '@james-film/contracts';
 import type { StorageService } from '../../storage/storage.service.js';
+import { claveDePortada } from '../galleries/galleries.mapper.js';
 
 /**
  * `select` explícito: lo que no está aquí NUNCA sale de la base. Y como el
@@ -31,12 +36,21 @@ interface FilaCategoria {
   coverKey: string | null;
 }
 
+/** Lo justo de cada galería reciente para derivar su portada. */
+export interface FilaMedioPortada {
+  isFeatured: boolean;
+  posterKey: string | null;
+  storageKey: string;
+  type: 'REEL' | 'AFTERMOVIE' | 'PHOTO';
+}
+
 interface FilaCategoriaAdmin extends FilaCategoria {
   isActive: boolean;
   order: number;
   metaTitle: string | null;
   metaDescription: string | null;
   _count: { galleries: number; packages: number };
+  galleries: { media: FilaMedioPortada[] }[];
 }
 
 export function mapCategoria(c: FilaCategoria, storage: StorageService): CategoryDto {
@@ -54,6 +68,7 @@ export function mapCategoria(c: FilaCategoria, storage: StorageService): Categor
 export function mapCategoriaAdmin(
   c: FilaCategoriaAdmin,
   storage: StorageService,
+  clickMix: CategoryClickShareDto[] = [],
 ): AdminCategoryDto {
   return {
     ...mapCategoria(c, storage),
@@ -63,5 +78,13 @@ export function mapCategoriaAdmin(
     metaDescription: c.metaDescription,
     galleryCount: c._count.galleries,
     packageCount: c._count.packages,
+    // Solo las que tienen portada: un hueco vacío en la tira se lee como un
+    // fallo de carga, y una galería sin medios todavía no enseña nada.
+    recentCoverUrls: c.galleries
+      .map((g) => claveDePortada(g.media))
+      .filter((k): k is string => k !== null)
+      .map((k) => storage.getPublicUrl(k)),
+    clickMix,
+    clickTotal: clickMix.reduce((suma, t) => suma + t.count, 0),
   };
 }

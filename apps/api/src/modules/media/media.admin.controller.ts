@@ -5,6 +5,7 @@ import {
   DocBorrarMedia,
   DocConfirmar,
   DocPresign,
+  DocRetirarMedia,
   DocUsoAlmacenamiento,
 } from './docs/media.docs.js';
 import { PresignDto } from './dto/presign.dto.js';
@@ -47,5 +48,17 @@ export class MediaAdminController {
   @Delete('media/:id')
   borrar(@Param('id') id: string): Promise<void> {
     return this.media.borrar(id);
+  }
+
+  /**
+   * Ruta propia y no un parámetro de `DELETE`: son dos intenciones distintas y
+   * una de ellas no tiene vuelta atrás. Un `?definitivo=true` se pone por
+   * error; una ruta con este nombre, no.
+   */
+  @DocRetirarMedia()
+  @HttpCode(204)
+  @Post('media/:id/retirar')
+  retirar(@Param('id') id: string): Promise<void> {
+    return this.media.retirarPorSolicitud(id);
   }
 }

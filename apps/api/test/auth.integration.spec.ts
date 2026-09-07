@@ -129,13 +129,76 @@ describe('rotación del refresh', () => {
     expect(sesion.revokedAt).toBeNull();
   });
 
-  it('los dos tokens que salen de la carrera siguen sirviendo', async () => {
+  /**
+   * El que llega tarde recibe SU MISMO token, no uno nuevo.
+   *
+   * Antes se le daba uno recién rotado, y por ahí se colaba el fallo que echaba
+   * a James del panel: cada petición de la ráfaga minaba un token distinto y la
+   * cadena solo puede recordar dos, así que los del medio quedaban huérfanos.
+   *
+   * Este test afirma la regla en su forma más pequeña. La ráfaga de verdad
+   * —cuatro a la vez— está en el test de abajo; ésta la comprueba sin
+   * concurrencia, que es lo que la hace legible cuando falle.
+   */
+  it('en la ventana de gracia NO se inventa un tercer token', async () => {
     const { refreshToken: t0 } = await login();
-    const a = (await refrescar(t0).expect(200)).body.data as Tokens;
-    const b = (await refrescar(t0).expect(200)).body.data as Tokens;
 
-    await refrescar(a.refreshToken).expect(200);
-    await refrescar(b.refreshToken).expect(200);
+    const a = (await refrescar(t0).expect(200)).body.data as Tokens;
+    expect(a.refreshToken, 'el primero sí rota: es el que llegó a tiempo').not.toBe(t0);
+
+    const b = (await refrescar(t0).expect(200)).body.data as Tokens;
+    expect(b.refreshToken, 'el que llega tarde tiene que recibir el suyo').toBe(t0);
+
+    // Y los dos que quedan vivos son exactamente los dos que la fila recuerda.
+    const sesion = await prisma.session.findFirstOrThrow();
+    expect(sesion.tokenHash).toBe(sha256(a.refreshToken));
+    expect(sesion.prevHash).toBe(sha256(t0));
+  });
+
+  /**
+   * LA CARRERA DE VERDAD: CUATRO A LA VEZ, no dos seguidas.
+   *
+   * El test de arriba existía y pasaba, y aun así el fallo estuvo publicado:
+   * dos `await` seguidos no son una carrera. Cada petición lee la fila DESPUÉS
+   * de que la anterior la haya escrito, así que la cadena avanza ordenada y
+   * nunca se bifurca.
+   *
+   * Lo que ocurre de verdad es esto: James abre el panel con el access token
+   * recién caducado, la pantalla dispara varias consultas a la vez y salen
+   * cuatro 401 simultáneos. Las cuatro refrescan con el MISMO token y las
+   * cuatro leen la misma fila antes de que ninguna escriba.
+   *
+   * Con el código anterior, de los cuatro tokens emitidos **dos nacían
+   * muertos** —ni `tokenHash` ni `prevHash`—, y la pasarela guardaba en la
+   * cookie el de la respuesta que llegara última. Si le tocaba un muerto, el
+   * siguiente 401 daba `SESSION_EXPIRED`, la cookie se borraba y James veía
+   * «Tu sesión caducó» a los quince minutos de entrar, con un refresh token de
+   * treinta días perfectamente bueno.
+   *
+   * Se afirma la propiedad que importa: **todo token que la API entrega, sirve**.
+   * No cuántos se emiten —eso es un detalle de la implementación— sino que
+   * ninguno nazca muerto. Se prueban en sesiones distintas porque usar uno
+   * consume al otro, que es el comportamiento correcto.
+   */
+  it('CUATRO refrescos SIMULTÁNEOS: ningún token emitido nace muerto', async () => {
+    for (const cual of ['rotado', 'sin rotar'] as const) {
+      await prisma.session.deleteMany();
+      const { refreshToken: t0 } = await login();
+
+      const respuestas = await Promise.all([0, 1, 2, 3].map(() => refrescar(t0)));
+      for (const r of respuestas) expect(r.status, 'un refresco de la ráfaga falló').toBe(200);
+
+      const emitidos = respuestas.map((r) => (r.body.data as Tokens).refreshToken);
+      const distintos = [...new Set(emitidos)];
+      // Como mucho dos: el que rota el que gana, y el que ya tenían los demás.
+      expect(distintos.length, `la ráfaga emitió ${distintos.length} tokens: ${distintos.length > 2 ? 'la cadena se bifurcó' : ''}`).toBeLessThanOrEqual(2);
+
+      const rotado = distintos.find((t) => t !== t0);
+      const aProbar = cual === 'rotado' ? rotado : t0;
+      expect(aProbar, `no salió un token «${cual}» de la ráfaga`).toBeTruthy();
+      const r = await refrescar(aProbar!);
+      expect(r.status, `el token «${cual}» nació muerto: ${r.body?.code ?? ''}`).toBe(200);
+    }
   });
 
   it('fuera de la ventana, el anterior SÍ es reuso y revoca la sesión', async () => {

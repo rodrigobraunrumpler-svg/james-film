@@ -1,0 +1,30 @@
+---
+/**
+ * Las cuatro preguntas que frenan de verdad.
+ *
+ * Para un público mayor y cauto, cada objeción sin respuesta es un cliente que
+ * no escribe. Van en `copy.ts` porque son estructurales, no un ajuste de James.
+ *
+ * **No es un acordeón.** Un `<details>` esconde la respuesta detrás de un
+ * gesto, y aquí el objetivo es justo que se lea sin pedirla.
+ */
+import Seccion from './Seccion.astro';
+import { PISTAS, PREGUNTAS, SECCIONES } from '../content/copy';
+---
+
+<section class="flex flex-col gap-4 marco py-9 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-18 lg:py-18">
+  <Seccion {...SECCIONES.preguntas} pista={PISTAS.preguntas} />
+  <dl class="m-0 grid gap-2.5 lg:grid-cols-2 lg:gap-4">
+    {
+      PREGUNTAS.map((q, i) => (
+        <div
+          class="entra flex flex-col gap-1.75 rounded-card border border-line p-4 lg:p-5"
+          style={`--i: ${i}`}
+        >
+          <dt class="font-medium lg:text-lg">{q.p}</dt>
+          <dd class="m-0 text-sm text-ash lg:text-base">{q.r}</dd>
+        </div>
+      ))
+    }
+  </dl>
+</section>

@@ -43,6 +43,7 @@ export const SELECT_GALERIA = {
   location: true,
   isFeatured: true,
   isPublished: true,
+  hasConsent: true,
   category: { select: SELECT_CATEGORIA },
 } as const;
 
@@ -82,6 +83,7 @@ interface FilaGaleria {
   location: string | null;
   isFeatured: boolean;
   isPublished: boolean;
+  hasConsent: boolean;
   category: FilaCategoria;
 }
 
@@ -118,7 +120,12 @@ export function mapMedia(m: FilaMedia, storage: StorageService): MediaDto {
  * campo de portada cuando el vídeo no tiene poster —y `confirmar` anula el posterKey
  * justo cuando el poster falla—, además de duplicar estado que se puede calcular.
  */
-function claveDePortada(
+/**
+ * La regla de la portada, en UN solo sitio: el panel y las categorías la
+ * necesitan igual, y duplicarla es cómo acaba el `storageKey` de un vídeo
+ * dentro de un `<img>`.
+ */
+export function claveDePortada(
   media: {
     isFeatured: boolean;
     posterKey: string | null;
@@ -154,6 +161,7 @@ export function mapGaleriaAdmin(
     coverUrl: clave ? storage.getPublicUrl(clave) : null,
     isFeatured: g.isFeatured,
     isPublished: g.isPublished,
+    hasConsent: g.hasConsent,
     category: g.category,
     media: g.media.map((m) => mapMediaAdmin(m, storage)),
   };
@@ -183,13 +191,15 @@ export function mapGaleria(
 export function mapGaleriaListaAdmin(
   g: FilaGaleria & { updatedAt: Date; _count: { media: number }; media: FilaMedia[] },
   storage: StorageService,
+  fotos: number,
 ): AdminGalleryListItemDto {
   // El medio destacado ya viene en `media` (take: 1): de ahí salen el icono de
   // reproducir y el `1:12` de la tarjeta, sin una segunda consulta.
   const portada = g.media.find((m) => m.isFeatured) ?? null;
   return {
-    ...mapGaleriaLista(g, storage),
+    ...mapGaleriaLista(g, storage, fotos),
     isPublished: g.isPublished,
+    hasConsent: g.hasConsent,
     updatedAt: g.updatedAt.toISOString(),
     coverType: portada?.type ?? null,
     coverDurationSec: portada?.durationSec ?? null,
@@ -199,6 +209,8 @@ export function mapGaleriaListaAdmin(
 export function mapGaleriaLista(
   g: FilaGaleria & { _count: { media: number }; media: FilaMedia[] },
   storage: StorageService,
+  /** Cuántas de las visibles son fotos. Lo cuenta el servicio: ver `fotosPorGaleria`. */
+  fotos: number,
 ): GalleryListItemDto {
   return {
     id: g.id,
@@ -213,5 +225,6 @@ export function mapGaleriaLista(
     isFeatured: g.isFeatured,
     category: g.category,
     mediaCount: g._count.media,
+    photoCount: fotos,
   };
 }

@@ -1,37 +1,31 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { NuqsAdapter } from 'nuqs/adapters/react';
 import type { ReactNode } from 'react';
-import { Toaster } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Toaster } from 'sonner';
 import { crearQueryClient } from '@/lib/query/cliente';
 import { PanelConfiguracion } from './panel-configuracion';
 
-import type * as ModuloPestana from '../hooks/use-pestana';
-
-// nuqs fuera de Next: el estado de la URL se sustituye por uno en memoria.
-let pestanaActual = 'contacto';
-const setPestanaMock = vi.fn((p: string) => {
-  pestanaActual = p;
-  return Promise.resolve(new URLSearchParams());
-});
-vi.mock('../hooks/use-pestana', async (importar) => {
-  const real = await importar<typeof ModuloPestana>();
-  return { ...real, usePestana: () => ({ pestana: pestanaActual, setPestana: setPestanaMock }) };
-});
+const ok = (data: unknown) =>
+  new Response(JSON.stringify({ success: true, code: 'OK', data, timestamp: 'x' }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
 
 const AJUSTES = {
   brandName: 'James Film',
   role: 'Creador de contenido',
-  tagline: null,
-  slogan: null,
-  aboutText: 'Soy **James**',
+  tagline: 'Tu evento, en 60 segundos.',
+  slogan: 'Reels y aftermovies en Ayacucho.',
+  aboutText: null,
   logoUrl: null,
   signatureUrl: null,
   whatsappNumber: '51994724944',
   whatsappDisplay: '994 724 944',
-  whatsappMessage: null,
-  ctaText: null,
+  whatsappMessage: 'Hola James',
+  ctaText: 'Escríbeme por WhatsApp',
   email: null,
   heroMediaUrl: null,
   heroPosterUrl: null,
@@ -41,194 +35,243 @@ const AJUSTES = {
   ogImageUrl: null,
 };
 
-const ok = (data: unknown) =>
-  new Response(JSON.stringify({ success: true, code: 'OK', data, timestamp: 'x' }), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  });
-
-function servidor(ajustes: Record<string, unknown> = AJUSTES) {
+function servidor(sobreescribe: Partial<Record<keyof typeof AJUSTES, unknown>> = {}) {
   const llamadas: { metodo: string; ruta: string; cuerpo: unknown }[] = [];
-  let actuales = ajustes;
-
   vi.stubGlobal(
     'fetch',
     vi.fn((entrada: string | URL | Request, init?: RequestInit) => {
       const url = new URL(String(entrada instanceof Request ? entrada.url : entrada), 'http://x');
-      const metodo = init?.method ?? 'GET';
-      const cuerpo = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
-      llamadas.push({ metodo, ruta: url.pathname, cuerpo });
-
-      if (url.pathname.includes('social-links') || url.pathname.includes('differentiators')) {
-        return Promise.resolve(ok([]));
-      }
-      if (url.pathname === '/api/admin/icons') return Promise.resolve(ok(['zap']));
-      if (metodo === 'PATCH') {
-        actuales = { ...actuales, ...(cuerpo as object) };
-        return Promise.resolve(ok(actuales));
-      }
-      return Promise.resolve(ok(actuales));
+      llamadas.push({
+        metodo: init?.method ?? 'GET',
+        ruta: url.pathname,
+        cuerpo: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+      });
+      if (url.pathname === '/api/admin/settings')
+        return Promise.resolve(ok({ ...AJUSTES, ...sobreescribe }));
+      return Promise.resolve(ok([]));
     }),
   );
-
-  return {
-    de: (metodo: string, fragmento: string) =>
-      llamadas.filter((l) => l.metodo === metodo && l.ruta.includes(fragmento)),
-  };
+  return llamadas;
 }
 
 let cliente = crearQueryClient(() => {});
-const Envoltorio = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={cliente}>
-    {children}
-    <Toaster />
-  </QueryClientProvider>
-);
-
+/**
+ * El panel monta cinco pestañas de campos y una vista previa: el segundo que
+ * `findBy*` da por defecto se queda corto en happy-dom cuando la máquina está
+ * cargada.
+ */
 const ESPERA = { timeout: 5000 } as const;
 
+/**
+ * Se ABRE la pestaña, no se da por hecha. nuqs guarda el estado en un emisor
+ * del módulo y **no escucha `replaceState`**, así que resetear la URL en el
+ * `beforeEach` no basta: el test que acababa en SEO dejaba al siguiente
+ * empezando ahí, y la aserción fallaba por la pestaña, no por el producto.
+ */
+async function abrirPestana(nombre: string) {
+  const pestana = await screen.findByRole('tab', { name: nombre }, ESPERA);
+  if (pestana.getAttribute('aria-selected') !== 'true') await userEvent.click(pestana);
+  return pestana;
+}
+
+const Envoltorio = ({ children }: { children: ReactNode }) => (
+  <NuqsAdapter>
+    <QueryClientProvider client={cliente}>
+      {children}
+      <Toaster />
+    </QueryClientProvider>
+  </NuqsAdapter>
+);
+
 beforeEach(() => {
+  vi.restoreAllMocks();
   cliente = crearQueryClient(() => {});
-  pestanaActual = 'contacto';
-  vi.clearAllMocks();
-  vi.stubGlobal(
-    'confirm',
-    vi.fn(() => true),
-  );
+  // La pestaña se fija EXPLÍCITAMENTE, no por el valor por defecto: nuqs la
+  // guarda en la URL y la URL sobrevive entre tests del mismo fichero, así que
+  // el test que acaba en Contacto dejaba al siguiente empezando ahí.
+  window.history.replaceState(null, '', '/configuracion?pestana=identidad');
 });
 
-/** 🔴 El campo más importante del producto: el clic a WhatsApp ES el lead. */
-describe('el número de WhatsApp', () => {
-  it('ofrece un enlace para PROBARLO, que es la única verificación real', async () => {
+describe('Configuración', () => {
+  it('la vista previa enseña el titular y el CTA reales', async () => {
     servidor();
     render(<PanelConfiguracion />, { wrapper: Envoltorio });
 
-    const enlace = await screen.findByRole('link', { name: 'Probar este número' });
+    const previa = await screen.findByLabelText('Vista previa de la web');
+    expect(within(previa).getByText('Tu evento, en 60 segundos.')).toBeInTheDocument();
+    expect(within(previa).getByText('Escríbeme por WhatsApp')).toBeInTheDocument();
+  });
+
+  it('escribir el titular lo cambia en la previa SIN guardar', async () => {
+    servidor();
+    render(<PanelConfiguracion />, { wrapper: Envoltorio });
+
+    await abrirPestana('Identidad');
+    const campo = await screen.findByLabelText('Frase corta', {}, ESPERA);
+    await userEvent.clear(campo);
+    await userEvent.type(campo, 'Bodas en Ayacucho');
+
+    const previa = screen.getByLabelText('Vista previa de la web');
+    await waitFor(() => {
+      expect(within(previa).getByText('Bodas en Ayacucho')).toBeInTheDocument();
+    });
+  });
+
+  it('Guardar arranca DESHABILITADO: un PATCH que no cambia nada marcaría la web como pendiente', async () => {
+    servidor();
+    render(<PanelConfiguracion />, { wrapper: Envoltorio });
+
+    expect(await screen.findByRole('button', { name: 'Guardar' })).toBeDisabled();
+  });
+
+  it('con un cambio se habilita y aparece Descartar', async () => {
+    servidor();
+    render(<PanelConfiguracion />, { wrapper: Envoltorio });
+
+    await abrirPestana('Identidad');
+    await userEvent.type(await screen.findByLabelText('Frase corta', {}, ESPERA), '!');
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled());
+    expect(screen.getByRole('button', { name: 'Descartar' })).toBeInTheDocument();
+  });
+
+  it('cambiar de pestaña con cambios pregunta en una Hoja, NUNCA con confirm()', async () => {
+    servidor();
+    const nativo = vi.fn(() => true);
+    vi.stubGlobal('confirm', nativo);
+    render(<PanelConfiguracion />, { wrapper: Envoltorio });
+
+    await abrirPestana('Identidad');
+    await userEvent.type(await screen.findByLabelText('Frase corta', {}, ESPERA), '!');
+    await userEvent.click(screen.getByRole('tab', { name: 'SEO' }));
+
+    // En iOS el `confirm()` nativo sale como un diálogo del SISTEMA y se acepta
+    // con el pulgar sin leerlo.
+    expect(nativo).not.toHaveBeenCalled();
+    expect(await screen.findByText('¿Descartar los cambios?')).toBeInTheDocument();
+  });
+
+  it('«Seguir aquí» deja la pestaña donde estaba', async () => {
+    servidor();
+    render(<PanelConfiguracion />, { wrapper: Envoltorio });
+
+    await abrirPestana('Identidad');
+    await userEvent.type(await screen.findByLabelText('Frase corta', {}, ESPERA), '!');
+    await userEvent.click(screen.getByRole('tab', { name: 'SEO' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Seguir aquí' }));
+
+    // Se comprueba la URL y no el `aria-selected`: la hoja es modal y mientras
+    // se cierra esconde el resto del árbol de accesibilidad, así que la
+    // aserción dependería de la animación de salida en vez de del estado.
+    // La pestaña VIVE en la URL —es la clave de nuqs—, así que es el dato real.
+    expect(new URLSearchParams(window.location.search).get('pestana')).not.toBe('seo');
+  });
+
+  it('sin cambios se cambia de pestaña sin preguntar nada', async () => {
+    servidor();
+    render(<PanelConfiguracion />, { wrapper: Envoltorio });
+
+    await abrirPestana('Identidad');
+    await userEvent.click(screen.getByRole('tab', { name: 'SEO' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'SEO' })).toHaveAttribute('aria-selected', 'true');
+    });
+    expect(screen.queryByText('¿Descartar los cambios?')).not.toBeInTheDocument();
+    expect(new URLSearchParams(window.location.search).get('pestana')).toBe('seo');
+  });
+
+  it('el WhatsApp vive en su propia tarjeta con el enlace de prueba', async () => {
+    servidor();
+    render(<PanelConfiguracion />, { wrapper: Envoltorio });
+
+    await userEvent.click(await screen.findByRole('tab', { name: 'Contacto y redes' }));
+
+    // Con mensaje configurado, el botón lo dice y el enlace lo lleva.
+    const enlace = await screen.findByRole('link', { name: /Probar con el mensaje/ });
+    // La única verificación que existe de verdad: James, con su teléfono. Y
+    // tiene que abrir lo MISMO que abrirá la web, mensaje incluido: probar un
+    // enlace distinto del que se publica es no probar nada.
+    expect(enlace).toHaveAttribute('href', 'https://wa.me/51994724944?text=Hola%20James');
+  });
+
+  it('sin mensaje, el enlace es solo el número y el botón lo dice', async () => {
+    servidor({ whatsappMessage: null });
+    render(<PanelConfiguracion />, { wrapper: Envoltorio });
+
+    await abrirPestana('Contacto y redes');
+
+    const enlace = await screen.findByRole('link', { name: /Probar este número/ }, ESPERA);
     expect(enlace).toHaveAttribute('href', 'https://wa.me/51994724944');
   });
 
-  it('rechaza un número sin prefijo de país', async () => {
-    // Sin prefijo el botón de la landing no funciona y NO FALLA NADA:
-    // simplemente nadie escribe nunca.
-    const usuario = userEvent.setup();
-    const api = servidor();
-    render(<PanelConfiguracion />, { wrapper: Envoltorio });
-
-    const campo = await screen.findByLabelText('Número de WhatsApp');
-    await usuario.clear(campo);
-    await usuario.type(campo, '994724944');
-    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
-
-    expect(await screen.findByText(/Ejemplo: 51994724944/)).toBeInTheDocument();
-    expect(api.de('PATCH', '/admin/settings')).toHaveLength(0);
-  });
-
-  it('avisa si el número que se marca y el que se muestra NO coinciden', async () => {
-    // La web enseñaría uno y llamaría a otro, que para un cliente es peor que
-    // no tener número.
-    const usuario = userEvent.setup();
+  it('SEO enseña SU previa: el resultado de Google y la tarjeta de WhatsApp', async () => {
     servidor();
     render(<PanelConfiguracion />, { wrapper: Envoltorio });
 
-    const display = await screen.findByLabelText('Cómo se muestra');
-    await usuario.clear(display);
-    await usuario.type(display, '111 222 333');
-
-    expect(await screen.findByText(/enseñaría uno y llamaría a otro/)).toBeInTheDocument();
+    await abrirPestana('SEO');
+    await screen.findByLabelText('Título en Google', {}, ESPERA);
+    // La del hero NO: nada de lo que se toca en SEO sale ahí.
+    expect(screen.queryByLabelText('Vista previa de la web')).not.toBeInTheDocument();
+    const previa = screen.getByLabelText('Vista previa del SEO');
+    expect(within(previa).getByText('En Google')).toBeInTheDocument();
+    expect(within(previa).getByText('Al pegarlo en WhatsApp')).toBeInTheDocument();
   });
 
-  it('si coinciden, no avisa de nada', async () => {
+  it('el título de Google se ve en la previa mientras se escribe', async () => {
     servidor();
     render(<PanelConfiguracion />, { wrapper: Envoltorio });
 
-    await screen.findByLabelText('Número de WhatsApp');
-    expect(screen.queryByText(/enseñaría uno y llamaría a otro/)).not.toBeInTheDocument();
-  });
-
-  it('propone el display al escribir el número, sin imponerlo', async () => {
-    const usuario = userEvent.setup();
-    servidor({ ...AJUSTES, whatsappNumber: '', whatsappDisplay: '' });
-    render(<PanelConfiguracion />, { wrapper: Envoltorio });
-
-    const campo = await screen.findByLabelText('Número de WhatsApp');
-    await usuario.type(campo, '51994724944');
-
-    await waitFor(() =>
-      expect(screen.getByLabelText('Cómo se muestra')).toHaveValue('994 724 944'),
+    await abrirPestana('SEO');
+    await userEvent.type(
+      await screen.findByLabelText('Título en Google', {}, ESPERA),
+      'Reels en Ayacucho',
     );
-  });
-});
 
-describe('las pestañas', () => {
-  it('cambiar de pestaña con cambios sin guardar PREGUNTA antes', async () => {
-    // Aquí no hay autoguardado: cada campo está en vivo en la web, y guardar a
-    // los dos segundos de escribir medio número es publicar un número roto.
-    const usuario = userEvent.setup();
+    const previa = screen.getByLabelText('Vista previa del SEO');
+    await waitFor(() => {
+      // Sale DOS veces: en el resultado de Google y en la tarjeta de WhatsApp.
+      expect(within(previa).getAllByText('Reels en Ayacucho')).toHaveLength(2);
+    });
+  });
+
+  it('avisa cuando el título se pasa de lo que Google enseña', async () => {
     servidor();
     render(<PanelConfiguracion />, { wrapper: Envoltorio });
 
-    const campo = await screen.findByLabelText('Texto del botón');
-    await usuario.type(campo, 'Escríbeme');
-    await usuario.click(screen.getByRole('tab', { name: 'SEO' }));
+    await abrirPestana('SEO');
+    const campo = await screen.findByLabelText('Título en Google', {}, ESPERA);
+    await userEvent.type(campo, 'x'.repeat(70));
 
-    expect(globalThis.confirm).toHaveBeenCalledWith(expect.stringContaining('sin guardar'));
+    // No bloquea —Google corta por ancho, no por caracteres— pero lo dice.
+    expect(await screen.findByText(/Google corta sobre los 60/)).toBeInTheDocument();
   });
 
-  it('sin cambios, cambiar de pestaña no pregunta nada', async () => {
-    const usuario = userEvent.setup();
+  it('cada campo lleva su ayuda diciendo DÓNDE sale', async () => {
     servidor();
     render(<PanelConfiguracion />, { wrapper: Envoltorio });
 
-    await screen.findByLabelText('Número de WhatsApp');
-    await usuario.click(screen.getByRole('tab', { name: 'SEO' }));
-
-    expect(globalThis.confirm).not.toHaveBeenCalled();
-    expect(setPestanaMock).toHaveBeenCalledWith('seo');
+    await abrirPestana('Identidad');
+    await screen.findByLabelText('Frase corta', {}, ESPERA);
+    // «Frase corta» y «Eslogan» son dos cajas indistinguibles sin esto.
+    expect(screen.getByText(/El titular grande del hero/)).toBeInTheDocument();
+    expect(screen.getByText(/La línea pequeña bajo el titular/)).toBeInTheDocument();
   });
 
-  it('cada pestaña manda SOLO sus campos', async () => {
-    // Con un formulario único, guardar SEO mandaría también el número de
-    // WhatsApp y pisaría un cambio hecho en otra pestaña o desde el móvil.
-    const usuario = userEvent.setup();
-    pestanaActual = 'seo';
-    const api = servidor();
-    render(<PanelConfiguracion />, { wrapper: Envoltorio });
-
-    const campo = await screen.findByLabelText('Título en Google');
-    await usuario.type(campo, 'James Film');
-    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
-
-    await waitFor(() => expect(api.de('PATCH', '/admin/settings')).toHaveLength(1), ESPERA);
-    const cuerpo = api.de('PATCH', '/admin/settings')[0].cuerpo as Record<string, unknown>;
-    expect(Object.keys(cuerpo).sort()).toEqual(['metaDescription', 'metaTitle']);
-    expect(cuerpo).not.toHaveProperty('whatsappNumber');
-  });
-});
-
-describe('el texto «Sobre ti»', () => {
-  it('enseña la vista previa con el resaltado', async () => {
-    pestanaActual = 'identidad';
+  it('el contador de SEO cuenta lo que hay escrito y avisa al pasarse', async () => {
+    // Google recorta por ANCHO, no por caracteres: el número es una guía, no un
+    // límite, así que AVISA y no bloquea. Sin él, un título de 120 sale a
+    // medias en el buscador y nada lo ha dicho.
     servidor();
     render(<PanelConfiguracion />, { wrapper: Envoltorio });
 
-    // El texto guardado es «Soy **James**»: la vista previa lo pinta en negrita.
-    expect(await screen.findByText('James')).toHaveProperty('tagName', 'STRONG');
-  });
-});
+    await abrirPestana('SEO');
+    const titulo = await screen.findByLabelText('Título en Google', {}, ESPERA);
+    await userEvent.clear(titulo);
+    await userEvent.type(titulo, 'Doce chars.');
 
-describe('la sugerencia del display', () => {
-  it('deja de proponerla en cuanto James escribe la suya', async () => {
-    // El fallo que esto cubre: con un guard de «solo si está vacío», tras la
-    // primera tecla el display ya no estaba vacío y se congelaba en «5».
-    const usuario = userEvent.setup();
-    servidor({ ...AJUSTES, whatsappNumber: '', whatsappDisplay: '' });
-    render(<PanelConfiguracion />, { wrapper: Envoltorio });
-
-    const display = await screen.findByLabelText('Cómo se muestra');
-    await usuario.type(display, 'Mi número');
-
-    await usuario.type(screen.getByLabelText('Número de WhatsApp'), '51994724944');
-
-    expect(display).toHaveValue('Mi número');
+    expect(await screen.findByText('11 / ~60')).toBeInTheDocument();
+    // Y no ha deshabilitado nada: pasarse es legal.
+    expect(titulo).not.toBeDisabled();
   });
 });

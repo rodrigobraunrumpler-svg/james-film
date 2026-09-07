@@ -43,7 +43,9 @@ describe('seed', () => {
     expect(primera).toEqual({
       categorias: 4,
       paquetes: 3,
-      items: 16,
+      // 5 + 6 + 7, las viñetas del flyer. Se quedó en 16 cuando se corrigieron
+      // los datos de los paquetes contra el flyer y nadie movió la cuenta.
+      items: 18,
       vinculos: 6,
       diferenciadores: 4,
       redes: 2,

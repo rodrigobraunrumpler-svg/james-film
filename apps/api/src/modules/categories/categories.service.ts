@@ -1,5 +1,9 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type { AdminCategoryDto, CategoryDto } from '@james-film/contracts';
+import type {
+  AdminCategoryDto,
+  CategoryClickShareDto,
+  CategoryDto,
+} from '@james-film/contracts';
 import { textoLimpio } from '../../common/opcional.js';
 import { ReorderService } from '../../common/services/reorder.service.js';
 import { SlugService } from '../../common/services/slug.service.js';
@@ -15,6 +19,29 @@ import {
 } from './categories.mapper.js';
 
 const CONTEOS = { _count: { select: { galleries: true, packages: true } } } as const;
+
+/**
+ * Las tres galerías publicadas más recientes, solo con su medio destacado. Es
+ * lo que convierte la tarjeta de categoría de un nombre en algo que enseña qué
+ * hay dentro. Tres y no más: en la tarjeta caben tres.
+ */
+const RECIENTES = {
+  galleries: {
+    where: { isPublished: true, deletedAt: null },
+    select: {
+      media: {
+        where: { isFeatured: true, deletedAt: null, status: 'READY' as const },
+        select: { isFeatured: true, posterKey: true, storageKey: true, type: true },
+        take: 1,
+      },
+    },
+    orderBy: [{ eventDate: 'desc' as const }, { id: 'asc' as const }],
+    take: 3,
+  },
+};
+
+/** Los clics de los últimos 30 días, la misma ventana móvil que usa el panel. */
+const VENTANA_CLICS_MS = 30 * 86_400_000;
 
 /**
  * `order` empata por defecto (`@default(0)`), y sin desempate Postgres puede
@@ -42,12 +69,63 @@ export class CategoriesService {
     return filas.map((f) => mapCategoria(f, this.storage));
   }
 
-  async listarTodas(): Promise<AdminCategoryDto[]> {
-    const filas = await this.prisma.category.findMany({
-      select: { ...SELECT_CATEGORIA_ADMIN, ...CONTEOS },
-      orderBy: ORDEN,
-    });
-    return filas.map((f) => mapCategoriaAdmin(f, this.storage));
+  async listarTodas(ahora = new Date()): Promise<AdminCategoryDto[]> {
+    const [filas, mixPorCategoria] = await Promise.all([
+      this.prisma.category.findMany({
+        select: { ...SELECT_CATEGORIA_ADMIN, ...CONTEOS, ...RECIENTES },
+        orderBy: ORDEN,
+      }),
+      this.clicsPorCategoria(ahora),
+    ]);
+    return filas.map((f) => mapCategoriaAdmin(f, this.storage, mixPorCategoria.get(f.id) ?? []));
+  }
+
+  /**
+   * A qué paquete van los clics de cada categoría. Se DERIVA por
+   * `PackageCategory` en vez de añadir una columna `categoryId` al clic: la
+   * relación ya existe, y una columna denormalizada quedaría desfasada en
+   * cuanto James moviera un paquete de categoría.
+   *
+   * Dos consultas para las cuatro categorías, no una por tarjeta.
+   */
+  private async clicsPorCategoria(ahora: Date): Promise<Map<string, CategoryClickShareDto[]>> {
+    const desde = new Date(ahora.getTime() - VENTANA_CLICS_MS);
+
+    const [clics, vinculos] = await Promise.all([
+      this.prisma.whatsappClick.groupBy({
+        by: ['packageId'],
+        where: { createdAt: { gte: desde }, packageId: { not: null } },
+        _count: { _all: true },
+      }),
+      this.prisma.packageCategory.findMany({
+        select: { categoryId: true, package: { select: { id: true, name: true } } },
+      }),
+    ]);
+
+    const porPaquete = new Map(
+      clics
+        .filter((c) => c.packageId !== null)
+        .map((c) => [c.packageId as string, c._count._all]),
+    );
+
+    const salida = new Map<string, CategoryClickShareDto[]>();
+    for (const v of vinculos) {
+      const count = porPaquete.get(v.package.id) ?? 0;
+      if (count === 0) continue;
+      const lista = salida.get(v.categoryId) ?? [];
+      lista.push({ packageId: v.package.id, packageName: v.package.name, count });
+      salida.set(v.categoryId, lista);
+    }
+
+    // Desempate por id: sin él, dos paquetes con los mismos clics podrían
+    // cambiar de sitio entre dos cargas y la barra parecería moverse sola.
+    for (const [k, lista] of salida) {
+      salida.set(
+        k,
+        lista.sort((a, b) => b.count - a.count || a.packageId.localeCompare(b.packageId)),
+      );
+    }
+    return salida;
   }
 
   async crear(dto: CreateCategoryDto): Promise<AdminCategoryDto> {
@@ -137,13 +215,16 @@ export class CategoriesService {
 
   // ---------------------------------------------------------------- privado
 
-  private async porId(id: string): Promise<AdminCategoryDto> {
-    const fila = await this.prisma.category.findUnique({
-      where: { id },
-      select: { ...SELECT_CATEGORIA_ADMIN, ...CONTEOS },
-    });
+  private async porId(id: string, ahora = new Date()): Promise<AdminCategoryDto> {
+    const [fila, mix] = await Promise.all([
+      this.prisma.category.findUnique({
+        where: { id },
+        select: { ...SELECT_CATEGORIA_ADMIN, ...CONTEOS, ...RECIENTES },
+      }),
+      this.clicsPorCategoria(ahora),
+    ]);
     if (!fila) throw new NotFoundException();
-    return mapCategoriaAdmin(fila, this.storage);
+    return mapCategoriaAdmin(fila, this.storage, mix.get(id) ?? []);
   }
 
   private async asegurarQueExiste(id: string): Promise<void> {

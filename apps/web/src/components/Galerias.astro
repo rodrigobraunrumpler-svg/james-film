@@ -1,0 +1,151 @@
+---
+/**
+ * Los trabajos, en bento asimétrico.
+ *
+ * No son cuatro teselas iguales: dos altas 9:16 —que es la forma del producto,
+ * y decirlo con la maqueta ahorra la frase— y una columna partida con un
+ * trabajo más y la salida a la lista completa. Esa cuarta celda no es relleno:
+ * es lo que impide que la sección sea un callejón.
+ *
+ * **Sin autoplay**: solo el hero autoplayea (§4). Aquí van póster y recuento; el
+ * vídeo se carga al abrir la galería.
+ */
+import Icono from './Icono.astro';
+import Seccion from './Seccion.astro';
+import { PISTAS, SECCIONES } from '../content/copy';
+import { degradado } from '../lib/degradado';
+import { piezas } from '../lib/piezas';
+import { ESCONDER_SI_FALLA, SIZES, src, srcset } from '../lib/imagen';
+import type { GalleryListItemDto } from '@james-film/contracts';
+
+interface Props {
+  galerias: GalleryListItemDto[];
+  total: number;
+}
+
+const { galerias, total } = Astro.props;
+
+/** Las dos altas, la corta y —si hay— el resto se queda en la lista. */
+const altas = galerias.slice(0, 2);
+const corta = galerias[2] ?? null;
+
+const pie = (g: GalleryListItemDto) => [g.category.name, piezas(g)].filter(Boolean).join(' · ');
+---
+
+{
+  galerias.length > 0 && (
+    <section id="trabajos" class="marco flex flex-col gap-4 py-9 lg:gap-7 lg:py-18">
+      <Seccion {...SECCIONES.trabajos} pista={PISTAS.galerias} ancho />
+
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-6 lg:gap-4.5">
+        {altas.map((g, i) => (
+          <a
+            href={`/trabajos/${g.slug}`}
+            class:list={[
+              'entra group relative aspect-9/16 overflow-hidden rounded-card border border-line transition-transform duration-200 hover:-translate-y-1 lg:col-span-2',
+              // Con UNA sola galería, media fila se quedaba en blanco.
+              altas.length === 1 && 'max-lg:col-span-2',
+            ]}
+            style={`--i: ${i}; background: ${degradado(g.id)}`}
+          >
+            {g.coverUrl && (
+              <img
+                src={src(g.coverUrl)}
+                srcset={srcset(g.coverUrl)}
+                sizes={SIZES.tesela}
+                alt=""
+                loading="lazy"
+                onerror={ESCONDER_SI_FALLA}
+                class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+              />
+            )}
+            {/* Fondo oscuro en los DOS temas: declara sus colores. */}
+            <div
+              class="absolute inset-x-0 bottom-0 p-4 pt-14"
+              style="background: linear-gradient(to top, rgba(10,9,8,.94), transparent)"
+            >
+              <p class="font-medium" style="color: #f2efe9">
+                {g.title}
+              </p>
+              <p class="mt-0.5 text-sm" style="color: #b5aea4">
+                {pie(g)}
+              </p>
+            </div>
+          </a>
+        ))}
+
+        {/*
+          La columna partida. En móvil va a DOS columnas y no apilada: apilada,
+          cada celda es un cuadrado a ancho completo —350×350 en un iPhone— para
+          un enlace de dos líneas, y la sección se convertía en un desierto.
+
+          Y las filas solo se declaran si hay tercera galería: con dos trabajos
+          `corta` es `null`, y `grid-rows-2` seguía reservando la segunda fila.
+          Es el mismo fallo que dejaba 186 px de vacío en el bento.
+        */}
+        <div
+          class:list={[
+            'col-span-2 grid gap-3 max-lg:grid-cols-2 lg:gap-4.5',
+            corta && 'lg:grid-rows-2',
+          ]}
+        >
+          {corta && (
+            <a
+              href={`/trabajos/${corta.slug}`}
+              class="entra group relative overflow-hidden rounded-card border border-line transition-transform duration-200 hover:-translate-y-1 max-lg:aspect-square"
+              style={`--i: 2; background: ${degradado(corta.id)}`}
+            >
+              {corta.coverUrl && (
+                <img
+                  src={src(corta.coverUrl)}
+                  srcset={srcset(corta.coverUrl)}
+                  sizes={SIZES.tesela}
+                  alt=""
+                  loading="lazy"
+                  onerror={ESCONDER_SI_FALLA}
+                  class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                />
+              )}
+              <div
+                class="absolute inset-x-0 bottom-0 p-3.5 pt-12"
+                style="background: linear-gradient(to top, rgba(10,9,8,.94), transparent)"
+              >
+                <p class="text-sm font-medium" style="color: #f2efe9">
+                  {corta.title}
+                </p>
+              </div>
+            </a>
+          )}
+
+          {/*
+            La salida. Sin ella la sección es un callejón: se mira y solo queda
+            el botón de atrás. Y el número es real, no «ver más».
+          */}
+          <a
+            href="/trabajos/"
+            class:list={[
+              'entra group flex flex-col items-start justify-center gap-2.5 rounded-card border border-line bg-surface p-5 transition-[transform,border-color] duration-200 hover:-translate-y-1 hover:border-brass-400',
+              // Cuadrado cuando comparte fila con la tercera galería; si no la
+              // hay, ocupa el ancho y mide lo que ocupa: un cuadrado de 350 px
+              // con dos líneas dentro se lee como un hueco, no como una salida.
+              corta ? 'max-lg:aspect-square' : 'max-lg:col-span-2',
+            ]}
+            style="--i: 3"
+          >
+            <p class="font-display text-[26px] leading-none font-extrabold text-brass-200 lg:text-[30px]">
+              {total} {total === 1 ? 'trabajo' : 'trabajos'}
+            </p>
+            <span class="flex items-center gap-2 text-brass-200">
+              Verlos todos
+              <Icono
+                nombre="flecha"
+                tamano={17}
+                clase="transition-transform duration-200 group-hover:translate-x-1"
+              />
+            </span>
+          </a>
+        </div>
+      </div>
+    </section>
+  )
+}

@@ -25,10 +25,63 @@
   --color-line: #262220;
   --color-line-strong: #3d362f; /* borde de algo pulsable */
   --color-line-hover: #4a4038;
-  --color-muted: #5f5952; /* texto deshabilitado, ayudas */
+  /**
+   * MEDIDO, no copiado: el `#5f5952` de la guía da **2.80:1** sobre `content` y
+   * lo llevan las ayudas de todos los campos, los recuentos del menú y el
+   * marcador del ⌘K. A 11px y sobre negro eso no se lee en la calle, que es
+   * donde James usa el panel. `#8a837a` da 5.2 sobre `content`, 4.9 sobre
+   * `chrome` y 4.7 sobre `card-hover`.
+   *
+   * Queda casi pegado a `ash`, y es la consecuencia de que sobre este negro no
+   * cabe un gris legible por debajo de él: la jerarquía la sostiene `bone`
+   * contra los dos, no los dos entre sí. En claro sí se separan (5.1 y 6.8).
+   */
+  --color-muted: #8a837a;
   --color-ash: #8e877e; /* texto secundario */
   --color-bone: #f2efe9; /* texto principal */
   --color-brass: #c9a96a; /* SOLO bordes, iconos y estado activo. Nunca un botón sólido. */
+  /**
+   * DOS latones, y la diferencia decide dónde se usa cada uno:
+   * `brass` es el que toca TEXTO e iconos; `brass-relleno` es el de barras,
+   * puntos y áreas, donde no hay que leer nada. En oscuro coinciden — el oro
+   * contrasta 8:1 sobre negro. En claro NO pueden: el mismo #c9a96a sobre
+   * blanco da 1.8:1, ilegible, así que `brass` baja a bronce y el relleno se
+   * queda con el brillo de la marca.
+   */
+  --color-brass-relleno: #c9a96a;
+  /** Gris de iconos y bordes. NUNCA texto: WCAG pide 3:1 a los gráficos, 4.5 a las letras. */
+  --color-sutil: #8e877e;
+
+  /**
+   * Velo de los chips que van ENCIMA de una portada («Borrador», «24 medios»,
+   * «Portada»). Tiene que voltear con el tema igual que `bone` y `brass`, que
+   * son lo que se pinta encima: en claro, un `bone` oscuro sobre un velo
+   * oscuro deja el recuento invisible. Y va aparte de `card` porque no es una
+   * superficie del panel — se apoya sobre una foto que no controlamos, así que
+   * es casi opaco a propósito.
+   */
+  --color-velo: rgba(8, 7, 6, 0.82);
+  --color-velo-fuerte: rgba(8, 7, 6, 0.88);
+
+  /**
+   * Verde de «esto ya está en la web». Es el ÚNICO verde del panel que no es el
+   * de WhatsApp, y va en un par como el latón: `ok` toca texto y `ok-punto` es
+   * la forma. El punto puede brillar —WCAG pide 3:1 a lo gráfico— y el texto no:
+   * el `#1FA855` del punto sobre el velo blanco da 3.05 y no se lee.
+   */
+  --color-ok: #4fbf7b;
+  --color-ok-punto: #4fbf7b;
+
+  /**
+   * La elevación de una tarjeta. En oscuro no hay sombra —sobre negro no se ve
+   * y solo cuesta pintarla—: la separación la da el color. En claro es lo que
+   * evita que el panel se lea como una hoja de cálculo.
+   */
+  --sombra-card: none;
+  --sombra-card-alta: none;
+  /** Lo que flota SOBRE el panel —toast, popover, diálogo— sí lleva sombra en
+      los dos temas: en oscuro para despegarlo del fondo, en claro para lo mismo. */
+  --sombra-flotante: 0 10px 40px rgba(0, 0, 0, 0.5);
 
   /* Dos radios en todo el admin: tarjeta y control. Más variedad no se lee
      como intención, se lee como descuido. */
@@ -59,6 +112,81 @@
 }
 
 /**
+ * ─────────────────────────────────────────────────────────────────────────
+ *  TEMA CLARO
+ * ─────────────────────────────────────────────────────────────────────────
+ * El principio del oscuro, INVERTIDO. Allí `chrome` es más claro que
+ * `content`, y así el sidebar se separa sin una línea; aquí el contenido es
+ * blanco puro y el chrome un hueso cálido, un punto más oscuro. El mecanismo
+ * es el mismo, el sentido se da la vuelta.
+ *
+ * Cálido y nunca gris azulado: el latón de la marca sobre un gris frío se ve
+ * sucio. Todos los tonos llevan amarillo.
+ *
+ * CONTRASTES MEDIDOS sobre los TRES fondos donde vive el texto —blanco,
+ * chrome y card—, porque medir solo sobre blanco engaña y ya nos pasó:
+ *   bone   #1c1a17  17.4 / 16.1 / 16.5
+ *   ash    #5f5a52   6.8 /  6.3 /  6.5
+ *   muted  #726d64   5.1 /  4.8 /  4.9
+ *   brass  #8a6d3b   4.9 /  4.5 /  4.6
+ *   danger #c4362e   6.5 /  6.0 /  6.2
+ * Los cinco pasan AA en los tres. `sutil` (#8e887e, 3.5) NO llega a texto y
+ * por eso solo toca iconos y bordes.
+ *
+ * Se selecciona con `[data-tema]` en el <html>, que pone un script bloqueante
+ * ANTES del primer pintado: leerlo en un efecto haría que la pantalla se
+ * pintara oscura y saltara a clara.
+ */
+:root[data-tema='claro'] {
+  /* `color-scheme` va primero: es lo que hace que la barra de scroll, el
+     autorrelleno y el selector de fecha nativo de iOS salgan en claro. Sin
+     esto, los controles del sistema siguen siendo oscuros sobre blanco. */
+  color-scheme: light;
+
+  --color-content: #ffffff; /* la zona de trabajo, blanco puro */
+  --color-chrome: #f7f6f3; /* sidebar y barras — MÁS OSCURO que content */
+  --color-card: #ffffff;
+  --color-card-hover: #fbfaf8;
+  --color-active: #f0ede7;
+  --color-well: #f1efeb;
+  --color-line: #edeae4;
+  --color-line-strong: #ddd8cf;
+  --color-line-hover: #c4bcaf;
+  --color-muted: #726d64;
+  --color-ash: #5f5a52;
+  --color-bone: #1c1a17;
+  --color-sutil: #8e887e;
+
+  /**
+   * MEDIDO sobre las cuatro superficies claras, no solo sobre blanco: el
+   * `#8a6d3b` de la primera pasada cumplía en blanco (4.9) y se quedaba en 4.15
+   * sobre `active` y en 4.05 dentro del chip de «62 más que antes», que lleva un
+   * fondo de latón al 8%. Ese chip es justo donde el latón tiene que leerse.
+   * `#7f6432` da 5.6 / 4.8 / 5.2 y a simple vista es el mismo tono.
+   */
+  --color-brass: #7f6432;
+  --color-brass-relleno: #c9a96a; /* barras y puntos: aquí sí puede brillar */
+
+  /* El velo se INVIERTE: es la superficie, y lo que se pinta encima (`bone`,
+     `brass`) ya se ha invertido. Con el velo oscuro, «24 medios» quedaba en
+     texto oscuro sobre fondo oscuro. */
+  --color-velo: rgba(255, 255, 255, 0.92);
+  --color-velo-fuerte: rgba(255, 255, 255, 0.96);
+
+  --color-ok: #2c6b42; /* 6.0 sobre el velo blanco */
+  --color-ok-punto: #3e9c5f; /* forma, no texto: puede brillar */
+
+  --color-danger: #c4362e;
+  --color-danger-line: #f0d5d2;
+  --color-danger-bg: #fcf1f0;
+
+  /* Dos capas —contacto y difusión— y la luz siempre desde arriba. */
+  --sombra-card: 0 1px 2px rgba(28, 26, 23, 0.04), 0 4px 14px rgba(28, 26, 23, 0.035);
+  --sombra-card-alta: 0 2px 4px rgba(28, 26, 23, 0.05), 0 12px 28px rgba(28, 26, 23, 0.09);
+  --sombra-flotante: 0 2px 6px rgba(28, 26, 23, 0.06), 0 18px 44px rgba(28, 26, 23, 0.16);
+}
+
+/**
  * Techo de 350ms para todo el admin, y ninguna animación fuera de `transform`
  * y `opacity`. No es un consejo: `prefers-reduced-motion` lo apaga entero, y
  * ahí no hay excepciones — ni siquiera para el progreso de subida, que sigue
@@ -76,9 +204,33 @@
 }
 
 @layer base {
-  /* Sin esto el cursor, el autorelleno y el selector de fecha nativo de iOS
-     salen en claro sobre un panel oscuro. */
-  :where(input, textarea, select) {
+  /**
+   * SAFARI DE iOS HACE ZOOM AL ENFOCAR un campo cuyo texto mida menos de 16px,
+   * y el cuerpo del admin son 13 —es un panel denso, no una web—. En el iPhone
+   * de James eso pasa en CADA campo: toca el título de una galería, la página
+   * se acerca sola y hay que pellizcar para volver. No hay forma de desactivarlo
+   * por `viewport` sin romper el zoom manual, que es accesibilidad.
+   *
+   * Se sube solo donde el dedo es el puntero, así que el escritorio conserva su
+   * densidad. En móvil los campos van a ancho completo y el texto más grande no
+   * descuadra nada.
+   */
+  @media (pointer: coarse) {
+    :where(input, textarea, select) {
+      font-size: 16px;
+    }
+  }
+
+  /**
+   * En la RAÍZ, no en los controles. `color-scheme` se hereda, pero lo
+   * DECLARADO en un elemento gana a lo heredado: con `:where(input, textarea,
+   * select) { color-scheme: dark }` —que es como estaba— el `light` de
+   * `:root[data-tema='claro']` no llegaba nunca a un campo, y en tema claro los
+   * `<select>`, el calendario nativo de iOS, las flechas del `type="number"` y
+   * el autorrelleno de Chrome seguían pintándose oscuros sobre la hoja blanca.
+   * Desde la raíz cubre además la barra de scroll de la página.
+   */
+  :root {
     color-scheme: dark;
   }
 
@@ -153,10 +305,94 @@
   }
 }
 
-/** Entrada escalonada. El orden se pasa con `--i`, no con una clase por paso. */
+/**
+ * El degradado propio de cada galería y cada tesela. El elemento lleva las DOS
+ * variantes inline (`degradadoDe`/`degradadoMedio` en `lib/degradado.ts`) y
+ * aquí se elige, así que cambiar de tema no vuelve a montar nada ni hace saltar
+ * el color de una portada que ya está cargando.
+ *
+ * No puede ser un `@utility`: necesita mirar al ancestro `:root[data-tema]`.
+ */
+.degradado {
+  background: var(--deg-oscuro);
+}
+:root[data-tema='claro'] .degradado {
+  background: var(--deg-claro);
+}
+
+/**
+ * Entrada escalonada. El orden se pasa con `--i`, no con una clase por paso.
+ *
+ * Con TECHO de seis pasos: 360ms de retraso como mucho, 710ms hasta el último.
+ * Sin él, una galería de 32 medios dejaba la rejilla moviéndose casi dos
+ * segundos y lo último en aparecer era la zona de soltar — justo adonde va
+ * James al abrir el editor. Un escalonado explica jerarquía; entre 32 teselas
+ * iguales no hay ninguna que explicar, solo retraso.
+ */
 @utility entra {
   animation: sube 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 60ms);
+  animation-delay: calc(min(var(--i, 0), 6) * 60ms);
+}
+
+/**
+ * Una barra que crece de izquierda a derecha, con el mismo `--i` que la
+ * entrada. Va DESPUÉS de que el bloque haya aparecido (220ms de retraso base):
+ * una barra creciendo dentro de una tarjeta que aún está entrando se lee como
+ * un fallo de render, no como una animación.
+ *
+ * `scaleX` y no `width`: animar el ancho reflowea a 60fps, y es justo donde el
+ * iPhone de James lo nota.
+ */
+@utility barra-crece {
+  transform-origin: left center;
+  animation: crece-x 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(220ms + var(--i, 0) * 60ms);
+}
+
+/**
+ * Las columnas de la gráfica de clics. Escalonado corto —22ms— para que las
+ * treinta se lean como UN gesto de izquierda a derecha y no como treinta
+ * animaciones sueltas.
+ */
+@utility columna-crece {
+  transform-origin: bottom;
+  animation: crece-y 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(260ms + var(--i, 0) * 22ms);
+}
+
+/**
+ * «Esto se puede tocar», sin añadir un botón más. Dos píxeles: más se lee como
+ * que el elemento se despega, y en una grilla densa marea.
+ *
+ * `transform` en la transición, nunca `top`: §6 y §17, y aquí además hay
+ * decenas de tarjetas en pantalla a la vez.
+ */
+@utility levanta {
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.2s,
+    background-color 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+    /* Las tres propiedades, no solo la primera: la transición de color estaba
+       declarada arriba y no la disparaba nadie — se pagaba el coste y no se
+       veía el efecto. */
+    border-color: var(--color-line-hover);
+    background-color: var(--color-card-hover);
+    /* En claro, además, la sombra: sobre blanco dos blancos no se distinguen,
+       y el cambio de fondo que basta en oscuro aquí no dice nada. En oscuro
+       el token vale `none`, así que esta línea no cuesta nada allí. */
+    box-shadow: var(--sombra-card-alta);
+  }
+
+  /* En táctil no hay hover: el dedo ya está encima cuando pasa algo. Sin esto,
+     iOS deja la tarjeta levantada después del toque hasta que tocas otra. */
+  @media (hover: none) {
+    &:hover {
+      transform: none;
+    }
+  }
 }
 
 /**
@@ -165,6 +401,24 @@
  */
 @utility grano {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/**
+ * La misma luz, más tenue y a la deriva: es el fondo de las pantallas del
+ * panel, no el foco del login. Al 10% y con 24s de recorrido — a esa velocidad
+ * no se ve moverse, se ve que la pantalla «respira».
+ */
+@utility luz-ambiente {
+  background: radial-gradient(
+    circle,
+    rgba(201, 169, 106, 0.1) 0%,
+    rgba(201, 169, 106, 0.03) 42%,
+    transparent 70%
+  );
+  filter: blur(16px);
+  animation:
+    aparece 0.4s ease both,
+    deriva 24s ease-in-out 0.4s infinite alternate;
 }
 
 /** La luz cálida del set: el tungsteno del flyer, en latón al 15%. */
@@ -176,6 +430,101 @@
     transparent 70%
   );
   filter: blur(14px);
+}
+
+/**
+ * El botón de entrar: el único CTA de la «sala oscura», y el único gesto de
+ * toda la pantalla. Sigue sin ser un botón SÓLIDO dorado —esa regla es del
+ * admin entero y no se rompe aquí— pero se gana su peso con tres cosas que no
+ * son relleno de color:
+ *
+ * - un fondo de latón al 8% que lo separa del negro sin competir con el saludo,
+ * - un **barrido de luz** que lo cruza al pasar por encima, hecho con
+ *   `translateX` sobre un pseudoelemento —solo `transform`, como manda §6—,
+ * - y un halo suave al enfocar, para quien entra con el teclado.
+ *
+ * Al pulsar baja un píxel: el gesto se siente, que es lo que separa un botón
+ * de una caja con texto.
+ */
+@utility entrar {
+  position: relative;
+  overflow: hidden;
+  background-color: color-mix(in oklab, var(--color-brass) 8%, transparent);
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    transform 0.12s;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* El barrido: una banda estrecha de luz que cruza de izquierda a derecha.
+       Vive fuera de la caja hasta que hace falta. */
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      color-mix(in oklab, var(--color-brass) 22%, transparent) 50%,
+      transparent 70%
+    );
+    transform: translateX(-100%);
+    transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  &:hover:not(:disabled) {
+    background-color: color-mix(in oklab, var(--color-brass) 14%, transparent);
+    border-color: var(--color-brass);
+  }
+  &:hover:not(:disabled)::after {
+    transform: translateX(100%);
+  }
+
+  /* El gesto se siente. Sin esto, pulsar no devuelve nada hasta que responde
+     el servidor. */
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-brass) 18%, transparent);
+  }
+
+  /* Deshabilitado no barre ni se hunde: prometería algo que no va a pasar. */
+  &:disabled::after {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      display: none;
+    }
+  }
+}
+
+/**
+ * La elevación de una tarjeta, en un solo sitio. En oscuro el token es `none`
+ * y la separación la da el color; en claro son las dos capas de sombra que
+ * evitan que la pantalla se lea como una hoja de cálculo.
+ */
+@utility elevada {
+  box-shadow: var(--sombra-card);
+}
+
+/**
+ * Scroll sin barra visible. Hace falta en las tiras de pestañas: `overflow-x`
+ * distinto de `visible` obliga a `overflow-y` a serlo también (CSS Overflow §3),
+ * así que una fila de 44px dentro de una caja de 44px saca **una barra vertical
+ * de dos píxeles** que no scrollea nada. `overflow-y: hidden` no vale —la spec
+ * lo recalcula a `auto`—, así que lo que se quita es la barra, no el scroll.
+ *
+ * Solo donde el contenido cabe o se desliza con el dedo. Nunca en una lista
+ * larga: ahí la barra es la única señal de que hay más.
+ */
+@utility sin-barra {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* §7: un dato que escribe James puede no tener un solo espacio (un @, una URL,

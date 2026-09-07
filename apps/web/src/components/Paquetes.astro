@@ -1,0 +1,256 @@
+---
+/**
+ * Los paquetes. Es el bloque que cierra la venta.
+ *
+ * **La regla del acento único** (§6): Básico neutro → Pro latón → Premium
+ * hueso. La jerarquía la hace un solo acento que sube, nunca un color nuevo por
+ * paquete — el cian y el magenta del flyer no se usan. Y **solo el destacado
+ * lleva el botón verde**: los otros dos son de contorno, así uno gana por
+ * contraste sin que los demás dejen de poder pulsarse.
+ *
+ * En claro el «hueso» del Premium se invierte al negro cálido: sobre blanco un
+ * borde hueso es invisible.
+ */
+import Cta from './Cta.astro';
+import Icono from './Icono.astro';
+import Seccion from './Seccion.astro';
+import { EN_LOS_TRES, PISTAS, SECCIONES } from '../content/copy';
+import type { PackageDto } from '@james-film/contracts';
+import { enEscalera, masCaroDe, precio } from '../lib/paquetes';
+import type { Fuente } from '../lib/whatsapp';
+
+interface Props {
+  paquetes: PackageDto[];
+  numero: string;
+  /** El de `SiteSettings`, para los paquetes que no traen el suyo. */
+  baseGeneral: string;
+  /**
+   * De DÓNDE sale el clic. En `/fechas-libres` vale `calendario-libre`, y eso
+   * no es cosmético: `fechaPedida()` en el `Layout` adjunta el día pedido solo
+   * si la fuente empieza por `calendario`, así que ahí estas tarjetas pasan a
+   * reportar **qué paquete y qué día** en vez de solo el paquete.
+   */
+  fuente?: Fuente;
+  /**
+   * La sección va SUELTA dentro de un `main` que ya trae `marco`.
+   *
+   * Sin esto el `marco` se aplica dos veces —el padding se suma— y el sangrado
+   * del carrusel (`-mx-5`) deja de llegar al borde de la pantalla, que es
+   * justo lo que le dice al dedo que ahí se desliza.
+   */
+  suelto?: boolean;
+}
+
+const {
+  paquetes,
+  numero,
+  baseGeneral,
+  fuente = 'paquetes',
+  suelto = false,
+} = Astro.props;
+
+/** Las tres reglas de precio viven en `lib/paquetes`: las comparte `/fechas-libres`. */
+const escalera = enEscalera(paquetes);
+const masCaro = masCaroDe(paquetes);
+
+function acento(p: PackageDto) {
+  if (p.isHighlighted) {
+    return {
+      caja: 'border-brass-400 bg-elevated shadow-[0_14px_44px_rgba(201,169,106,0.10)]',
+      titulo: 'text-brass-200',
+      check: 'text-brass-400',
+    };
+  }
+  return p.id === masCaro?.id
+    ? { caja: 'border-bone bg-void', titulo: '', check: 'text-bone' }
+    : { caja: 'border-line bg-void', titulo: '', check: 'text-ash' };
+}
+---
+
+{
+  paquetes.length > 0 && (
+    <section
+      id="paquetes"
+      class:list={[
+        'flex flex-col gap-4 py-9 lg:gap-8 lg:py-18',
+        suelto ? 'border-t border-line' : 'border-t border-line marco',
+      ]}
+    >
+      <Seccion {...SECCIONES.paquetes} pista={PISTAS.paquetes} ancho />
+
+      {/*
+        Lo que NO cambia entre paquetes, dicho ANTES de compararlos: mata el
+        miedo a «elegir el barato y quedarme sin algo», que es lo que paraliza
+        la comparación.
+      */}
+      <div
+        data-en-los-tres
+        class="flex flex-wrap items-center gap-2 rounded-card border border-dashed border-line-strong p-4 lg:gap-3 lg:px-5"
+      >
+        <span class="text-xs font-medium tracking-[0.12em] text-brass-600 uppercase lg:text-sm">
+          En los tres, siempre
+        </span>
+        {EN_LOS_TRES.map((t) => (
+          <span class="rounded-full border border-line px-3 py-1.5 text-sm">{t}</span>
+        ))}
+      </div>
+
+      {/*
+        MÓVIL: se DESLIZA para comparar. Apilados, comparar tres precios obliga
+        a subir y bajar recordando cifras, y ahí es donde se abandona. Con el
+        carrusel, el trozo de la tarjeta siguiente que asoma es la pista de que
+        hay más — no hace falta explicarlo.
+
+        ESCRITORIO: `auto-fit` con `minmax(240px, 1fr)`, **nunca `grid-cols-3`**
+        (§8): si algún día hay dos paquetes o cuatro, la fila sigue cuadrando.
+
+        Las tres tarjetas se ESTIRAN, en el carrusel y en la rejilla
+        (`items-stretch`). Llevaba `items-start`, y con cada tarjeta midiendo lo
+        suyo —5, 6 y 7 viñetas— el `mt-auto` del pie no tenía contra qué
+        empujar: los tres «Preguntar por el…» caían a tres alturas distintas,
+        con 80 px entre el primero y el último en escritorio, y en el carrusel
+        cada tarjeta acababa donde le daba la gana, así que al deslizar la
+        siguiente asomaba a otra altura. En una tabla de precios eso rompe lo
+        único que la tabla hace: comparar.
+
+        La regla de `items-start` de este proyecto es para tarjetas que se leen
+        SUELTAS —un testimonio con captura y otro sin ella—, no para tres
+        columnas que se leen en paralelo. El hueco que aparece en la más corta
+        cae justo encima del «ideal para», que es donde tiene que caer.
+
+        El destacado sigue subiendo: con `stretch` su caja crece por ARRIBA
+        —el `-mt-3.5` mueve el borde superior y el inferior se queda en la
+        línea de la fila—, así que sobresale sin desalinear el botón.
+      */}
+      <p class="flex items-center gap-2 text-sm text-ash lg:hidden">
+        <Icono nombre="flecha" tamano={16} clase="text-brass-600" />
+        Desliza para comparar los tres
+      </p>
+
+      <div
+        data-carrusel
+        class="sin-barra -mx-5 flex snap-x snap-mandatory items-stretch gap-3.5 overflow-x-auto px-5 pt-3 pb-1 lg:mx-0 lg:grid lg:snap-none lg:grid-cols-[repeat(auto-fit,minmax(240px,1fr))] lg:gap-6 lg:overflow-visible lg:px-0 lg:pt-0"
+      >
+        {escalera.map((p, i) => {
+          const a = acento(p);
+          const pr = precio(p);
+          return (
+            <div
+              data-destacado={p.isHighlighted ? '' : undefined}
+              class:list={[
+                'entra relative flex w-[84vw] shrink-0 snap-center flex-col gap-3.5 rounded-card border p-5',
+                'sm:w-[62vw] lg:w-auto lg:shrink lg:gap-4 lg:p-7',
+                a.caja,
+                // El destacado sube. Solo en escritorio: en el carrusel todas
+                // las tarjetas empiezan a la misma altura o el deslizado cojea.
+                p.isHighlighted && 'lg:-mt-3.5',
+              ]}
+              style={`--i: ${i}`}
+            >
+              {p.badgeText && (
+                <span class="absolute -top-2.75 left-5 rounded-full bg-brass-400 px-2.75 py-0.75 text-xs font-semibold tracking-[0.06em] text-void lg:left-7">
+                  {p.badgeText}
+                </span>
+              )}
+
+              <div class:list={[p.badgeText && 'pt-1']}>
+                <p class:list={['font-display text-[21px] font-extrabold lg:text-[23px]', a.titulo]}>
+                  {p.name}
+                </p>
+                {p.subtitle && <p class="mt-0.5 text-sm text-ash">{p.subtitle}</p>}
+              </div>
+
+              {pr && (
+                <p
+                  class:list={[
+                    'font-display text-[31px] font-extrabold tracking-[-0.02em] lg:text-[42px]',
+                    a.titulo,
+                  ]}
+                >
+                  {pr}
+                </p>
+              )}
+
+              <ul class="flex list-none flex-col gap-2.25 p-0">
+                {p.items.map((it) => (
+                  <li class:list={['flex gap-2.5', !it.included && 'text-ash line-through']}>
+                    <Icono
+                      nombre="check"
+                      tamano={16}
+                      grosor={2.4}
+                      clase={`mt-1 shrink-0 ${it.included ? a.check : 'text-ash'}`}
+                    />
+                    <span>{it.text}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {p.idealFor && (
+                <p class="mt-auto border-t border-line pt-3.5 text-sm text-ash">{p.idealFor}</p>
+              )}
+
+              {p.isHighlighted ? (
+                <Cta
+                  {numero}
+                  base={p.whatsappMessage ?? baseGeneral}
+                  texto={`Preguntar por el ${p.name}`}
+                  {fuente}
+                  paqueteId={p.id}
+                  alto="medio"
+                  pista={null}
+                />
+              ) : (
+                <a
+                  href={`https://wa.me/${numero}?text=${encodeURIComponent(p.whatsappMessage ?? baseGeneral)}`}
+                  data-wa
+                  data-fuente={fuente}
+                  data-paquete={p.id}
+                  target="_blank"
+                  rel="noopener"
+                  class="flex h-[50px] items-center justify-center gap-2 rounded-control border border-line font-medium text-bone transition-[transform,border-color] duration-150 hover:scale-[1.015] hover:border-brass-400 active:scale-[0.985]"
+                >
+                  Preguntar por el {p.name}
+                </a>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <p class="text-sm text-ash">{PISTAS.precios}</p>
+    </section>
+  )
+}
+
+<script>
+  /**
+   * El carrusel de móvil arranca en el DESTACADO, no en el primero.
+   *
+   * En escritorio el «más vendido» está en medio y se ve solo. En móvil, con
+   * las tarjetas ordenadas por precio, lo primero que aparecía era el Básico —
+   * y la insignia de «nuestro más vendido» quedaba fuera de pantalla, que es
+   * justo el argumento que hace subir de paquete.
+   *
+   * Se mueve el CARRUSEL, nunca la página: un `scrollIntoView` aquí arrastraría
+   * la vista hasta los paquetes nada más cargar, y quien entra tiene que ver el
+   * hero primero.
+   */
+  for (const carrusel of document.querySelectorAll<HTMLElement>('[data-carrusel]')) {
+    const destacado = carrusel.querySelector<HTMLElement>('[data-destacado]');
+    if (!destacado) continue;
+
+    const centrar = () => {
+      // Solo donde hay carrusel. En `lg` es una rejilla y no hay nada que mover.
+      if (carrusel.scrollWidth <= carrusel.clientWidth + 1) return;
+      carrusel.scrollLeft =
+        destacado.offsetLeft - (carrusel.clientWidth - destacado.offsetWidth) / 2;
+    };
+
+    // `instant`: es la posición de PARTIDA, no un gesto. Animarla se vería como
+    // si la página se moviera sola nada más abrirla.
+    centrar();
+    // Y otra vez cuando las fuentes acaben de cargar: con la tipografía de
+    // reserva las tarjetas miden distinto y el centro cae mal.
+    document.fonts?.ready.then(centrar);
+  }
+</script>

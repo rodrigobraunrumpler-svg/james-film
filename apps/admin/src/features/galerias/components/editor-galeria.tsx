@@ -73,7 +73,7 @@ export function EditorGaleria({ id }: { id: string }) {
               Galerías
             </Link>
             <ChevronRight className="size-3" aria-hidden />
-            <span>{datos.category.name}</span>
+            <span className="dato truncate">{datos.title}</span>
           </nav>
         }
         acciones={
@@ -92,13 +92,19 @@ export function EditorGaleria({ id }: { id: string }) {
           hacer aquí, y borrar es lo único de esta pantalla que no se deshace
           desde la propia pantalla. */}
       <div className="border-line flex flex-wrap items-center gap-2 border-t pt-4">
+        {/* «La primera de la web», no «destacar en la portada». Este botón no
+            pinta ninguna insignia: lo único que hace es ganar el orden de la
+            lista pública, y de ahí sale el trabajo que encabeza el hero, la
+            tarjeta alta del bento y la rejilla de Trabajos. El nombre anterior
+            prometía un adorno y hacía un orden. */}
         <Boton
           onClick={() => destacar.mutate(!datos.isFeatured)}
           aria-pressed={datos.isFeatured}
+          title="Sale la primera en el hero, en el bento y en la rejilla de Trabajos. Solo puede haber una."
           className={datos.isFeatured ? 'border-brass text-brass' : undefined}
         >
           <Star className={datos.isFeatured ? 'size-3.5 fill-current' : 'size-3.5'} aria-hidden />
-          {datos.isFeatured ? 'Destacada en la portada' : 'Destacar en la portada'}
+          {datos.isFeatured ? 'Es la primera de la web' : 'Ponerla la primera en la web'}
         </Boton>
         <Boton variante="peligro" className="ml-auto" onClick={() => setBorrando(true)}>
           Borrar galería

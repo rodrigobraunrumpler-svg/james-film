@@ -1,0 +1,39 @@
+---
+/**
+ * `BreadcrumbList` en JSON-LD.
+ *
+ * Fuera de la portada no había **ni un solo** dato estructurado, y éste es de
+ * los pocos que todavía se pintan en el resultado: Google sustituye la URL por
+ * la ruta —«jamesfilm.pe › Trabajos › XV de Camila»— y eso dice de qué va la
+ * página antes de que nadie lea el título.
+ *
+ * Es la MIGA, no la navegación visible: las páginas ya tienen su enlace de
+ * «volver» arriba, y duplicarlo como una tira de migas sería otra fila que
+ * empuja el contenido sin decir nada nuevo. Google no exige que se pinte.
+ *
+ * Las URL van ABSOLUTAS y en forma canónica —con barra final, como el sitemap—:
+ * una miga que apunte a la forma que redirige le pide al rastreador un salto
+ * por cada nivel.
+ */
+interface Props {
+  /** De la raíz hacia dentro. El ÚLTIMO es la página actual y no lleva `href`. */
+  ruta: { nombre: string; href?: string }[];
+}
+
+const { ruta } = Astro.props;
+
+const datos = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: ruta.map((paso, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: paso.nombre,
+    // El último no lleva `item`: es donde estás, y enlazarse a sí mismo es lo
+    // que la propia documentación de Google dice que no se haga.
+    ...(paso.href ? { item: new URL(paso.href, Astro.site).href } : {}),
+  })),
+};
+---
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(datos)} />

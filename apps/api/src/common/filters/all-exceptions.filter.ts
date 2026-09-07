@@ -27,6 +27,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
     P2002: [409, 'CONFLICT', 'Ya existe un registro con ese valor único'],
     P2025: [404, 'NOT_FOUND', 'No encontrado'],
     P2003: [400, 'CONFLICT', 'Referencia inválida'],
+    /**
+     * La base no responde. **503, no 500**: no es que algo haya reventado
+     * dentro, es que no hay con quién hablar — y la diferencia decide qué hace
+     * el cliente. Un 500 dice «error interno» y no sugiere reintentar; un 503
+     * es explícitamente temporal.
+     *
+     * No es hipotético en ninguno de los dos entornos: en local es Docker
+     * cerrado, y en producción es el **arranque en frío de Neon**, que es el
+     * único cuello real que tiene este proyecto. Con «Error interno» la primera
+     * visita del día parecía un fallo de código.
+     */
+    P1001: [503, 'INTERNAL', 'La base de datos no responde. Vuelve a intentarlo en unos segundos.'],
+    /** Se agotó el tiempo abriendo la conexión. Mismo caso, mismo consejo. */
+    P1002: [503, 'INTERNAL', 'La base de datos tardó demasiado. Vuelve a intentarlo.'],
+    /** Sin conexiones libres en el pool: temporal por definición. */
+    P2024: [503, 'INTERNAL', 'El servidor está saturado. Vuelve a intentarlo en unos segundos.'],
   };
 
   private readonly httpMap: Record<number, ErrorCode> = {

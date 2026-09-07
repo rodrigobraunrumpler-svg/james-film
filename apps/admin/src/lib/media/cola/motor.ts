@@ -38,6 +38,8 @@ export interface DepsCola {
   nuevoId(): string;
   ahora(): number;
   dormir(ms: number): Promise<void>;
+  /** Resuelve ya si hay red, y si no, en cuanto vuelva. Ver `conexion.ts`. */
+  esperarConexion(): Promise<void>;
 }
 
 export interface EstadoCola {
@@ -164,8 +166,27 @@ export function crearCola(deps: DepsCola): Cola {
       } catch (e) {
         if (cancelados.has(id) || !leer(id)) return;
 
+        /**
+         * SIN RED NO SE GASTA PRESUPUESTO. Los cinco minutos existen para
+         * rendirse ante un archivo que no entra —una key repetida, un bucket
+         * mal configurado—, no ante un túnel: en el 4G de Ayacucho, un corte de
+         * seis minutos daba por fallidos ocho reels que estaban perfectos, y
+         * James tenía que volver a lanzarlos uno a uno.
+         *
+         * Se espera a que vuelva la conexión y se ADELANTA `empezoEn` lo que
+         * duró el corte, así que el reloj se para en vez de correr en vacío. Si
+         * hay red, `esperarConexion` resuelve en la misma microtarea y no
+         * cambia nada.
+         */
+        const paradoDesde = deps.ahora();
+        await deps.esperarConexion();
+        if (cancelados.has(id) || !leer(id)) return;
+        const parado = deps.ahora() - paradoDesde;
+
         const vivo = leer(id);
-        const agotado = deps.ahora() - (vivo?.empezoEn ?? 0) >= PRESUPUESTO_MS;
+        if (parado > 0) parchear(id, { empezoEn: (vivo?.empezoEn ?? 0) + parado });
+
+        const agotado = deps.ahora() - ((vivo?.empezoEn ?? 0) + parado) >= PRESUPUESTO_MS;
         if (agotado) {
           fallar(id, mensajeDe(e));
           return;
@@ -173,9 +194,34 @@ export function crearCola(deps: DepsCola): Cola {
 
         const intentos = (vivo?.intentos ?? 0) + 1;
         parchear(id, { intentos, estado: 'FIRMANDO', motivo: null });
-        await deps.dormir(ESPERAS_MS[Math.min(intentos - 1, ESPERAS_MS.length - 1)]);
+        // Tras un corte no se espera nada: el evento `online` ya es la señal, y
+        // añadirle los ocho segundos del backoff sería castigar por reconectar.
+        if (parado === 0) {
+          await deps.dormir(ESPERAS_MS[Math.min(intentos - 1, ESPERAS_MS.length - 1)]);
+        }
       }
     }
+  }
+
+  /**
+   * ¿Se canceló mientras esperábamos? Hay que preguntarlo DESPUÉS DE CADA
+   * `await` de `intentar`, no solo al entrar.
+   *
+   * `cancelar` aborta con la función que registra `deps.subir`, y esa función
+   * no existe hasta que el PUT arranca. Si James pulsa Cancelar mientras se
+   * FIRMA —que es el momento más probable, justo después de elegir el
+   * archivo—, no hay nada que abortar: la subida seguía hasta el final y
+   * confirmaba un medio que él había cancelado. Y sin `mediaId` todavía en el
+   * item, `cancelar` tampoco lo borraba, así que la fila se quedaba para
+   * siempre.
+   *
+   * Devuelve `true` si ya no hay nada que hacer, y de paso borra la fila: aquí
+   * sí tenemos el `mediaId`, que es justo lo que le faltaba a `cancelar`.
+   */
+  async function abandonar(id: string, mediaId: string | null): Promise<boolean> {
+    if (!cancelados.has(id) && leer(id)) return false;
+    if (mediaId) await deps.borrar(mediaId).catch(() => {});
+    return true;
   }
 
   async function intentar(
@@ -200,6 +246,7 @@ export function crearCola(deps: DepsCola): Cola {
       posterSizeBytes: preparado.poster?.size,
     });
 
+    if (await abandonar(id, firma.mediaId)) return;
     parchear(id, { mediaId: firma.mediaId, estado: 'SUBIENDO' });
 
     await deps.subir({
@@ -214,8 +261,11 @@ export function crearCola(deps: DepsCola): Cola {
     // El poster resuelve ANTES del confirm: `confirmar` corta con
     // `if (status !== PENDING)`, así que uno que llegue tarde deja el reel sin
     // miniatura PARA SIEMPRE, y sin autoplay en la grilla la tarjeta queda negra.
+    if (await abandonar(id, firma.mediaId)) return;
+
     if (preparado.poster && firma.posterUploadUrl) {
       await subirPoster(firma.posterUploadUrl, preparado.poster);
+      if (await abandonar(id, firma.mediaId)) return;
     }
 
     parchear(id, { estado: 'CONFIRMANDO', progreso: 1 });

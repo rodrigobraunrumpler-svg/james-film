@@ -80,6 +80,18 @@ export const DocBorrarMedia = (): MethodDecorator =>
     auth: true,
   });
 
+export const DocRetirarMedia = (): MethodDecorator =>
+  ApiDoc({
+    summary: 'Retira un medio por solicitud de quien aparece en él',
+    description:
+      'Marca la fila como borrada **y borra el archivo del bucket ahora mismo**, a diferencia de ' +
+      'DELETE, que deja el objeto servido hasta que el cron lo purgue a los 30 días. Es lo que ' +
+      'exige una cancelación u oposición de la Ley 29733, y no tiene deshacer.',
+    status: 204,
+    errors: [404],
+    auth: true,
+  });
+
 export const DocActualizarMedia = (): MethodDecorator =>
   ApiDoc({
     summary: 'Edita el texto alternativo y el pie de un medio',

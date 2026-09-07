@@ -1,0 +1,29 @@
+# El contexto es la raiz del monorepo. Todo lo que entra aqui puede invalidar
+# capas; todo lo que no entra no puede. Por defecto se excluye TODO y se
+# vuelven a incluir solo los ficheros que el build necesita: una carpeta nueva
+# en el repo no puede volver a meter 2 GB en el contexto sin que nadie lo note.
+*
+
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!package.json
+!docker/podar-prod.mjs
+
+!apps/api/package.json
+!apps/api/tsconfig.json
+!apps/api/tsconfig.build.json
+!apps/api/nest-cli.json
+!apps/api/prisma7.config.ts
+!apps/api/prisma
+!apps/api/src
+
+!packages/contracts/package.json
+!packages/contracts/src
+
+# Reexclusiones: lo de arriba es recursivo y arrastraria basura.
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/*.spec.ts
+**/*.log
+apps/api/src/generated

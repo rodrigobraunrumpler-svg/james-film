@@ -1,0 +1,80 @@
+---
+/**
+ * El CTA que nunca queda fuera de alcance, en móvil.
+ *
+ * `sticky bottom-0`, NO `fixed`: un elemento fijo no ocupa sitio en el flujo y
+ * taparía el final del pie. Es la misma lección que la barra de subidas del
+ * admin, donde tapaba justo el botón de Cancelar que hacía falta.
+ *
+ * **Aparece al pasar el hero**, no antes: arriba el botón verde ya está a la
+ * vista dos veces —en la barra y en el hero— y una tercera es ruido. Lo hace
+ * un `IntersectionObserver` de seis líneas, sin librería.
+ */
+import Icono from './Icono.astro';
+import { enlace, type Fuente } from '../lib/whatsapp';
+
+interface Props {
+  numero: string;
+  base: string;
+  /**
+   * De dónde sale el clic. `footer` en casi todas, pero en `/fechas-libres`
+   * tiene que empezar por `calendario`.
+   *
+   * No es cosmético: esta barra está visible **desde el primer píxel** en las
+   * páginas sin hero, y su enlace lleva la fecha elegida dentro del mensaje
+   * —el enriquecedor del `Layout` se la mete como a cualquier `[data-wa]`—
+   * pero `fechaPedida()` solo la REGISTRA si la fuente empieza por
+   * `calendario`. O sea que la página que existe para medir demanda de fechas
+   * era la que peor la medía: mandaba el día en el chat y lo tiraba del panel.
+   *
+   * Alternar libre/ocupado NO se hace aquí: lo hace el script del calendario
+   * sobre todo `[data-wa][data-fuente^="calendario"]` de la página. Tenerlo en
+   * los dos sitios era el mismo dato con dos dueños.
+   */
+  fuente?: Fuente;
+}
+
+const { numero, base, fuente = 'footer' } = Astro.props;
+const href = enlace({ numero, base });
+---
+
+<div
+  id="barra-pegada"
+  data-oculta
+  class="sticky bottom-0 z-30 marco flex items-center gap-3 border-t border-line bg-void/95 py-3 backdrop-blur-md transition-[opacity,transform] duration-300 data-[oculta]:pointer-events-none data-[oculta]:translate-y-full data-[oculta]:opacity-0 lg:hidden"
+>
+  <div class="min-w-0 flex-1">
+    <p class="text-sm font-medium">¿Tu fecha está libre?</p>
+    <p class="mt-0.5 text-xs text-ash">Pregunta sin compromiso</p>
+  </div>
+  <a
+    {href}
+    data-wa
+    data-fuente={fuente}
+    target="_blank"
+    rel="noopener"
+    class="flex h-12 shrink-0 items-center gap-2 rounded-control boton-wa px-5 font-semibold whitespace-nowrap"
+  >
+    <Icono nombre="chat" tamano={18} grosor={2.1} />
+    Escribir
+  </a>
+</div>
+
+<script>
+  // Aparece cuando el hero se ha ido. Sin JS la barra se queda oculta y no
+  // pasa nada: el CTA del hero y el del cierre siguen ahí, y son enlaces.
+  const barra = document.getElementById('barra-pegada');
+  // El hero solo existe en la portada. En una galería no hay nada de lo que
+  // salir, así que la barra se enseña desde el principio: si esperara a un
+  // hero que no llega, no aparecería NUNCA y esas páginas se quedarían sin su
+  // CTA a la altura del pulgar.
+  const hero = document.querySelector('[data-hero]');
+  if (barra && !hero) {
+    barra.removeAttribute('data-oculta');
+  } else if (barra && hero && 'IntersectionObserver' in window) {
+    new IntersectionObserver(
+      ([e]) => barra.toggleAttribute('data-oculta', Boolean(e?.isIntersecting)),
+      { threshold: 0 },
+    ).observe(hero);
+  }
+</script>

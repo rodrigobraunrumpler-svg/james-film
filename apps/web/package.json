@@ -10,7 +10,10 @@
     "preview": "astro preview",
     "astro": "astro",
     "lint": "oxlint --type-aware src/",
-    "typecheck": "astro check"
+    "typecheck": "astro check",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
@@ -26,6 +29,8 @@
     "@astrojs/check": "^0.9.10",
     "oxlint": "^1.80.0",
     "oxlint-tsgolint": "^7.0.2001",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "^4.0.18",
+    "@playwright/test": "1.62.1"
   }
 }

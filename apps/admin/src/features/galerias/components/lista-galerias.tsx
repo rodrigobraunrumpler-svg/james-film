@@ -1,7 +1,7 @@
 'use client';
 
 import { Images, Plus, SearchX } from 'lucide-react';
-import { useState } from 'react';
+import { parseAsBoolean, useQueryState } from 'nuqs';
 import { Boton } from '@/components/shared/boton';
 import { EstadoVacio } from '@/components/shared/estado-vacio';
 import { esApiError } from '@/lib/api/errors';
@@ -32,13 +32,13 @@ function Pestanas({
   // Si los recuentos fallan o aún no han llegado, la pestaña se pinta SIN
   // número. Un «0» mientras carga se lee como «no hay», que suele ser justo lo
   // contrario de lo que es cierto.
-  const { data: recuentos } = useRecuentosGalerias();
+  const recuentos = useRecuentosGalerias();
 
   return (
     <div className="border-line flex items-center gap-5 border-b" role="tablist">
       {ESTADOS_GALERIA.map((estado) => {
         const seleccionada = estado === activa;
-        const cuantas = recuentos?.data[estado];
+        const cuantas = recuentos?.[estado];
         return (
           <button
             key={estado}
@@ -69,15 +69,40 @@ function Pestanas({
 }
 
 export function ListaGalerias() {
-  const [creando, setCreando] = useState(false);
+  /**
+   * `?nueva=1` abre el formulario nada más entrar. Es lo que hace que el atajo
+   * «Nueva galería» del panel y del ⌘K NO acaben soltando a James en la lista
+   * a buscar el botón: llegan con el formulario ya abierto.
+   *
+   * En la URL y con `clearOnDefault`, como el resto del estado de esta
+   * pantalla: cerrar el formulario limpia el parámetro solo, así que recargar
+   * después no lo vuelve a abrir.
+   */
+  const [creando, setCreandoUrl] = useQueryState(
+    'nueva',
+    parseAsBoolean.withDefault(false).withOptions({ clearOnDefault: true }),
+  );
+  const setCreando = (v: boolean): void => void setCreandoUrl(v || null);
   const { filtros, setFiltros } = useFiltrosGalerias();
   const { data, isPending, isFetching, isError, error, refetch } = useGalerias(filtros);
 
   const cabecera = (
     <div className="flex flex-col gap-3.5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-[-0.01em]">Galerías</h1>
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2.5 sm:flex-none">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h1 className="text-xl font-semibold tracking-[-0.01em]">Galerías</h1>
+          {/* Era la única de las cinco listas sin línea de contexto, y es la
+              pantalla de entrada: la que más falta hace. */}
+          <p className="text-ash text-sm">
+            Cada evento que has cubierto. Lo que abres veinte veces al día.
+          </p>
+        </div>
+        {/* `flex-1 min-w-0` SIEMPRE, sin `sm:flex-none`: con el grupo a tamaño
+            de contenido, el buscador y el botón sumaban más que la pantalla en
+            cuanto el texto crecía —con el zoom al 200%, que es lo que usa quien
+            no ve bien, se salían 50px—. `basis-56` le da su sitio natural y
+            deja que encoja cuando no lo hay. */}
+        <div className="flex min-w-0 flex-1 basis-56 items-center justify-end gap-2.5">
           <BuscadorGalerias
             valor={filtros.q}
             // Vuelve a la página 1: buscar desde la página 3 daría una lista
@@ -157,7 +182,7 @@ export function ListaGalerias() {
           <EstadoVacio
             Icono={Images}
             titulo="Aún no tienes galerías"
-            explicacion="Una galería es un evento: los reels de una boda, unos XV, un cumpleaños."
+            explicacion="Una galería es un evento: la boda, los XV, el cumpleaños. Dentro van los reels que grabaste, y es lo que compartes por WhatsApp."
             accion="Crear la primera"
             onAccion={() => setCreando(true)}
           />

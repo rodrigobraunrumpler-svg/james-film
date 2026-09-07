@@ -74,6 +74,9 @@ export class GalleryListItemEntity implements GalleryListItemDto {
     example: 3,
   })
   mediaCount!: number;
+
+  @ApiProperty({ example: 3, description: 'Cuántos de esos medios son fotos. Los vídeos son la resta.' })
+  photoCount!: number;
 }
 
 /** Lo que ve el admin: añade el estado de publicación al item de la lista. */
@@ -83,6 +86,12 @@ export class AdminGalleryListItemEntity
 {
   @ApiProperty({ description: 'false = borrador. La landing no lo ve.' })
   isPublished!: boolean;
+
+  @ApiProperty({
+    description:
+      'Hay hoja de autorización de imagen firmada. Sin esto, publicar da 422 CONSENT_REQUIRED.',
+  })
+  hasConsent!: boolean;
 
   @ApiProperty({
     example: '2026-08-29T02:14:00.000Z',

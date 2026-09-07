@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils/cn';
  */
 const VARIANTES = {
   principal: 'border border-brass text-brass hover:bg-brass/10',
-  secundario: 'border border-line-strong bg-card text-bone hover:bg-card-hover',
+  secundario: 'border border-line-strong bg-card text-bone hover:border-line-hover hover:bg-card-hover',
   fantasma: 'border border-transparent text-ash hover:bg-card-hover hover:text-bone',
   peligro: 'border border-danger-line text-danger hover:bg-danger-bg',
 } as const;

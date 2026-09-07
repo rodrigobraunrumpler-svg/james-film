@@ -35,6 +35,23 @@ export const keys = {
   storage: {
     usage: ['storage', 'usage'] as const,
   },
+  availability: {
+    all: ['availability'] as const,
+    // El rango es parte de la clave: cada mes tiene su entrada y volver a uno
+    // ya visto se pinta desde caché sin ir a la red.
+    range: (from: string, to: string) => [...keys.availability.all, 'range', from, to] as const,
+    summary: () => [...keys.availability.all, 'summary'] as const,
+  },
+  dashboard: {
+    all: ['dashboard'] as const,
+    resumen: () => [...keys.dashboard.all, 'resumen'] as const,
+  },
+  search: {
+    all: ['search'] as const,
+    // El término es parte de la clave: así cada búsqueda tiene su entrada y
+    // volver a escribir algo ya buscado sale de caché sin ir a la red.
+    query: (q: string) => [...keys.search.all, q] as const,
+  },
   auth: {
     me: ['auth', 'me'] as const,
   },

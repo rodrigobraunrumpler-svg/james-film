@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=Inter:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #FBFAF7; }
+    a { color: #8A6D3B; text-decoration: none; }
+    a:hover { color: #6E5530; }
+    .d { font-family: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+    .b { font-family: Inter, system-ui, -apple-system, sans-serif; }
+    .pista { font-size: 14px; line-height: 1.5; color: #6B655C; }
+    .tile { position: relative; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #E6E1D8; overflow: hidden; }
+    .dur { position: absolute; right: 8px; bottom: 8px; padding: 3px 7px; border-radius: 6px; background: rgba(255,255,255,0.92); font-size: 12px; color: #17150F; }
+  </style>
+</helmet>
+
+<div class="b" style="width: 390px; background: #FBFAF7; color: #17150F; font-size: 17px; line-height: 1.6; overflow: hidden;">
+
+  <!-- Miga y cabecera -->
+  <div style="display: flex; flex-direction: column; gap: 14px; padding: 16px 20px 24px;">
+    <a href="#" style="display: flex; align-items: center; gap: 8px; min-height: 48px; font-size: 16px; color: #6B655C;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8C857A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+      Todos los trabajos
+    </a>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <h1 class="d" style="margin: 0; font-size: 34px;">Boda de Rosa y Luis</h1>
+      <p style="margin: 0; font-size: 16px; color: #6B655C;">Bodas · 15 de marzo de 2026 · Huanta</p>
+    </div>
+    <p class="pista" style="margin: 0;">Toca cualquiera para verlo a pantalla completa. Así se entrega: es lo que te llega al celular.</p>
+  </div>
+
+  <!-- Rejilla 9:16 -->
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 20px 28px;">
+    <div class="tile" style="background: radial-gradient(120% 90% at 30% 25%, #4A3A28 0%, #1C1512 55%, #080706 100%); color: #F2EFE9;">
+      <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8Z"/></svg></span>
+      <span class="dur">0:42</span>
+    </div>
+    <div class="tile" style="background: radial-gradient(120% 90% at 65% 30%, #3A3140 0%, #191418 55%, #080706 100%); color: #F2EFE9;">
+      <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8Z"/></svg></span>
+      <span class="dur">0:38</span>
+    </div>
+    <div class="tile" style="background: radial-gradient(120% 90% at 45% 60%, #2E3A33 0%, #141A17 55%, #080706 100%); color: #F2EFE9;">
+      <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8Z"/></svg></span>
+      <span class="dur">1:12</span>
+    </div>
+    <div class="tile" style="background: radial-gradient(120% 90% at 55% 35%, #453322 0%, #1B1410 55%, #080706 100%); color: #F2EFE9;">
+      <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8Z"/></svg></span>
+      <span class="dur">0:29</span>
+    </div>
+    <div class="tile" style="background: radial-gradient(120% 90% at 40% 40%, #3F2B2B 0%, #1A1212 55%, #080706 100%); color: #F2EFE9;">
+      <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8Z"/></svg></span>
+      <span class="dur">0:51</span>
+    </div>
+    <div class="tile" style="background: radial-gradient(120% 90% at 60% 50%, #2B3340 0%, #12161A 55%, #080706 100%); color: #F2EFE9;">
+      <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8Z"/></svg></span>
+      <span class="dur">2:04</span>
+    </div>
+  </div>
+
+  <!-- El CTA vuelve aquí: quien llega al final de una galería es quien más cerca está -->
+  <div style="display: flex; flex-direction: column; gap: 11px; padding: 28px 20px 36px; background: #F4F1EB; border-top: 1px solid #E6E1D8;">
+    <h2 class="d" style="margin: 0; font-size: 26px;">¿Quieres algo así para el tuyo?</h2>
+    <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 56px; border-radius: 12px; background: #25D366; color: #0A0908; font-size: 17px; font-weight: 600;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0908" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+      ¡HABLEMOS DE TU EVENTO!
+    </a>
+    <p class="pista" style="margin: 0; text-align: center;">Se abre tu WhatsApp con el mensaje ya escrito.</p>
+  </div>
+
+  <!-- Sin esto la galería es un callejón: se llega, se mira y solo queda el
+       botón de atrás del navegador. Quien acaba de ver una boda entera es
+       justo quien quiere ver otra. -->
+  <div style="display: flex; flex-direction: column; gap: 12px; padding: 26px 20px 34px;">
+    <span style="font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #8A6D3B; font-weight: 500;">Sigue viendo</span>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+      <a href="#" style="display: flex; flex-direction: column; gap: 8px; color: #17150F;">
+        <div style="aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #E6E1D8; background: radial-gradient(120% 90% at 65% 30%, #3A3140 0%, #191418 55%, #080706 100%); color: #F2EFE9;"></div>
+        <span style="font-size: 15px; font-weight: 500;">XV de Camila</span>
+      </a>
+      <a href="#" style="display: flex; flex-direction: column; gap: 8px; color: #17150F;">
+        <div style="aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #E6E1D8; background: radial-gradient(120% 90% at 45% 60%, #2E3A33 0%, #141A17 55%, #080706 100%); color: #F2EFE9;"></div>
+        <span style="font-size: 15px; font-weight: 500;">Cumpleaños de Diego</span>
+      </a>
+    </div>
+    <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border-radius: 12px; border: 1px solid #E6E1D8; color: #8A6D3B; font-size: 16px;">
+      Ver los 30 trabajos
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

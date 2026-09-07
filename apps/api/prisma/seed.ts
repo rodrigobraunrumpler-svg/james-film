@@ -21,6 +21,18 @@ const CATEGORIAS = [
 ];
 
 // priceAmount en CÉNTIMOS. accentColor se guarda pero la web v1 no lo consume (§6).
+/**
+ * Los tres paquetes, **copiados del flyer, valor por valor**.
+ *
+ * Lo que había antes no coincidía: ponía 7 reels en los tres cuando el flyer
+ * dice 4 · 6 · 7, le daba al Pro 6-7 horas donde el flyer dice 4-5, y le
+ * inventaba un «Mini-Reel exprés (Same Day / 12h)» que no existe en ninguna
+ * parte. La web publicaba una promesa que James no hace, y quien contratara el
+ * Básico esperando siete reels iba a recibir cuatro.
+ *
+ * **La escalera es la CANTIDAD**: 4 → 6 → 7. Eso es lo que separa los tres, y
+ * se lee solo sin que nadie lo explique.
+ */
 const PAQUETES = [
   {
     slug: 'basico',
@@ -37,9 +49,9 @@ const PAQUETES = [
     categorias: ['cumpleanos', 'eventos'],
     items: [
       'Cobertura: 3 - 4 horas',
-      '7 Reels / TikToks en tendencia',
+      '4 Reels / TikToks en tendencia',
       'Cortes dinámicos y ganchos (Hooks)',
-      'Entrega rápida: 24h - 48h',
+      'Entrega rápida: 48h',
       'Material bruto incluido',
     ],
   },
@@ -48,7 +60,7 @@ const PAQUETES = [
     name: 'PRO',
     subtitle: 'Memorias & Tendencias',
     priceAmount: 60_000,
-    idealFor: 'Quinceañeras, Cumpleaños grandes',
+    idealFor: 'Eventos medianos, XV años, bodas civiles',
     icon: 'trending-up',
     accentColor: '#22D3EE',
     badgeText: 'NUESTRO MÁS VENDIDO',
@@ -57,12 +69,12 @@ const PAQUETES = [
     whatsappMessage: 'Hola James, me interesa el paquete Pro para mi evento',
     categorias: ['xv-anos', 'cumpleanos'],
     items: [
-      'Cobertura: 6 - 7 horas',
-      '7 Reels / TikToks Virales',
-      '1 Video Resumen "Aftermovie" (1-2 min)',
-      '1 Mini-Reel expres (Same Day Edit / 12h)',
-      'Edición ágil, textos dinámicos, música trending',
-      'Material bruto en alta calidad',
+      'Cobertura: 4 - 5 horas',
+      '6 Reels / TikToks',
+      '1 Video Resumen «Aftermovie» (1-2 min)',
+      'Cortes dinámicos y ganchos (Hooks)',
+      'Entrega rápida: 48h',
+      'Material bruto incluido',
     ],
   },
   {
@@ -70,7 +82,7 @@ const PAQUETES = [
     name: 'PREMIUM',
     subtitle: 'La Alfombra Roja / Experiencia Viral',
     priceAmount: 90_000,
-    idealFor: 'Bodas, XV años',
+    idealFor: 'Bodas, XV años, eventos grandes',
     icon: 'crown',
     accentColor: '#E879F9',
     badgeText: null,
@@ -81,19 +93,59 @@ const PAQUETES = [
     items: [
       'Cobertura completa: hasta 10 horas',
       '7 Reels / TikToks Virales',
-      '1 Video Resumen "Aftermovie" (2-3 min)',
-      'Entrega Express (Reels en 24h)',
+      '1 Video Resumen «Aftermovie» (2-3 min)',
+      'Entrega Express: Reels en 24h',
       'Entrevistas y tomas estéticas',
+      'Material bruto en alta calidad',
+      'Flyers para promoción del evento',
     ],
   },
 ];
 
 // Iconos de la lista cerrada de lucide (CLAUDE.md): un typo dejaría un hueco en la web.
+/**
+ * Los cuatro del flyer, **con subtítulo**. Sin él la web pintaba cuatro cajas
+ * con una etiqueta dentro y medio bento en blanco: el componente ya sabe pintar
+ * `subtitle`, lo que faltaba era el dato.
+ *
+ * Y en frase, no en MAYÚSCULAS. En el flyer las capitales funcionan porque
+ * compiten con fotos; en la web van justo debajo de «No es grabar. Es que se
+ * vea.» y ahí se leen como etiquetas de un formulario, no como argumentos.
+ *
+ * Cada subtítulo dice algo COMPROBABLE. «Calidad profesional» es lo que dice
+ * todo el mundo; «cámara, luz y audio propios» es lo que se puede desmentir.
+ *
+ * ⚠ El `upsert` de abajo usa el TÍTULO como clave natural, así que **renombrar
+ * uno aquí no lo renombra: crea otro**. Al pasar estos cuatro de mayúsculas a
+ * frase aparecieron ocho filas, y lo cazó el test de idempotencia del seed
+ * contando diferenciadores. Si vuelves a cambiar un título, hay que renombrar
+ * también las filas que ya existan.
+ */
 const DIFERENCIADORES = [
-  { title: 'CALIDAD PROFESIONAL', icon: 'camera', order: 0 },
-  { title: 'ENTREGA RÁPIDA', icon: 'zap', order: 1 },
-  { title: 'CONTENIDO QUE CONECTA', icon: 'users', order: 2 },
-  { title: 'RESULTADOS REALES', icon: 'bar-chart-3', order: 3 },
+  {
+    title: 'Calidad profesional',
+    subtitle: 'Cámara, luz y audio propios. No dependo de lo que haya en el salón.',
+    icon: 'camera',
+    order: 0,
+  },
+  {
+    title: 'Entrega rápida',
+    subtitle: 'Grabo el sábado y el lunes ya lo estás subiendo.',
+    icon: 'zap',
+    order: 1,
+  },
+  {
+    title: 'Contenido que conecta',
+    subtitle: 'Cortes y ganchos pensados para que el dedo se pare.',
+    icon: 'users',
+    order: 2,
+  },
+  {
+    title: 'Resultados reales',
+    subtitle: 'Te llega listo para publicar. Tú no editas nada.',
+    icon: 'bar-chart-3',
+    order: 3,
+  },
 ];
 
 // La url va completa, no se arma desde el handle: cada red tiene su formato (§12).
@@ -141,6 +193,26 @@ const AJUSTES = {
  * nunca en el comando de producción.
  */
 const RESET = process.env.SEED_RESET === 'true';
+
+/**
+ * Clics de ejemplo para que el panel tenga forma en local y en el E2E.
+ *
+ * Bandera propia y NO `SEED_RESET`: restaurar el contenido del flyer y
+ * fabricar telemetría son cosas distintas, y esta segunda **nunca** puede
+ * correr en producción — el clic a WhatsApp es la única métrica del negocio y
+ * un solo clic inventado la deja sin valor. Por eso también se salta si ya hay
+ * clics reales: un `db:seed` en el servidor equivocado no debe poder mezclar.
+ */
+const DEMO_CLICS = process.env.SEED_DEMO_CLICKS === 'true';
+
+/**
+ * Los 30 días del prototipo, de más antiguo a más reciente. Escritos y no
+ * aleatorios: un `Math.random()` daría una gráfica distinta en cada corrida y
+ * un test sobre ella no podría afirmar nada.
+ */
+const CLICS_POR_DIA = [
+  1, 0, 2, 1, 3, 2, 1, 4, 2, 1, 0, 1, 3, 5, 2, 1, 2, 4, 3, 1, 2, 0, 1, 3, 2, 4, 3, 2, 5, 3,
+];
 
 async function main(): Promise<void> {
   const email = process.env.SEED_ADMIN_EMAIL;
@@ -211,6 +283,8 @@ async function main(): Promise<void> {
     create: { id: 'singleton' },
   });
 
+  if (DEMO_CLICS) await sembrarClics();
+
   // `update: {}` a propósito: si el usuario ya existe, NO se le pisa la contraseña
   // con la del entorno. El seed no debe poder degradar una credencial real.
   await prisma.user.upsert({
@@ -225,6 +299,56 @@ async function main(): Promise<void> {
   });
 
   console.log(RESET ? 'Seed listo (RESET: contenido restaurado).' : 'Seed listo.');
+}
+
+/**
+ * Reparte los clics entre los paquetes con el mismo peso que el prototipo
+ * —Pro más que Básico, Premium el que menos— y deja una parte sin paquete,
+ * que son los del hero y el pie.
+ */
+async function sembrarClics(): Promise<void> {
+  const yaHay = await prisma.whatsappClick.count();
+  if (yaHay > 0) {
+    console.log('Ya hay clics registrados: no se siembran de ejemplo.');
+    return;
+  }
+
+  const paquetes = await prisma.package.findMany({
+    orderBy: { order: 'asc' },
+    select: { id: true, slug: true },
+  });
+  // `null` = clic del hero o del pie, sin paquete que atribuir.
+  const reparto: (string | null)[] = [];
+  for (const p of paquetes) {
+    const veces = p.slug.includes('pro') ? 4 : p.slug.includes('premium') ? 1 : 2;
+    for (let i = 0; i < veces; i++) reparto.push(p.id);
+  }
+  reparto.push(null);
+
+  const DIA = 86_400_000;
+  const ahora = Date.now();
+  const filas: { packageId: string | null; source: string; createdAt: Date }[] = [];
+
+  let n = 0;
+  CLICS_POR_DIA.forEach((cuantos, indice) => {
+    // El último elemento del array es HOY: por eso el desfase se cuenta desde
+    // el final. Al revés, la semana en latón del prototipo saldría al principio.
+    const desfase = CLICS_POR_DIA.length - 1 - indice;
+    for (let i = 0; i < cuantos; i++) {
+      const packageId = reparto[n % reparto.length] ?? null;
+      filas.push({
+        packageId,
+        source: packageId ? 'paquetes' : 'hero',
+        // A media mañana en Lima: dentro del día en UTC y en `America/Lima`,
+        // así la serie no se corre un día según dónde se formatee.
+        createdAt: new Date(ahora - desfase * DIA - 12 * 3_600_000 + i * 60_000),
+      });
+      n++;
+    }
+  });
+
+  await prisma.whatsappClick.createMany({ data: filas });
+  console.log(`Sembrados ${filas.length} clics de ejemplo (SEED_DEMO_CLICKS).`);
 }
 
 main()

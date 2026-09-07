@@ -1,0 +1,138 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 9000,
+      "title": "Landing · móvil",
+      "page": "page-1"
+    },
+    {
+      "file": "Escritorio.dc.html",
+      "x": 520,
+      "y": 0,
+      "w": 1440,
+      "h": 10400,
+      "title": "Landing · escritorio",
+      "page": "page-1"
+    },
+    {
+      "file": "Calendario.dc.html",
+      "x": 2080,
+      "y": 0,
+      "w": 1180,
+      "h": 1800,
+      "title": "El calendario",
+      "page": "page-1"
+    },
+    {
+      "file": "Galeria.dc.html",
+      "x": 2080,
+      "y": 2000,
+      "w": 390,
+      "h": 2100,
+      "title": "Una galería",
+      "page": "page-1"
+    },
+    {
+      "file": "Claro.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 9000,
+      "title": "Landing · móvil",
+      "page": "page-2"
+    },
+    {
+      "file": "EscritorioClaro.dc.html",
+      "x": 520,
+      "y": 0,
+      "w": 1440,
+      "h": 10400,
+      "title": "Landing · escritorio",
+      "page": "page-2"
+    },
+    {
+      "file": "CalendarioClaro.dc.html",
+      "x": 2080,
+      "y": 0,
+      "w": 1180,
+      "h": 1800,
+      "title": "El calendario",
+      "page": "page-2"
+    },
+    {
+      "file": "GaleriaClaro.dc.html",
+      "x": 2080,
+      "y": 2000,
+      "w": 390,
+      "h": 2100,
+      "title": "Una galería",
+      "page": "page-2"
+    },
+    {
+      "file": "Piezas.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 2100,
+      "title": "Vocabulario visual",
+      "page": "page-3"
+    },
+    {
+      "file": "Seo.dc.html",
+      "x": 1040,
+      "y": 0,
+      "w": 1000,
+      "h": 1180,
+      "title": "SEO y compartir",
+      "page": "page-3"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "oscuro",
+      "x": 0,
+      "y": -250,
+      "w": 520,
+      "page": "page-1",
+      "text": "OSCURO · la marca\n\nEs el que sale por defecto: el flyer es oscuro y dorado, y el vídeo se ve mejor sobre negro.\n\nEn la pestaña CLARO están las mismas cuatro pantallas."
+    },
+    {
+      "id": "claro",
+      "x": 0,
+      "y": -250,
+      "w": 520,
+      "page": "page-2",
+      "text": "CLARO · derivado, no dibujado a mano\n\nLos cuatro salen del oscuro con derivar-claro.mjs. Se mantenían a mano y el móvil se quedó atrás dos veces: ahora solo puede cambiar el COLOR, la estructura es la misma por construcción.\n\nLo que NO se traduce está escrito en el script: los reels siguen oscuros (su fondo es el vídeo), y las previas de Google y WhatsApp llevan SUS colores."
+    },
+    {
+      "id": "sistema",
+      "x": 0,
+      "y": -250,
+      "w": 520,
+      "page": "page-3",
+      "text": "EL SISTEMA\n\nLas dos paletas, la tipografía, los botones con su pista, los estados vacíos y lo que NO se hace.\n\nY las previas de SEO: la que más importa no es Google, es la tarjeta de WhatsApp — James comparte enlaces veinte veces al día."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-2"
+  },
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Oscuro"
+    },
+    {
+      "id": "page-2",
+      "name": "Claro"
+    },
+    {
+      "id": "page-3",
+      "name": "Sistema"
+    }
+  ]
+}

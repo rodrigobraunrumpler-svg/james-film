@@ -61,6 +61,21 @@ model Gallery {
   isFeatured  Boolean @default(false)
   order       Int     @default(0)
 
+  /// Hay una hoja de autorización de imagen FIRMADA para este evento.
+  ///
+  /// Nace en `false` y bloquea la publicación, igual que `Testimonial.hasConsent`:
+  /// en una galería salen caras de gente real y en los XV años salen MENORES, así
+  /// que publicar era un botón sin fricción sobre lo único que puede traerle un
+  /// problema de verdad a James (Ley 29733 y art. 15 del Código Civil).
+  ///
+  /// El booleano **no acredita nada por sí solo** — lo que acredita es la hoja
+  /// firmada, que vive fuera del sistema (`docs/legal/`). Esto es el recordatorio
+  /// de haberla pedido, y la puerta que obliga a pararse a pensarlo.
+  ///
+  /// Sin `consentAt` ni `consentBy`: son columnas para un usuario único que puede
+  /// anotar la fecha en la propia hoja. La que hace falta es esta.
+  hasConsent Boolean @default(false)
+
   deletedAt DateTime? // soft delete: el cron limpia R2 a los 30 días
 
   categoryId String
@@ -243,11 +258,28 @@ model WhatsappClick {
   packageId String?
   package   Package? @relation(fields: [packageId], references: [id], onDelete: SetNull)
 
-  source String? // "hero" | "paquetes" | "footer"
+  /// De dónde salió el clic. La lista buena es `FUENTES` en
+  /// `tracking/dto/track-click.dto.ts`: escribirla aquí a mano garantiza que se
+  /// quede atrás, y ya pasó — este comentario omitía `galeria` desde hace meses.
+  source String?
+
+  /// QUÉ DÍA preguntaba, cuando el clic sale del calendario.
+  ///
+  /// Es fecha de calendario, no instante. Sin esto se sabía CUÁNTA gente
+  /// escribe por un día que ya está cogido, pero no CUÁL — y ese es justo el
+  /// dato accionable: «el 24 de octubre te lo han pedido tres veces» decide si
+  /// James sube el precio ese finde, busca apoyo o le escribe él primero.
+  ///
+  /// La landing ya lo sabía —lo escribe dentro del mensaje de WhatsApp— y lo
+  /// tiraba. Anulable porque los clics del hero, los paquetes o el pie no
+  /// preguntan por ninguna fecha.
+  requestedDate DateTime? @db.Date
 
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+  /// Para «las fechas más pedidas»: el filtro es siempre fuente + ventana.
+  @@index([source, requestedDate])
 }
 
 // ------------------------------------------------------------
@@ -340,12 +372,26 @@ model Lead {
 model SiteSettings {
   id String @id @default("singleton")
 
+  /// Cuándo tocó James el calendario por última vez, para el «actualizado hace
+  /// 2 días» de la web. **No se deriva de `max(BusyDay.updatedAt)`**: desmarcar
+  /// BORRA filas, así que si la más reciente era la que se quitó, ese máximo
+  /// RETROCEDE y la web diría «actualizado hace un mes» justo después de que lo
+  /// tocara. Y esa frase es una promesa: si retrocede, miente en la dirección
+  /// peor. Es el instante de la ACCIÓN, no el de las filas.
+  availabilityUpdatedAt DateTime?
+
   brandName String  @default("James Film")
   role      String?
   tagline   String?
   slogan    String?
   aboutText String? @db.Text // Markdown: el resaltado dorado del flyer
 
+  /// SU CARA, y NO el logo. Estaban compartiendo hueco: «Sobre mí» pintaba
+  /// `logoUrl` en el círculo de la foto, o sea una tira de película donde va
+  /// una persona. Son dos cosas distintas y ninguna sustituye a la otra —
+  /// quien contrata a alguien para diez horas dentro de la boda de su hija
+  /// quiere verle la cara.
+  photoKey     String?
   logoKey      String? // tira de película estilizada
   signatureKey String? // firma manuscrita, SVG
 
@@ -433,4 +479,40 @@ model DeployState {
   finishedAt     DateTime?
   error          String?
   updatedAt      DateTime     @updatedAt
+}
+
+// ------------------------------------------------------------
+//  DISPONIBILIDAD — qué días NO tiene libres
+// ------------------------------------------------------------
+
+/// Un día que James NO tiene libre. Lo que no está aquí, está libre: se guarda
+/// la EXCEPCIÓN, no la norma. Con la tabla vacía el año entero sale libre, que
+/// es lo correcto y lo que no exige mantenimiento. Al revés, un mes que no
+/// hubiera tocado saldría sin disponibilidad y dejaría la web peor que sin
+/// calendario.
+model BusyDay {
+  id String @id @default(cuid())
+
+  /// Fecha de calendario, no instante. `@unique` hace el marcado idempotente
+  /// —marcar dos veces el mismo día no puede crear dos filas— y es además el
+  /// índice por el que se consulta siempre, que es un rango entre dos fechas.
+  /// Sin `@@index([date])`: el `@unique` ya lo crea, y declarar los dos deja un
+  /// índice duplicado que Postgres mantiene en cada escritura para nada.
+  date DateTime @unique @db.Date
+
+  /// PRIVADA. Solo la ve James en el panel; el DTO público no la expone nunca —
+  /// es información de un cliente que no ha dado permiso (Ley 29733).
+  note String?
+
+  /// Los días marcados A LA VEZ comparten grupo: «24 y 25 de octubre» es UNA
+  /// boda, no dos. Cuando James los marca el sistema YA sabe que van juntos;
+  /// reconstruirlo después adivinando —«días seguidos con la misma nota»—
+  /// fallaría justo en el caso real de un sábado de boda seguido de un domingo
+  /// de cumpleaños. Nullable: un día suelto no necesita grupo.
+  groupId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([groupId])
 }

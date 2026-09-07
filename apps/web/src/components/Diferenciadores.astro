@@ -1,0 +1,220 @@
+---
+/**
+ * El bento de «por qué yo». No son cuatro tarjetas iguales en fila: es una
+ * rejilla con PESOS distintos, y el peso es el argumento.
+ *
+ * · El reel alto ocupa dos filas porque el producto es vídeo vertical, y una
+ *   tarjeta 9:16 lo dice sin una palabra.
+ * · La cifra manda: «24 horas» es lo único que ningún competidor de Ayacucho
+ *   promete por escrito, así que ocupa dos columnas y va en NEGATIVO — entre
+ *   tarjetas claras, la oscura es la que salta.
+ * · El testimonio ocupa dos porque es la única prueba que no se puede inventar.
+ *
+ * EL REEL LLENA SU COLUMNA. Llevaba `aspect-9/16` con `max-h-[420px]`, y las
+ * dos cosas juntas no hacen lo que parece: al toparse con el techo de alto, el
+ * navegador **encoge el ANCHO** para conservar la proporción. A 390 px la
+ * tarjeta medía 236 de los 350 de su columna y dejaba 114 px en blanco a la
+ * derecha —medido—, que es exactamente el hueco que se veía. Con `aspect-4/5`
+ * ocupa el ancho entero y sigue siendo vertical; lo que se recorta es la foto,
+ * que para eso lleva `object-cover`.
+ *
+ * A DOS COLUMNAS (`sm`) la cifra se pone AL LADO del reel, no debajo. Con
+ * `col-span-2` a partir de `sm`, el reel ocupaba una columna y la de al lado se
+ * quedaba en blanco: un hueco de media pantalla en mitad del bento, que se lee
+ * como algo que no cargó. Ese `col-span-2` solo hace falta en `lg`, donde hay
+ * cuatro columnas y la cifra tiene que pesar más que una tarjeta suelta.
+ *
+ * En MÓVIL los cuatro diferenciadores dejan de ser fichas y pasan a ser FILAS:
+ * icono a la izquierda, título y frase a la derecha, a todo el ancho.
+ *
+ * Se probó ponerlos de dos en dos para que la sección no se sintiera hueca, y
+ * quedó peor: a 390 px cada ficha son ~175 px, o sea unos 20 caracteres por
+ * línea, y «Cámara, luz y audio propios. No dependo de lo que haya en el salón»
+ * se partía en cinco líneas de tres palabras. Encima, con `justify-between` el
+ * icono queda arriba y el texto abajo, así que dos fichas contiguas con frases
+ * de distinto largo empiezan a alturas distintas. El vacío no se arreglaba
+ * apretando: se arreglaba dándole a la frase el ancho que necesita.
+ *
+ * En fila, la misma frase entra en dos líneas y la tarjeta mide lo que ocupa.
+ * A partir de `sm` vuelve a ser ficha, que es donde la rejilla ya tiene ancho.
+ *
+ * **Las filas se crean, no se declaran**, y 168 px es su SUELO, no su medida
+ * (`minmax(168px, auto)`). Con la altura clavada, el subtítulo del primer
+ * diferenciador se salía de su tarjeta entre 1024 y 1100 px —181 px de texto en
+ * una caja de 168, medido— sin que nada fallara: el texto simplemente se comía
+ * el borde. Con el suelo, la proporción del bento se mantiene y la fila crece
+ * cuando una frase lo pide.
+ *
+ * Y siguen sin declararse (`auto-rows`, no `grid-rows`). Estaban
+ * fijadas a tres de 168 px, y esa tercera es la del testimonio: sin ninguno con
+ * permiso —que es el estado de hoy— la rejilla seguía reservándola y dejaba
+ * **186 px de vacío** al final de la sección, medidos. Se leía como un fallo de
+ * carga, que es justo lo que este proyecto evita en todas partes.
+ *
+ * Y de paso deja de ser un número que hay que acordarse de tocar: con un quinto
+ * diferenciador, tres filas tampoco habrían llegado.
+ */
+import Icono, { type NombreIcono } from './Icono.astro';
+import Seccion from './Seccion.astro';
+import { CIFRA_BENTO, SECCIONES } from '../content/copy';
+import { ESCONDER_SI_FALLA, SIZES, src, srcset } from '../lib/imagen';
+import type { DifferentiatorDto, TestimonialDto } from '@james-film/contracts';
+
+interface Props {
+  items: DifferentiatorDto[];
+  /**
+   * El último trabajo, para la tarjeta alta.
+   *
+   * `href` la convierte en un ENLACE, y hacía falta: era la única imagen de la
+   * sección, llevaba un botón de play dibujado encima y no se podía pulsar.
+   * Un play que no reproduce y una foto que no lleva a ninguna parte son una
+   * promesa rota en el sitio donde la sección enseña trabajo de verdad.
+   */
+  reel?: { titulo: string; pie: string; portada: string | null; href?: string | null } | null;
+  /** El testimonio destacado. Sin ninguno con permiso, la tarjeta no se pinta. */
+  testimonio?: TestimonialDto | null;
+}
+
+const { items, reel = null, testimonio = null } = Astro.props;
+
+/**
+ * `<a>` si hay adónde ir, `<div>` si no. Quien enlaza comprueba que hay
+ * destino: sin galería, la tarjeta se queda decorativa en vez de dar un 404.
+ */
+const CajaReel = reel?.href ? 'a' : 'div';
+
+/**
+ * Los nombres que guarda la API (lucide) → los del juego de la web. Mapa
+ * ESTÁTICO: con resolución dinámica, un nombre que no exista cae al de reserva
+ * en silencio y deja un hueco. Aquí se ve.
+ */
+const ICONOS: Record<string, NombreIcono> = {
+  camera: 'camara',
+  zap: 'rayo',
+  users: 'personas',
+  'bar-chart-3': 'barras',
+  clock: 'reloj',
+  'map-pin': 'ubicacion',
+  package: 'caja',
+  link: 'enlace',
+};
+
+/** La inicial del testimonio, para el avatar de letra. */
+const inicial = testimonio?.authorName?.trim().charAt(0).toUpperCase() ?? '';
+---
+
+<section
+  class="marco flex flex-col gap-5 border-t border-line bg-surface py-10 lg:gap-7 lg:py-18"
+>
+  <Seccion {...SECCIONES.confianza} />
+
+  <div
+    class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:auto-rows-[minmax(168px,auto)] lg:grid-cols-4 lg:gap-4.5"
+  >
+    {
+      reel && (
+        <CajaReel
+          href={reel.href ?? undefined}
+          aria-label={reel.href ? `Ver ${reel.titulo}` : undefined}
+          class="entra group relative block overflow-hidden rounded-panel border border-line transition-colors duration-200 hover:border-brass-400 max-lg:aspect-4/5 lg:row-span-2"
+          style="--i: 0; background: radial-gradient(120% 90% at 40% 30%, #4a3a28 0%, #1c1512 55%, #080706 100%)"
+        >
+          {reel.portada && (
+            <img
+              src={src(reel.portada)}
+              srcset={srcset(reel.portada)}
+              sizes={SIZES.tesela}
+              alt=""
+              loading="lazy"
+              onerror={ESCONDER_SI_FALLA}
+              class="absolute inset-0 h-full w-full object-cover"
+            />
+          )}
+          {/*
+            El color va LITERAL y no con un token: esta tarjeta se queda oscura
+            en los dos temas —su fondo es el material, no la página— y un token
+            que se invierta dejaría el play casi blanco sobre una foto clara.
+          */}
+          <span
+            class="absolute inset-0 flex items-center justify-center text-[rgba(242,239,233,0.4)] transition-colors duration-200 group-hover:text-[rgba(242,239,233,0.85)]"
+            aria-hidden="true"
+          >
+            <Icono nombre="reproducir" tamano={44} grosor={1} />
+          </span>
+          {/* Fondo oscuro en los dos temas: DECLARA sus colores. */}
+          <div
+            class="absolute inset-x-0 bottom-0 p-4.5 pt-12"
+            style="background: linear-gradient(to top, rgba(10,9,8,.94), transparent)"
+          >
+            <p class="font-medium" style="color: #f2efe9">
+              {reel.titulo}
+            </p>
+            <p class="mt-0.5 text-sm" style="color: #a79f94">
+              {reel.pie}
+            </p>
+          </div>
+        </CajaReel>
+      )
+    }
+
+    <!--
+      LA CIFRA. Oscura en los DOS temas y con su color declarado: es lo que la
+      hace saltar entre las claras, y heredarlo la dejaría negra sobre negro en
+      el tema claro. Es uno de los cuatro sitios donde ya se coló ese fallo.
+    -->
+    <div
+      class="entra flex flex-col justify-center gap-1.5 rounded-panel border border-brass-400 p-6 lg:col-span-2"
+      style="--i: 1; background: linear-gradient(140deg, #1e1b18, #141210); color: #f2efe9"
+    >
+      <p
+        class="font-display text-[42px] leading-none font-extrabold tracking-[-0.02em] lg:text-[58px]"
+        style="color: #e5d3ac"
+      >
+        {CIFRA_BENTO.numero}
+      </p>
+      <p class="text-[17px]" style="color: #f2efe9">{CIFRA_BENTO.que}</p>
+      <p class="text-sm" style="color: #a79f94">{CIFRA_BENTO.detalle}</p>
+    </div>
+
+    {
+      items.map((d, i) => (
+        <div
+          class="entra flex items-start gap-3.5 rounded-panel border border-line bg-void p-4.5 sm:flex-col sm:justify-between sm:gap-4 sm:max-lg:min-h-[152px] lg:p-5.5"
+          style={`--i: ${i + 2}`}
+        >
+          <Icono
+            nombre={ICONOS[d.icon ?? ''] ?? 'enlace'}
+            tamano={24}
+            grosor={1.7}
+            clase="mt-0.5 shrink-0 text-brass-400 sm:mt-0"
+          />
+          {/* `min-w-0` o la frase no rompe: un hijo de flex no baja de su ancho
+              mínimo de contenido y empujaría la tarjeta fuera de la columna. */}
+          <div class="min-w-0">
+            <p class="font-medium">{d.title}</p>
+            {d.subtitle && <p class="mt-0.5 text-sm text-ash">{d.subtitle}</p>}
+          </div>
+        </div>
+      ))
+    }
+
+    {
+      testimonio && (
+        <div
+          class="entra flex flex-col justify-center gap-3 rounded-panel border border-line bg-void p-6 sm:col-span-2"
+          style={`--i: ${items.length + 2}`}
+        >
+          <p class="text-[17px] leading-snug lg:text-[19px]">«{testimonio.quote}»</p>
+          <div class="flex items-center gap-2.5">
+            <span class="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-elevated text-sm text-brass-400">
+              {inicial}
+            </span>
+            <span class="text-sm text-ash">
+              {[testimonio.authorName, testimonio.eventType].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+        </div>
+      )
+    }
+  </div>
+</section>

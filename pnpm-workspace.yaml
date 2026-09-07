@@ -33,3 +33,11 @@ allowBuilds:
 overrides:
   lodash: '>=4.18.1'
   deepmerge-ts: '>=8.0.0'
+  # `qs` SÍ está en el camino de una petición: es quien parsea la query string
+  # de Express, y los controllers públicos los llama el navegador de cualquiera.
+  qs: '>=6.16.0'
+  # `mysql2` llega por el CLI de Prisma y en este proyecto NO se carga nunca
+  # —es PostgreSQL con el adaptador `PrismaPg`—, pero acaba en el árbol de
+  # `pnpm deploy --prod` igual, así que se fuerza a la parcheada en vez de
+  # dejar un aviso que se aprende a ignorar.
+  mysql2: '>=3.23.1'

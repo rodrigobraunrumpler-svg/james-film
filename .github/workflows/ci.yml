@@ -89,12 +89,18 @@ jobs:
       # Milisegundos y sin servicios.
       - run: pnpm --filter admin test
 
+      # Y volvió a pasar con la landing: seis ficheros de tests que no corría
+      # nadie desde que se escribieron. El aviso de arriba estaba puesto y aun
+      # así se coló, porque `test` es lo único que hay que enumerar a mano.
+      # Regla: cada app nueva añade su línea AQUÍ el mismo día que tiene tests.
+      - run: pnpm --filter web test
+
       # E2E solo en main: son ~20 s pero levantan API y admin, y en cada PR
       # duplicarían el tiempo de CI por un flujo que apenas cambia. Chrome de
       # verdad, no el Chromium empaquetado: `channel: chrome` lo exige y, aunque
       # hoy el empaquetado decodifica H.264, el navegador de James es Safari y
       # cuanto más cerca esté el de CI, mejor.
-      - name: Playwright
+      - name: Playwright · admin
         if: github.ref == 'refs/heads/main'
         run: |
           pnpm --filter admin exec playwright install --with-deps chrome
@@ -102,12 +108,46 @@ jobs:
           pnpm --filter admin build
           pnpm --filter admin test:e2e
 
-      - name: Guardar el informe de Playwright si algo falla
+      # La landing tiene su PROPIO Playwright y su propio pipeline: prueba
+      # `dist/` con `astro preview`, nunca el servidor de desarrollo. Ahí viven
+      # `enlaces.spec.ts` —el que caza un `href` que el build emite hacia una
+      # página que no genera— y los de contraste en los dos temas. Ninguno se
+      # había ejecutado nunca en CI.
+      #
+      # Su `webServer` levanta el preview, pero NO la API, y el build de Astro
+      # consulta el contrato en tiempo de construcción: sin la API viva
+      # `pnpm build` aborta antes de que Playwright llegue a existir. Por eso se
+      # arranca aquí, y en el MISMO step — un proceso en segundo plano no
+      # sobrevive al final del suyo.
+      #
+      # Chromium empaquetado, no Chrome: `CANAL` es `undefined` salvo que se
+      # pase `PW_CANAL=chrome`, así que instalar Chrome aquí sería pagar por un
+      # navegador que esta suite no usa.
+      #
+      # La API se queda viva al acabar el step y no pasa nada: el
+      # `openapi:export` de más abajo hace `app.init()` sin `listen()`, así que
+      # no compite por el 3000. Comprobado, no supuesto.
+      - name: Playwright · landing
+        if: github.ref == 'refs/heads/main'
+        run: |
+          pnpm --filter web exec playwright install --with-deps chromium
+          pnpm --filter api start &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/galleries >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:3000/galleries >/dev/null \
+            || { echo "::error::La API no levantó en 60 s; el build de Astro no puede construirse sin ella."; exit 1; }
+          pnpm --filter web e2e
+
+      - name: Guardar los informes de Playwright si algo falla
         if: failure() && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: apps/admin/playwright-report/
+          path: |
+            apps/admin/playwright-report/
+            apps/web/playwright-report/
           retention-days: 7
 
       # El contrato público es lo que consume Astro en build time. Si cambia sin
@@ -118,3 +158,61 @@ jobs:
           pnpm --filter api openapi:export
           git diff --exit-code apps/api/docs/openapi-public.json \
             || (echo "::error::El contrato público cambió. Revisa el diff y commitea el JSON si es intencionado." && exit 1)
+
+  # ---------------------------------------------------------------------------
+  # Migraciones de producción. Solo en `main` y solo si `check` pasó entero.
+  #
+  # Está aquí, y no en Railway, por el ORDEN. En Railway se activa «Wait for CI»,
+  # así que el despliegue queda en WAITING hasta que este workflow termine en
+  # verde: con las migraciones dentro, el esquema se aplica SIEMPRE antes de que
+  # arranque el código que lo necesita.
+  #
+  # Sin esto el fallo es silencioso y de los peores: el contenedor arranca, el
+  # healthcheck (`SELECT 1`) pasa, Railway da el deploy por bueno, y la API
+  # revienta en la primera consulta que toque la columna que no existe. Y no se
+  # arregla arrancando las migraciones dentro del contenedor —el Dockerfile lo
+  # razona en su etapa `migrate`—: con dos réplicas arrancarían dos a la vez, y
+  # una migración fallida se leería como «la API está caída».
+  #
+  # DIRECT_URL, nunca DATABASE_URL: el pooler de Neon no soporta las sentencias
+  # de una migración. Es la misma cadena sin `-pooler`.
+  # ---------------------------------------------------------------------------
+  migraciones:
+    needs: check
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    # Grupo propio y SIN cancelación. El `cancel-in-progress` de arriba existe
+    # para no pagar builds obsoletos, pero aplicado aquí mataría una migración a
+    # media aplicación en cuanto llegara otro push.
+    concurrency:
+      group: migraciones-produccion
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # Sin `cp .env.example .env` a propósito: aquí la ÚNICA fuente de la URL
+      # es el secreto. Con el .env de ejemplo delante, un secreto mal puesto
+      # apuntaría a `localhost:5433` y el fallo hablaría de una base local.
+      - run: pnpm install --frozen-lockfile
+
+      - name: El secreto tiene que existir
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          test -n "$DIRECT_URL" \
+            || { echo "::error::Falta el secreto DIRECT_URL. Se despliega código nuevo contra un esquema viejo."; exit 1; }
+
+      # `migrate deploy` es idempotente: si no hay nada pendiente, no hace nada.
+      # Así este job corre en cada push a main sin que haya que acordarse de él.
+      - name: Aplicar migraciones pendientes
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: pnpm --filter api db:deploy

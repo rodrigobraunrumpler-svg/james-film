@@ -1,0 +1,110 @@
+---
+/**
+ * El visor a pantalla completa. UN `<dialog>` nativo para toda la galería, no
+ * uno por medio.
+ *
+ * Nativo y no una capa a mano: trae el foco atrapado, Escape, el `::backdrop`
+ * y el apilado gratis. Hay que llamar a `showModal()`, NUNCA poner el atributo
+ * `open`: con `open` el diálogo se pinta pero el tabulador se pasea por la
+ * página de detrás. Es la misma lección del ⌘K del admin.
+ *
+ * El vídeo se crea al abrir y se DESTRUYE al cerrar. Con seis `<video>` en el
+ * DOM, Safari los precarga y la galería se come el plan de datos de quien la
+ * mira en el 4G de Ayacucho, que es justo el visitante que importa.
+ */
+import Icono from './Icono.astro';
+---
+
+<dialog
+  id="visor"
+  class="m-auto max-h-none max-w-none border-0 bg-transparent p-0 backdrop:bg-black/96 backdrop:backdrop-blur-sm"
+  aria-label="Reproductor"
+>
+  <div class="relative flex h-dvh w-dvw items-center justify-center">
+    <!--
+      El botón de cerrar va DENTRO del diálogo y el primero en el DOM: es lo
+      primero que recibe el foco al abrir, así que quien navega con teclado
+      sale con un Enter sin recorrerse los controles del vídeo.
+    -->
+    <button
+      type="button"
+      data-cerrar
+      class="absolute top-4 right-4 z-10 flex size-12 items-center justify-center rounded-control border border-line bg-void/80 text-bone backdrop-blur-sm"
+      style="color: #f2efe9"
+      aria-label="Cerrar"
+    >
+      <Icono nombre="cerrar" tamano={20} grosor={2} />
+    </button>
+
+    <div data-hueco class="flex max-h-dvh w-full max-w-[min(100vw,calc(100dvh*9/16))]"></div>
+
+    <p
+      data-pie
+      class="absolute inset-x-4 bottom-4 text-center text-sm"
+      style="color: #9c958c"
+    >
+    </p>
+  </div>
+</dialog>
+
+<script>
+  const visor = document.getElementById('visor') as HTMLDialogElement | null;
+  const hueco = visor?.querySelector('[data-hueco]');
+  const pie = visor?.querySelector('[data-pie]');
+
+  if (visor && hueco && pie) {
+    function abrir(boton: HTMLElement) {
+      // Una FOTO también se abre. Antes iba `disabled` y quedaba una tesela
+      // idéntica a las demás que no hacía nada al tocarla: una promesa rota
+      // se nota más que la falta de la función.
+      const url = boton.dataset.url ?? '';
+      let pieza: HTMLElement;
+      if (boton.dataset.tipo === 'PHOTO') {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = boton.dataset.alt ?? '';
+        img.className = 'h-full w-full object-contain';
+        pieza = img;
+      } else {
+        const video = document.createElement('video');
+        video.src = url;
+        if (boton.dataset.poster) video.poster = boton.dataset.poster;
+        video.controls = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.className = 'h-full w-full object-contain';
+        pieza = video;
+      }
+      hueco!.replaceChildren(pieza);
+      pie!.textContent = boton.dataset.pie ?? '';
+      visor!.showModal();
+    }
+
+    function cerrar() {
+      // Vaciar el hueco PARA el vídeo: sin esto sigue sonando con el diálogo
+      // cerrado y no hay forma de callarlo desde la página. Una foto se va
+      // por el mismo camino, y de paso suelta su descarga.
+      hueco!.replaceChildren();
+      pie!.textContent = '';
+    }
+
+    document.querySelectorAll<HTMLElement>('[data-medio]').forEach((b) => {
+      b.addEventListener('click', () => abrir(b));
+    });
+
+    visor.querySelector('[data-cerrar]')?.addEventListener('click', () => visor.close());
+
+    // Pulsar el fondo cierra. El `::backdrop` no recibe clics: el evento llega
+    // al propio `<dialog>`, y solo cuando el punto queda fuera de su caja.
+    visor.addEventListener('click', (e) => {
+      const c = visor.getBoundingClientRect();
+      const dentro =
+        e.clientX >= c.left && e.clientX <= c.right && e.clientY >= c.top && e.clientY <= c.bottom;
+      if (!dentro) visor.close();
+    });
+
+    // `close` cubre Escape y el gesto de retroceso, que no pasan por nuestro
+    // código. Sin él, el vídeo seguiría sonando tras un Escape.
+    visor.addEventListener('close', cerrar);
+  }
+</script>

@@ -239,16 +239,57 @@ describe('confirm: verifica con HEAD', () => {
 });
 
 describe('borrado', () => {
-  it('es soft: la fila queda con deletedAt y el archivo sigue en el bucket', async () => {
+  const subidoYConfirmado = async () => {
     const { body } = await presign([reel()]).expect(201);
     const { mediaId, uploadUrl } = body.data[0];
     await subir(uploadUrl, 'hola mundo!!');
     await confirmar(mediaId);
+    const fila = await prisma.media.findUniqueOrThrow({ where: { id: mediaId } });
+    return { mediaId, storageKey: fila.storageKey as string };
+  };
+
+  /** ¿Sigue el objeto servido por el dominio público? Es la pregunta que importa. */
+  const siguePublicado = async (clave: string) =>
+    (await fetch(`${process.env.CDN_BASE_URL}/${clave}`)).ok;
+
+  it('es soft: la fila queda con deletedAt y el archivo sigue en el bucket', async () => {
+    const { mediaId, storageKey } = await subidoYConfirmado();
 
     await http().delete(`/admin/media/${mediaId}`).set(auth()).expect(204);
 
     const fila = await prisma.media.findUniqueOrThrow({ where: { id: mediaId } });
     expect(fila.deletedAt).not.toBeNull();
+    // A propósito: deshacer un borrado accidental tiene que salir gratis, y el
+    // cron lo purga a los 30 días.
+    expect(await siguePublicado(storageKey), 'el borrado normal NO debe tocar el bucket').toBe(
+      true,
+    );
+  });
+
+  /**
+   * RETIRAR POR SOLICITUD es otra cosa, y la diferencia se mide en el bucket.
+   *
+   * `/uso-de-imagen` promete que «se retira de la web en cuanto se lee el
+   * mensaje», y la Ley 29733 llama a eso cancelación u oposición. Con el soft
+   * delete, el archivo seguía servido en el dominio `media.` durante 30 días
+   * para cualquiera que tuviera el enlace: la promesa se cumplía a medias.
+   */
+  it('RETIRAR saca el archivo del bucket AHORA, no en 30 días', async () => {
+    const { mediaId, storageKey } = await subidoYConfirmado();
+    expect(await siguePublicado(storageKey)).toBe(true);
+
+    await http().post(`/admin/media/${mediaId}/retirar`).set(auth()).expect(204);
+
+    expect(await siguePublicado(storageKey), 'el archivo sigue accesible por su URL').toBe(false);
+
+    // Y la fila NO se borra: hace falta para que el cron no la vuelva a mirar
+    // y para que el uso de disco no cuente lo que ya no existe.
+    const fila = await prisma.media.findUniqueOrThrow({ where: { id: mediaId } });
+    expect(fila.deletedAt).not.toBeNull();
+  });
+
+  it('retirar algo que no existe da 404, no un 500', async () => {
+    await http().post('/admin/media/no-existe/retirar').set(auth()).expect(404);
   });
 });
 

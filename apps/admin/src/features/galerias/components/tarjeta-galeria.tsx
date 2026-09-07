@@ -1,7 +1,8 @@
 import type { AdminGalleryListItemDto } from '@james-film/contracts';
-import { CirclePlay, Star } from 'lucide-react';
+import { CirclePlay, Image as ImageIcon, Star } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { cn } from '@/lib/utils/cn';
 import { duracion, relativo } from '@/lib/format';
 import { ocultarSiFalla } from '@/lib/imagen';
 import { degradadoDe } from '@/lib/degradado';
@@ -28,7 +29,7 @@ export function TarjetaGaleria({ galeria }: { galeria: AdminGalleryListItemDto }
       >
         {/* El degradado va DEBAJO de la imagen: se ve mientras carga y es lo
             único que hay cuando la galería aún no tiene portada. */}
-        <div className="relative aspect-16/10" style={{ background: degradadoDe(galeria.id) }}>
+        <div className="degradado relative aspect-16/10" style={degradadoDe(galeria.id)}>
           {galeria.coverUrl && (
             <Image
               src={galeria.coverUrl}
@@ -53,35 +54,63 @@ export function TarjetaGaleria({ galeria }: { galeria: AdminGalleryListItemDto }
           {esVideo && (
             <span
               aria-hidden
-              className="text-bone/35 group-hover:text-bone/60 absolute inset-0 flex items-center justify-center transition-colors duration-200"
+              className="absolute inset-0 text-white/40 group-hover:text-white/70 flex items-center justify-center transition-colors duration-200"
             >
               <CirclePlay className="size-[30px]" strokeWidth={1.2} />
+            </span>
+          )}
+
+          {/* Una galería recién creada no tiene NADA: ni portada ni medios, así
+              que solo se ve el degradado. Dicho —«Sin medios todavía»— se lee
+              como lo que es; callado se lee como una portada que no cargó, que
+              es justo el fallo del que el `onError` de arriba protege. */}
+          {galeria.mediaCount === 0 && !galeria.coverUrl && (
+            <span
+              aria-hidden
+              className="text-ash absolute inset-0 flex flex-col items-center justify-center gap-1.75 text-xs"
+            >
+              <ImageIcon className="size-5" strokeWidth={1.6} />
+              Sin medios todavía
             </span>
           )}
 
           {/* El estado va donde James mira primero: sin esto, un borrador y una
               galería en vivo se leen exactamente igual. El fondo casi opaco es
               lo que lo mantiene legible sobre una portada clara. */}
-          {!galeria.isPublished && (
-            <span className="text-brass absolute top-2 left-2 rounded px-1.75 py-0.5 text-xs [background:rgba(8,7,6,.82)]">
-              Borrador
-            </span>
-          )}
+          {/* El estado se dice SIEMPRE, no solo cuando es borrador: con el chip
+              únicamente en los borradores, una galería en vivo se leía igual que
+              una tarjeta a la que le falta algo. Verde para lo que está en la
+              web, latón para lo que todavía no. */}
+          <span
+            className={cn(
+              'absolute top-2 left-2 flex items-center gap-1.25 rounded px-1.75 py-0.5 text-xs [background:var(--color-velo)]',
+              galeria.isPublished ? 'text-ok' : 'text-brass',
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'size-1.25 rounded-full',
+                galeria.isPublished ? 'bg-ok-punto' : 'bg-brass-relleno',
+              )}
+            />
+            {galeria.isPublished ? 'Publicada' : 'Borrador'}
+          </span>
 
-          <span className="text-bone absolute top-2 right-2 rounded px-1.75 py-0.5 text-xs [background:rgba(8,7,6,.82)]">
+          <span className="text-bone absolute top-2 right-2 rounded px-1.75 py-0.5 text-xs [background:var(--color-velo)]">
             {galeria.mediaCount} {galeria.mediaCount === 1 ? 'medio' : 'medios'}
           </span>
 
           {tiempo && (
-            <span className="text-bone absolute right-2 bottom-2 rounded px-1.75 py-0.5 text-xs [background:rgba(8,7,6,.82)]">
+            <span className="text-bone absolute right-2 bottom-2 rounded px-1.75 py-0.5 text-xs [background:var(--color-velo)]">
               {tiempo}
             </span>
           )}
 
           {galeria.isFeatured && (
             <span
-              title="Destacada en la portada de la web"
-              className="text-brass absolute bottom-2 left-2 flex items-center gap-1 rounded px-1.75 py-0.5 text-xs [background:rgba(8,7,6,.82)]"
+              title="Es la primera de la web: encabeza el hero y la rejilla de Trabajos"
+              className="text-brass absolute bottom-2 left-2 flex items-center gap-1 rounded px-1.75 py-0.5 text-xs [background:var(--color-velo)]"
             >
               <Star className="size-3 fill-current" aria-hidden />
               Portada

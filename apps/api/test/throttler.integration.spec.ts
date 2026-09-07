@@ -27,7 +27,15 @@ let app: INestApplication;
 beforeAll(async () => {
   const mod = await Test.createTestingModule({
     imports: [
-      ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
+      // `configurarApp` monta el CORS y exige `WEB_ORIGIN`. Este módulo es un
+      // banco de pruebas mínimo que se salta `validateEnv`, así que la variable
+      // se pone a mano. Que `getOrThrow` reviente aquí es lo correcto: en la
+      // app de verdad, faltar esa variable dejaría el clic sin registrar.
+      ConfigModule.forRoot({
+        isGlobal: true,
+        ignoreEnvFile: true,
+        load: [() => ({ WEB_ORIGIN: ['http://localhost:4321'] })],
+      }),
       ThrottlerModule.forRoot([{ ttl: 60_000, limit: 3 }]),
     ],
     controllers: [LimitadoController],

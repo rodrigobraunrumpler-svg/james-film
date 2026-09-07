@@ -91,13 +91,29 @@ export function duracion(segundos: number | null | undefined): string | null {
 
 /** "35 MB". James necesita saber cuánto va a subir antes de empezar. */
 export function tamano(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${Math.round(kb)} KB`;
-  const mb = kb / 1024;
-  if (mb < 1024) return `${Math.round(mb)} MB`;
-  return `${(mb / 1024).toFixed(1)} GB`;
+  const { valor, unidad } = partirTamano(bytes);
+  return `${valor} ${unidad}`;
 }
+
+/**
+ * El número y su unidad por separado, para poder escribir «3.2 / 10 GB» en vez
+ * de «3.2 GB / 10 GB»: repetir la unidad en un par obliga a leerla dos veces
+ * para comparar dos cifras que ya están en la misma escala.
+ *
+ * Y `10.0` se escribe `10`: el decimal de un entero es ruido, y en el medidor
+ * del sidebar compite con el 3.2 de al lado, que sí lo necesita.
+ */
+export function partirTamano(bytes: number): { valor: string; unidad: string } {
+  if (bytes < 1024) return { valor: String(bytes), unidad: 'B' };
+  const kb = bytes / 1024;
+  if (kb < 1024) return { valor: String(Math.round(kb)), unidad: 'KB' };
+  const mb = kb / 1024;
+  if (mb < 1024) return { valor: String(Math.round(mb)), unidad: 'MB' };
+  const gb = mb / 1024;
+  return { valor: sinCeroFinal(gb.toFixed(1)), unidad: 'GB' };
+}
+
+const sinCeroFinal = (v: string): string => (v.endsWith('.0') ? v.slice(0, -2) : v);
 
 /**
  * Soles ENTEROS → céntimos. Con enteros `300 * 100` es exacto y no hay

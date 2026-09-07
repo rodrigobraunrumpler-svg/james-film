@@ -9,6 +9,12 @@ dist/
 *.log
 coverage/
 
+# Salidas de Playwright. Se reescriben en CADA ejecución: sin estas líneas,
+# correr los tests deja el árbol sucio y los informes acaban en un commit.
+test-results/
+playwright-report/
+blob-report/
+
 # Los scaffolds de Next y Astro crean su propio workspace: convierte la app
 # en un proyecto independiente y rompe la resolución del catálogo.
 apps/*/pnpm-workspace.yaml

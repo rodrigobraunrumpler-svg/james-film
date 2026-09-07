@@ -1,0 +1,580 @@
+---
+/**
+ * La barra, en dos alturas.
+ *
+ * Arriba, la TIRA DE CONTEXTO: dónde está y cuándo contesta. Son las dos cosas
+ * que se comprueban antes de escribirle a un desconocido, y en el menú no caben
+ * sin robarle sitio a la navegación.
+ *
+ * Debajo, la barra con el botón verde DESDE EL PRIMER PÍXEL: quien entra
+ * decidido no debería tener que buscar nada.
+ */
+import Icono from './Icono.astro';
+import Marca from './Marca.astro';
+import SelectorTema from './SelectorTema.astro';
+import { CONTEXTO, MENU } from '../content/copy';
+import { enlace, type Fuente } from '../lib/whatsapp';
+
+interface Props {
+  numero: string;
+  display: string;
+  base: string;
+  /** «Quedan 3 sábados libres»: solo si es verdad. Ver el calendario. */
+  disponibilidad?: string | null;
+  /**
+   * Las anclas que la página ha pintado DE VERDAD. Una sección sin contenido
+   * no se pinta, así que un menú fijo acaba enlazando al vacío: sin
+   * testimonios con permiso, «Testimonios» era un enlace que no llevaba a
+   * ningún sitio, y eso se nota más que no tenerlo.
+   */
+  anclas: string[];
+  /**
+   * Anclas que esta página tiene EN SÍ MISMA, así que no se prefijan.
+   *
+   * `/fechas-libres` pinta su propia sección de paquetes, y sin esto el menú
+   * mandaría a `/#paquetes` —la portada— desde una página que ya los tiene
+   * debajo. Peor: el observador resuelve `data-nav` con `getElementById`, así
+   * que marcaría «Paquetes» como la sección activa mientras su enlace se va a
+   * otra página. Mentiría sin romper nada, que es la peor forma de fallar.
+   */
+  locales?: string[];
+  /**
+   * De DÓNDE cuenta el clic de ESTA barra. Por defecto `barra`, y el del menú
+   * desplegable `menu`.
+   *
+   * Se puede sobreescribir porque hay páginas que son otro producto: en
+   * `/negocios` los seis botones de WhatsApp llevan el mensaje de negocios, y
+   * sin esto solo DOS se contaban como `negocios` —los del cuerpo—; la barra, el
+   * menú y la barra pegada se llevaban los otros cuatro a `barra`, `menu` y
+   * `footer`. La línea de publicidad para negocios es medio producto, y medirla
+   * con un tercio de sus clics es no medirla.
+   */
+  fuente?: Fuente;
+  /**
+   * Fuera de la portada, `#paquetes` no lleva a ninguna parte: hay que volver
+   * a `/` primero. Con el prefijo, el mismo menú sirve en las dos y no hay dos
+   * listas que mantener.
+   */
+  prefijo?: string;
+}
+
+/**
+ * `/trabajos/` y `/trabajos` son la misma página.
+ *
+ * El menú usa la forma canónica —con barra final, la que emiten el `canonical`
+ * y el sitemap— y `Astro.url.pathname` puede llegar de las dos formas, así que
+ * se compara sin ella o «estás aquí» dejaría de marcarse.
+ */
+const sinBarra = (r: string) => r.replace(/\/+$/, '') || '/';
+
+const {
+  numero,
+  display,
+  base,
+  disponibilidad = null,
+  anclas,
+  prefijo = '',
+  locales = [],
+  fuente,
+} = Astro.props;
+const href = enlace({ numero, base });
+const menu = MENU.filter((m) => anclas.includes(m.href)).map((m) => ({
+  ...m,
+  // El prefijo solo vale para las ANCLAS. Una ruta que ya empieza por `/` es
+  // absoluta: prefijarla daría `//fechas-libres`, que el navegador lee como
+  // otro dominio.
+  href: m.href.startsWith('#') && !locales.includes(m.href) ? `${prefijo}${m.href}` : m.href,
+  /**
+   * En qué PÁGINA estás, marcado desde el servidor.
+   *
+   * El observador de secciones solo sabe de anclas, así que «Fechas libres»,
+   * «Negocios» y «Sobre mí» —que son páginas propias— no se marcaban nunca: se
+   * estaba dentro de una y el menú no lo decía. Y esto no puede esperar a JS,
+   * porque no cambia al hacer scroll: es dónde estás desde el primer pintado.
+   */
+  /*
+   * Y también DENTRO de la sección: en `/trabajos/xv-de-camila` el menú decía
+   * que no estabas en ninguna parte. Se compara con `/` detrás para que
+   * `/trabajos` no case con un hipotético `/trabajos-de-empresa`.
+   */
+  activo:
+    !m.href.startsWith('#') &&
+    (sinBarra(m.href) === sinBarra(Astro.url.pathname) ||
+      Astro.url.pathname.startsWith(`${sinBarra(m.href)}/`)),
+}));
+---
+
+<!--
+  El TOPE. No ocupa nada —su padre mide cero de alto y él va absoluto— y solo
+  existe para que un `IntersectionObserver` sepa cuándo se ha bajado de los
+  primeros 96 px. Con un listener de `scroll` haría falta leer `scrollY` en cada
+  fotograma del gesto; así el navegador avisa una vez al cruzar y nada más.
+-->
+<div class="relative h-0" aria-hidden="true">
+  <span data-tope class="pointer-events-none absolute top-0 left-0 h-24 w-px"></span>
+</div>
+
+<div class="sticky top-0 z-40" data-barra>
+  <!-- Tira de contexto. En móvil se queda con lo esencial. -->
+  <div
+    data-tira
+    class="flex items-center justify-center gap-3.5 bg-surface marco py-2 text-xs text-ash lg:justify-between"
+  >
+    <div class="flex items-center gap-5">
+      <span class="flex items-center gap-1.5">
+        <Icono nombre="ubicacion" tamano={13} grosor={1.9} clase="text-brass-600" />
+        <span class="hidden sm:inline">{CONTEXTO.lugar}</span>
+        <span class="sm:hidden">Ayacucho</span>
+      </span>
+      <span class="hidden h-[3px] w-[3px] rounded-full bg-line-strong sm:block"></span>
+      <span class="flex items-center gap-1.5">
+        <Icono nombre="reloj" tamano={13} grosor={1.9} clase="text-brass-600" />
+        {CONTEXTO.horario}
+      </span>
+    </div>
+    {
+      disponibilidad && (
+        <a href="/fechas-libres/" class="hidden items-center gap-1.5 text-brass-200 lg:flex">
+          <span class="vivo h-1.5 w-1.5 rounded-full bg-brass-relleno" />
+          {disponibilidad}
+        </a>
+      )
+    }
+  </div>
+
+  <div
+    class="flex items-center justify-between border-b border-line bg-void/90 marco py-3 backdrop-blur-md lg:py-4"
+  >
+    <!--
+      `min-w-11` para el caso de 340px hacia abajo: ahí el texto de la marca se
+      esconde y quedaba SOLO el icono, o sea 26px de ancho. El alto seguía en 48
+      y por eso ningún test lo veía —se mide el alto, casi nunca el ancho—, pero
+      un objetivo de 26px se falla con el pulgar.
+    -->
+    <a
+      href="/"
+      class="flex min-h-12 min-w-11 shrink-0 items-center gap-2 text-bone [&_span]:max-[340px]:hidden"
+      aria-label="James Film, ir al inicio"
+    >
+      <Marca />
+    </a>
+
+    <!--
+      Escritorio: las cinco entradas con su icono.
+
+      El ACTIVO va con `box-shadow: inset 0 -2px 0`, no con un `border-bottom`:
+      un borde de 2px solo en el activo empuja el texto 2px y el menú entero
+      baila al navegar. Es la misma regla que el filo del sidebar del admin.
+    -->
+    {/*
+      SEIS entradas y un número de teléfono no caben a 1280.
+      Y no desbordaban —eso se habría visto—: el `h-12` mantiene el ancla a 48px
+      mientras el `overflow-wrap: anywhere` del `body` **parte las palabras
+      dentro**, así que salía «Trabaj / os» y «Testimoni / os». Un `h-12` fijo
+      esconde el síntoma que un test de desbordes busca.
+
+      Se arregla apretando el menú entre `lg` y `xl` —texto y padding más
+      pequeños, sin iconos— y devolviéndole el tamaño en `xl`, donde sí cabe.
+      El `whitespace-nowrap` es lo que impide que una palabra se vuelva a partir
+      si algún día entra una entrada más.
+    */}
+    <nav class="hidden items-center gap-0.5 lg:flex 2xl:gap-2" aria-label="Principal">
+      {
+        menu.map((m) => (
+          <a
+            href={m.href}
+            data-nav={m.href}
+            data-activo={m.activo ? '' : undefined}
+            aria-current={m.activo ? 'page' : undefined}
+            class="flex h-12 items-center gap-2 rounded-control px-2 text-sm whitespace-nowrap text-bone transition-colors duration-150 hover:text-brass-200 data-[activo]:text-brass-200 data-[activo]:shadow-[inset_0_-2px_0_var(--color-brass-relleno)] 2xl:px-3.5 2xl:text-base"
+          >
+            <Icono
+              nombre={m.icono}
+              tamano={17}
+              clase="hidden text-ash 2xl:block [a[data-activo]_&]:text-brass-relleno"
+            />
+            {m.texto}
+          </a>
+        ))
+      }
+      <SelectorTema />
+      <a
+        href={href}
+        data-wa
+        data-fuente={fuente ?? 'barra'}
+        target="_blank"
+        rel="noopener"
+        class="ml-1 flex h-12 shrink-0 items-center gap-2.5 rounded-control boton-wa px-3.5 font-semibold whitespace-nowrap 2xl:px-5"
+      >
+        <Icono nombre="chat" tamano={18} grosor={2.1} />
+        {display}
+      </a>
+    </nav>
+
+    <!--
+      Móvil: tema y verde, los dos a 48 y **sin encogerse**. Sin `shrink-0`,
+      «JAMES FILM» y «Escribir» se partían en dos líneas cada uno.
+
+      **NO hay hamburguesa, y no es un olvido.** La tenía, y era un enlace a
+      `#menu` — o sea, a la tira de píldoras que está justo debajo y SIEMPRE a
+      la vista. Pulsarla no abría nada porque no había nada que abrir: prometía
+      un menú escondido que no existe. Es la misma decisión que ya estaba
+      escrita abajo —en un móvil no hay hover, y lo que se esconde no se
+      descubre—, solo que el botón se había quedado ahí contradiciéndola. Y de
+      paso devuelve 48 px a la fila, que a 320 px iban justos.
+    -->
+    <div class="flex shrink-0 items-center gap-0.5 lg:hidden">
+      <SelectorTema />
+      <a
+        href={href}
+        data-wa
+        data-fuente={fuente ?? 'barra'}
+        target="_blank"
+        rel="noopener"
+        class="flex h-12 shrink-0 items-center gap-1.5 rounded-control boton-wa px-4 text-sm font-semibold whitespace-nowrap max-[380px]:px-3.5"
+      >
+        <Icono nombre="chat" tamano={17} grosor={2.1} />
+        {/*
+          Bajo 380 px el botón se queda en su icono. Lo que se encoge es la
+          PALABRA, nunca el nombre de la marca: el iPhone 12 Mini mide 379 y
+          con el corte anterior —380— se quedaba sin «JAMES FILM», que en un
+          negocio que nadie conoce todavía es lo único que identifica.
+        */}
+        <span class="max-[380px]:hidden">Escribir</span>
+      </a>
+      <button
+        type="button"
+        data-abrir-menu
+        class="flex size-12 shrink-0 items-center justify-center rounded-control text-bone transition-transform duration-150 active:scale-90"
+        aria-label="Abrir el menú"
+        aria-haspopup="dialog"
+      >
+        <Icono nombre="menu" tamano={22} grosor={1.8} />
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!--
+  EL MENÚ DE MÓVIL, en un `<dialog>` nativo.
+
+  Antes eran píldoras deslizables, y el argumento era bueno: en un móvil no hay
+  hover y lo que se esconde no se descubre. Pero con CINCO entradas —y tres de
+  ellas páginas propias— **solo se veían dos**, y las otras tres quedaban detrás
+  de un deslizamiento que nada anuncia. Eso es MENOS descubrible que un botón
+  de menú, no más: al menos el botón se ve.
+
+  `<dialog>` y no una capa a mano: trae el foco atrapado, Escape, el
+  `::backdrop` y el apilado gratis. Hay que llamar a `showModal()`, NUNCA poner
+  el atributo `open` — con `open` se pinta pero el tabulador se pasea por la
+  página de detrás. Es la misma lección del ⌘K del admin y del visor.
+-->
+<dialog
+  id="menu-movil"
+  class="m-0 max-h-none max-w-none border-0 bg-transparent p-0 backdrop:bg-black/70 backdrop:backdrop-blur-sm lg:hidden"
+  aria-label="Menú"
+>
+  <div class="flex h-dvh w-dvw flex-col justify-end">
+    <div
+      data-panel
+      class="flex flex-col gap-1 rounded-t-panel border-t border-line bg-void px-5 pt-3 pb-6"
+    >
+      <div class="mx-auto mb-2 h-1 w-10 shrink-0 rounded-full bg-line-strong"></div>
+
+      <!--
+        Estos enlaces NO llevan `entra`. La cascada de entrada la dispara un
+        `IntersectionObserver`, y aquí viven dentro de un `<dialog>` cerrado:
+        hasta que se abre no intersecan nada, así que las dos últimas aparecían
+        desvanecidas casi medio segundo después de abrir el menú y se leían como
+        un fallo. Un menú tiene que estar legible en el fotograma en que se
+        abre; la entrada escalonada es para lo que aparece al bajar.
+      -->
+
+      {
+        menu.map((m) => (
+          <a
+            href={m.href}
+            data-nav={m.href}
+            data-activo={m.activo ? '' : undefined}
+            aria-current={m.activo ? 'page' : undefined}
+            class="flex min-h-14 items-center gap-3.5 rounded-control px-3 text-lg text-bone transition-colors duration-150 active:bg-brass-relleno/10 data-[activo]:bg-brass-relleno/10 data-[activo]:text-brass-200"
+          >
+            <Icono
+              nombre={m.icono}
+              tamano={20}
+              grosor={1.8}
+              clase="text-brass-400"
+            />
+            {m.texto}
+          </a>
+        ))
+      }
+
+      <a
+        href={href}
+        data-wa
+        data-fuente={fuente ?? 'menu'}
+        target="_blank"
+        rel="noopener"
+        class="mt-3 flex h-14 items-center justify-center gap-2.5 rounded-control boton-wa font-semibold"
+      >
+        <Icono nombre="chat" tamano={19} grosor={2.1} />
+        {display}
+      </a>
+
+      <button
+        type="button"
+        data-cerrar-menu
+        class="mt-1 flex min-h-12 items-center justify-center gap-2 text-ash"
+      >
+        <Icono nombre="cerrar" tamano={17} />
+        Cerrar
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<style is:global>
+  /**
+   * EL MENÚ ENTRA DESLIZÁNDOSE, y SALE deslizándose.
+   *
+   * Lo segundo es lo que no se puede hacer a mano: `close()` saca el `<dialog>`
+   * de la capa superior en el mismo fotograma, así que una animación de salida
+   * no llega a verse. Se resuelve con `transition-behavior: allow-discrete`
+   * sobre `display` y `overlay` —que mantienen el diálogo mientras dura la
+   * transición— y `@starting-style`, que es de dónde ARRANCA al abrirse.
+   * Nativo en Chrome 117+, Safari 17.4+ y Firefox 129+; donde no exista,
+   * aparece y desaparece de golpe, que es lo que hacía hasta ahora.
+   *
+   * Solo `transform` y `opacity`, 260 ms, y dentro de `prefers-reduced-motion`.
+   * Un menú tiene que estar legible en cuanto se abre, así que la cascada de
+   * entrada de sus enlaces sigue sin existir: lo que se mueve es el panel
+   * entero, una sola capa que resuelve el compositor.
+   *
+   * `is:global` y no un estilo con ámbito: `::backdrop` no es un descendiente
+   * del diálogo y el atributo de ámbito de Astro no llega hasta él. El `#id` ya
+   * lo acota a este único elemento.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    #menu-movil {
+      transition:
+        display 260ms allow-discrete,
+        overlay 260ms allow-discrete;
+    }
+
+    #menu-movil [data-panel] {
+      transform: translateY(100%);
+      transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    #menu-movil[open] [data-panel] {
+      transform: translateY(0);
+    }
+
+    #menu-movil::backdrop {
+      opacity: 0;
+      transition:
+        opacity 260ms ease,
+        display 260ms allow-discrete,
+        overlay 260ms allow-discrete;
+    }
+    #menu-movil[open]::backdrop {
+      opacity: 1;
+    }
+
+    /* De dónde arranca la PRIMERA vez que se pinta. Sin esto no hay transición
+       de entrada: el elemento nace ya en su estado final. */
+    @starting-style {
+      #menu-movil[open] [data-panel] {
+        transform: translateY(100%);
+      }
+      #menu-movil[open]::backdrop {
+        opacity: 0;
+      }
+    }
+  }
+</style>
+
+<script>
+  /**
+   * La barra se COMPACTA al bajar.
+   *
+   * La tira de contexto —dónde está y cuándo contesta— es lo que se comprueba
+   * ANTES de escribirle a un desconocido: hace falta al llegar, no durante toda
+   * la visita. Pegada, son 35 px de los 844 de un iPhone ocupados para siempre,
+   * justo en el borde donde ya vive el resto de la barra.
+   *
+   * Vuelve sola al subir del todo, así que no se pierde: es el mismo gesto con
+   * el que se vuelve arriba a por el botón verde.
+   *
+   * El alto se MIDE, no se escribe: la tira mide distinto en móvil que en
+   * escritorio, y un número a mano se queda desfasado en cuanto cambie el
+   * texto. Es la misma razón por la que el último tramo de un salto largo usa
+   * `scrollIntoView` en vez de restar 128 a mano.
+   */
+  const barra = document.querySelector<HTMLElement>('[data-barra]');
+  const tira = barra?.querySelector<HTMLElement>('[data-tira]');
+  const tope = document.querySelector<HTMLElement>('[data-tope]');
+
+  if (barra && tira && tope && 'IntersectionObserver' in window) {
+    // El callback de `ResizeObserver` se dispara al observar, así que esto ya
+    // deja `--tira` puesta antes del primer scroll.
+    new ResizeObserver(() => {
+      barra.style.setProperty('--tira', `${tira.offsetHeight}px`);
+    }).observe(tira);
+
+    new IntersectionObserver(([e]) => {
+      barra.toggleAttribute('data-compacta', !e.isIntersecting);
+    }).observe(tope);
+  }
+</script>
+
+<script>
+  /**
+   * Qué sección se está mirando. El menú lo pinta con su filo de latón.
+   *
+   * `data-nav` llevaba puesto desde el principio y **no lo leía nadie**: era el
+   * enganche de esto, que faltaba. Un menú de cinco entradas sin marcar dónde
+   * estás obliga a deducirlo del scroll.
+   *
+   * Con `IntersectionObserver` y no con un listener de `scroll`: el listener se
+   * dispara decenas de veces por gesto y recalcula posiciones en el hilo
+   * principal, que es justo lo que el presupuesto de INP protege.
+   */
+  /**
+   * SOLO las anclas. Las entradas que son páginas propias ya vienen marcadas
+   * del servidor con `data-activo`, y si entraran aquí el observador se lo
+   * quitaría en su primer disparo: estando en «Negocios», el menú apagaba
+   * «Negocios» en cuanto se hacía el primer scroll.
+   */
+  /**
+   * Y NO se observa nada si el servidor ya marcó una PÁGINA.
+   *
+   * En `/fechas-libres`, que ahora tiene su propia sección de paquetes, se
+   * encendían las dos a la vez: «Fechas libres» desde el servidor —porque es
+   * donde estás— y «Paquetes» desde aquí al llegar a la sección. Dos entradas
+   * marcadas no dicen dónde estás, preguntan cuál de las dos es.
+   *
+   * Manda la página: es el dato más grande y el que no cambia al hacer scroll.
+   * En la portada no hay ninguna marcada del servidor —`/` no está en el menú—
+   * así que allí el observador sigue funcionando igual.
+   */
+  const yaEstaMarcada = document.querySelector('[data-nav][data-activo]') !== null;
+
+  const enlaces = yaEstaMarcada
+    ? []
+    : [...document.querySelectorAll<HTMLElement>('[data-nav]')].filter((a) =>
+        (a.dataset.nav ?? '').includes('#'),
+      );
+  const anclas = [...new Set(enlaces.map((a) => a.dataset.nav ?? ''))]
+    .filter((h) => h.includes('#'))
+    .map((h) => document.getElementById(h.slice(h.indexOf('#') + 1)))
+    .filter((s): s is HTMLElement => s !== null);
+
+  if (anclas.length && 'IntersectionObserver' in window) {
+    const visibles = new Set<Element>();
+
+    const ojo = new IntersectionObserver(
+      (entradas) => {
+        for (const e of entradas) {
+          if (e.isIntersecting) visibles.add(e.target);
+          else visibles.delete(e.target);
+        }
+        // La de MÁS ARRIBA de las visibles manda. Con la última, al llegar al
+        // pie se marcaría la sección de abajo mientras se lee la de en medio.
+        const activa = anclas.find((s) => visibles.has(s)) ?? null;
+        for (const a of enlaces) {
+          const suya = activa !== null && (a.dataset.nav ?? '').endsWith(`#${activa.id}`);
+          a.toggleAttribute('data-activo', suya);
+        }
+      },
+      // La cabecera mide 177px en móvil y 116 en escritorio: sin descontarla,
+      // una sección se marcaría activa mientras sigue debajo de la barra.
+      { rootMargin: '-190px 0px -55% 0px' },
+    );
+
+    for (const seccion of anclas) ojo.observe(seccion);
+  }
+</script>
+
+<script>
+  /**
+   * El menú de móvil.
+   *
+   * `showModal()` y no el atributo `open`: con `open` el diálogo se pinta pero
+   * el tabulador se pasea por la página de detrás. Y `close` es obligatorio —
+   * cubre Escape y el gesto de retroceso, que no pasan por nuestro código.
+   */
+  const dialogo = document.getElementById('menu-movil') as HTMLDialogElement | null;
+
+  if (dialogo) {
+    /**
+     * Con el menú abierto, la página de debajo NO se mueve.
+     *
+     * Un `<dialog>` modal **no bloquea el scroll de la página**: con el menú
+     * abierto, arrastrar sobre el fondo movía lo de detrás, y al cerrar
+     * aparecías en otro sitio del que estabas leyendo. En un móvil pasa solo,
+     * porque el dedo cae casi siempre fuera del panel.
+     *
+     * ⚠ Ojo con medir esto: `locator.click()` de Playwright hace scroll-into-view
+     * ANTES de pulsar, así que un test que mire «¿saltó la página al abrir?»
+     * mide su propio desplazamiento. Aquí dio −450 px constantes en todos los
+     * anchos hasta que se repitió con `mouse.click()` sobre las coordenadas del
+     * botón: con un clic de verdad, `showModal()` no mueve nada. El fallo real
+     * era el otro, el de arrastrar con el menú ya abierto.
+     *
+     * Y se compensa el ancho de la barra de scroll cuando la hay: quitarla sin
+     * más ensancha el documento y toda la página da un tirón lateral. En un
+     * móvil no existe y no compensa nada.
+     */
+    const raiz = document.documentElement;
+    let padOriginal = '';
+
+    dialogo.addEventListener('close', () => {
+      raiz.style.overflow = '';
+      raiz.style.paddingRight = padOriginal;
+    });
+
+    for (const b of document.querySelectorAll('[data-abrir-menu]')) {
+      b.addEventListener('click', () => {
+        const barra = window.innerWidth - raiz.clientWidth;
+        padOriginal = raiz.style.paddingRight;
+        raiz.style.overflow = 'hidden';
+        if (barra > 0) raiz.style.paddingRight = `${barra}px`;
+        dialogo.showModal();
+      });
+    }
+    dialogo.querySelector('[data-cerrar-menu]')?.addEventListener('click', () => dialogo.close());
+
+    /**
+     * Un enlace que apunta a esta misma página no navega, así que el diálogo
+     * se quedaría abierto tapando justo la sección a la que acabas de ir.
+     *
+     * Y hay que REHACER el salto: `close()` devuelve el foco al botón que
+     * abrió, y enfocarlo lo trae a la vista — o sea, deshace el salto al ancla
+     * que el enlace acababa de dar y te deja arriba del todo. Se repite en el
+     * siguiente fotograma, cuando el foco ya se ha movido.
+     */
+    for (const a of dialogo.querySelectorAll('a')) {
+      a.addEventListener('click', () => {
+        const destino = a.getAttribute('href') ?? '';
+        dialogo.close();
+        if (destino.startsWith('#')) {
+          const seccion = document.querySelector(destino);
+          if (seccion) requestAnimationFrame(() => seccion.scrollIntoView({ block: 'start' }));
+        }
+      });
+    }
+
+    // Pulsar el fondo cierra. El `::backdrop` no recibe clics: el evento llega
+    // al propio `<dialog>`, y solo cuando el punto queda fuera de su contenido.
+    dialogo.addEventListener('click', (e) => {
+      const panel = dialogo.firstElementChild?.lastElementChild;
+      if (!(panel instanceof Element)) return;
+      const c = panel.getBoundingClientRect();
+      const dentro =
+        e.clientX >= c.left && e.clientX <= c.right && e.clientY >= c.top && e.clientY <= c.bottom;
+      if (!dentro) dialogo.close();
+    });
+  }
+</script>

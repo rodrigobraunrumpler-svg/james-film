@@ -1,0 +1,202 @@
+---
+/**
+ * Los trabajos de UNA categoría, cada una con su URL.
+ *
+ * Existe porque las tarjetas de la portada ya prometían esto —«Entra en el
+ * tuyo y mira solo esos trabajos»— y enlazaban a `/bodas`, `/xv-anos`… que
+ * **no existían**: las cinco daban 404. El fallo no lo veía nadie desde el
+ * código; se ve comparando los `href` que emite el build con las páginas que
+ * el build genera, y ahora hay un test que lo hace.
+ *
+ * Y no es solo arreglar el enlace: «videos de bodas en Ayacucho» es
+ * literalmente lo que busca su cliente, y eso necesita una URL propia.
+ */
+import Layout from '../layouts/Layout.astro';
+import Barra from '../components/Barra.astro';
+import BarraPegada from '../components/BarraPegada.astro';
+import Icono from '../components/Icono.astro';
+import Migas from '../components/Migas.astro';
+import Paquetes from '../components/Paquetes.astro';
+import Pie from '../components/Pie.astro';
+import RejillaTrabajos from '../components/RejillaTrabajos.astro';
+import { CATEGORIA_CONTENIDO, PISTAS } from '../content/copy';
+import { api } from '../lib/api';
+import { og } from '../lib/imagen';
+import type { CategoryDto, GalleryListItemDto } from '@james-film/contracts';
+
+export async function getStaticPaths() {
+  const [ajustes, redes, categorias, galerias] = await Promise.all([
+    api.ajustes(),
+    api.redes(),
+    api.categorias(),
+    api.galerias(),
+  ]);
+
+  /**
+   * Con trabajos **o** con texto propio.
+   *
+   * Antes sólo con trabajos, y por eso hoy no se genera ninguna: «video de
+   * bodas en Ayacucho» y «video para 15 años Ayacucho» son las búsquedas de
+   * más intención del negocio y no había URL a la que mandarlas — sólo la
+   * portada, compitiendo por todo a la vez.
+   *
+   * Pero **no se generan vacías y calcadas**: hace falta que la categoría
+   * tenga `description` escrita por James en el panel. Cuatro páginas con el
+   * mismo texto de respaldo serían doorway pages, que Google trata como spam y
+   * arrastran al dominio entero. Sin texto y sin trabajos, la página no existe
+   * — y la portada tampoco pinta su tarjeta, así que nadie enlaza al vacío.
+   */
+  const paquetes = await api.paquetes();
+
+  return categorias
+    .map((c) => ({ c, suyas: galerias.filter((g) => g.category.slug === c.slug) }))
+    /*
+     * Con trabajos, **o** con `description` Y bloque de contenido propio.
+     *
+     * La `description` sola no basta y ése era el fallo: producía un titular,
+     * un párrafo, una rejilla vacía y el bloque de paquetes repetido, o sea la
+     * doorway page que este comentario dice evitar. El bloque de `copy.ts` es
+     * lo que hace que la página tenga algo que ninguna otra tiene.
+     */
+    .filter(
+      ({ c, suyas }) =>
+        suyas.length > 0 || (Boolean(c.description?.trim()) && Boolean(CATEGORIA_CONTENIDO[c.slug])),
+    )
+    .map(({ c, suyas }) => ({
+      params: { categoria: c.slug },
+      props: { categoria: c, galerias: suyas, ajustes, redes, paquetes, total: galerias.length },
+    }));
+}
+
+const { categoria, galerias, ajustes, redes, paquetes, total } = Astro.props as {
+  categoria: CategoryDto;
+  galerias: GalleryListItemDto[];
+  ajustes: Awaited<ReturnType<typeof api.ajustes>>;
+  redes: Awaited<ReturnType<typeof api.redes>>;
+  paquetes: Awaited<ReturnType<typeof api.paquetes>>;
+  total: number;
+};
+
+const numero = ajustes.whatsappNumber;
+const base = ajustes.whatsappMessage ?? '';
+const display = ajustes.whatsappDisplay ?? numero;
+
+const contenido = CATEGORIA_CONTENIDO[categoria.slug] ?? null;
+
+const portada = categoria.coverUrl ?? galerias.find((g) => g.coverUrl)?.coverUrl ?? null;
+const cuantas = `${galerias.length} ${galerias.length === 1 ? 'evento' : 'eventos'}`;
+---
+
+<Layout
+  titulo={`Video de ${categoria.name.toLowerCase()} en Ayacucho · ${ajustes.brandName}`}
+  descripcion={categoria.description ??
+    `Reels y aftermovies de ${categoria.name.toLowerCase()} grabados en Ayacucho. ${cuantas}.`}
+  imagen={portada ? og(portada) : ajustes.ogImageUrl}
+>
+  <Migas
+    slot="head"
+    ruta={[
+      { nombre: 'Inicio', href: '/' },
+      { nombre: 'Trabajos', href: '/trabajos/' },
+      { nombre: categoria.name },
+    ]}
+  />
+  <Barra {numero} {display} {base} anclas={['/trabajos/', '#paquetes', '/fechas-libres/', '/negocios/', '/sobre-mi/']} prefijo="/" />
+
+  <main id="contenido" class="flex flex-col gap-5 marco py-6 lg:gap-8 lg:py-10">
+    <div class="flex flex-col gap-3">
+      <a href="/trabajos/" class="flex min-h-12 items-center gap-2 text-ash">
+        <Icono nombre="atras" tamano={18} />
+        Todos los trabajos
+      </a>
+      <div class="flex flex-col gap-1.5">
+        {/*
+          «Bodas» a secas no dice si esta página es de un salón, de una wedding
+          planner o de vídeo — y el `title` ya lo decía. Con el servicio y la
+          ciudad dentro, el h1 y el title cuentan lo mismo, que es lo que un
+          rastreador comprueba primero.
+        */}
+        <h1
+          class="font-display text-[34px] leading-[1.06] font-extrabold tracking-[-0.025em] lg:text-[52px]"
+        >
+          Video de {categoria.name.toLowerCase()} en Ayacucho
+        </h1>
+        {/* `tagline` llevaba en `CategoryDto` desde la fase 2 y no lo pintaba
+            nadie: es la frase corta de la categoría, y aquí es lo que separa
+            esta página de las otras tres. */}
+        {categoria.tagline && (
+          <p class="text-[19px] text-brass-200 lg:text-[22px]">{categoria.tagline}</p>
+        )}
+        <p class="max-w-[62ch] text-ash">{categoria.description ?? PISTAS.galerias}</p>
+        {galerias.length > 0 && <p class="text-sm text-brass-600">{cuantas}</p>}
+      </div>
+    </div>
+
+    <RejillaTrabajos {galerias} vacio={`Todavía no hay trabajos de ${categoria.name.toLowerCase()}.`} />
+
+    {
+      total > galerias.length && (
+        <a
+          href="/trabajos/"
+          class="flex h-12 items-center justify-center gap-2 rounded-control border border-line text-brass-200 lg:w-[300px]"
+        >
+          Ver los {total} trabajos
+          <Icono nombre="flecha" tamano={17} />
+        </a>
+      )
+    }
+
+    {
+      contenido && (
+        <>
+          {/*
+            EL CUERPO de esta categoría, que es lo único que ninguna otra página
+            tiene. Va DESPUÉS de la rejilla: quien entra viene a ver trabajos, y
+            leer trescientas palabras antes de la primera miniatura es pedirle
+            que se gane el material.
+          */}
+          <section class="entra flex flex-col gap-5 border-t border-line pt-7 lg:gap-7 lg:pt-10">
+            <h2 class="font-display text-[24px] font-extrabold tracking-[-0.02em] lg:text-[34px]">
+              Cómo grabo {categoria.name.toLowerCase()} en Ayacucho
+            </h2>
+            <div class="flex flex-col gap-5 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] lg:gap-7">
+              {contenido.comoEs.map((bloque) => (
+                <div class="flex flex-col gap-1.5">
+                  <h3 class="font-medium text-brass-200">{bloque.titulo}</h3>
+                  <p class="max-w-[62ch] text-ash">{bloque.texto}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {contenido.preguntas.length > 0 && (
+            <section class="entra flex flex-col gap-4 border-t border-line pt-7 lg:pt-10">
+              <h2 class="font-display text-[24px] font-extrabold tracking-[-0.02em] lg:text-[34px]">
+                Lo que me preguntan de {categoria.name.toLowerCase()}
+              </h2>
+              <dl class="flex flex-col gap-5">
+                {contenido.preguntas.map((q) => (
+                  <div class="flex flex-col gap-1.5">
+                    <dt class="font-medium">{q.p}</dt>
+                    <dd class="max-w-[62ch] text-ash">{q.r}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+        </>
+      )
+    }
+
+    {/*
+      Los paquetes, aquí abajo. Sin esto la página es un titular, un párrafo y
+      una rejilla que puede estar vacía: no hay ningún camino al botón verde
+      salvo la barra. Es el mismo componente de la portada, `suelto` porque este
+      `main` ya trae `marco`.
+    */}
+    <Paquetes {paquetes} {numero} baseGeneral={base} suelto />
+  </main>
+
+  <Pie {redes} email={ajustes.email} marca={ajustes.brandName} />
+  <BarraPegada {numero} {base} />
+</Layout>

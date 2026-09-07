@@ -1,0 +1,167 @@
+---
+/**
+ * Quién es James.
+ *
+ * **Con cara y con apellido**, y eso no es un adorno: esta persona va a estar
+ * diez horas dentro de la boda de una hija, y quien paga por adelantado a
+ * alguien que conoció por internet necesita saber a quién. Sin foto, la sección
+ * podría ser de cualquiera.
+ *
+ * MARCADORES mientras James no los dé: el hueco se ve, no se disimula. Un
+ * avatar genérico sería peor que un hueco declarado.
+ *
+ * `aboutText` es Markdown y **solo usa negrita** —el resaltado dorado del
+ * flyer— y se renderiza AQUÍ, en build: no llega markdown sin procesar al
+ * navegador.
+ */
+import { ESCONDER_SI_FALLA, src } from '../lib/imagen';
+import Icono from './Icono.astro';
+import Testimonios from './Testimonios.astro';
+import type { TestimonialDto } from '@james-film/contracts';
+
+interface Props {
+  /**
+   * Los testimonios, EN LA MISMA sección. El prototipo los pone a dos columnas
+   * junto a «Sobre mí», y tiene su lógica: la cara de quien graba y la voz de
+   * quien le contrató se leen juntas o no se leen. Separados, el bloque de
+   * testimonios quedaba flotando entre el calendario y las preguntas.
+   */
+  testimonios?: TestimonialDto[];
+  /** Cuántos hay publicados en total, para la salida a `/testimonios`. */
+  totalTestimonios?: number;
+  /**
+   * Las categorías, como chips. En el prototipo van aquí y no es decoración:
+   * dicen QUÉ graba justo debajo de quién es, que es la pregunta siguiente.
+   */
+  categorias?: { slug: string; name: string }[];
+  texto: string | null;
+  nombre: string;
+  rol: string | null;
+  fotoUrl?: string | null;
+  firmaUrl?: string | null;
+}
+
+const {
+  texto,
+  nombre,
+  rol,
+  fotoUrl,
+  firmaUrl,
+  testimonios = [],
+  totalTestimonios = testimonios.length,
+  categorias = [],
+} = Astro.props;
+
+/** Solo `**negrita**`. Nada más: el resto llegaría como texto plano, y bien. */
+const html = (texto ?? '').replace(
+  /\*\*(.+?)\*\*/g,
+  '<strong class="font-semibold text-brass-400">$1</strong>',
+);
+---
+
+{
+  texto && (
+    <section id="sobre-mi" class="flex flex-col gap-4 marco py-9 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-18 lg:py-18">
+      <div class="flex flex-col gap-4">
+        <p class="text-xs font-medium tracking-[0.18em] text-brass-600 uppercase">Sobre mí</p>
+        <div class="flex items-center gap-4">
+          {/*
+            Fondo oscuro en los DOS temas: declara su color en vez de heredarlo.
+            Con `text-ash` el token se invierte y el marcador quedaba a 2.08:1
+            en claro; y el `#9c958c` del oscuro tampoco llega —3.68:1 sobre la
+            parada más clara del degradado—.
+          */}
+          <span
+            class="flex h-[78px] w-[78px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-line text-center text-[11px] leading-tight"
+            style="background: radial-gradient(120% 90% at 40% 30%, #453322 0%, #1b1410 60%, #080706 100%); color: #b5aea4"
+          >
+            {/*
+              La foto va sesgada ARRIBA (`object-[center_22%]`): en un retrato
+              vertical la cara está en el tercio superior, y `object-cover`
+              centrado coge la corbata. Es el mismo problema que la OG que
+              decapita a la novia.
+            */}
+            {fotoUrl ? (
+              <img
+                src={src(fotoUrl)}
+                alt={`Foto de ${nombre}`}
+                loading="lazy"
+                onerror={ESCONDER_SI_FALLA}
+                class="h-full w-full object-cover object-[center_22%]"
+              />
+            ) : (
+              <span>FOTO<br />DE JAMES</span>
+            )}
+          </span>
+          <div class="min-w-0">
+            <p class="text-xl font-semibold">{nombre}</p>
+            {rol && <p class="mt-0.5 text-sm text-ash">{rol} · Ayacucho</p>}
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-5">
+        <p class="text-lg leading-snug lg:text-[22px]" set:html={html} />
+        {firmaUrl ? (
+          <img
+            src={src(firmaUrl)}
+            alt=""
+            loading="lazy"
+            onerror={ESCONDER_SI_FALLA}
+            class="h-11 w-auto"
+          />
+        ) : (
+          // La firma es SVG, no una fuente cursiva (§6). Marcador hasta que
+          // James dé la suya.
+          <svg width="132" height="46" viewBox="0 0 118 42" fill="none" aria-hidden="true">
+            <path
+              d="M8 32c6-14 10-22 14-22s2 12-2 16-8 2-6-6 8-14 14-14c4 0 4 6 1 12s-1 8 3 4 8-14 12-14 3 6 1 10-1 6 2 4 6-8 9-8 4 4 2 8"
+              stroke="currentColor"
+              class="text-brass-400"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        )}
+
+        {/*
+          Los testimonios, dentro de la MISMA sección y como segunda columna.
+          Se pintan solos si los hay: sin ninguno con permiso, «Sobre mí» ocupa
+          la fila entera y no queda un hueco que se lea como fallo de carga.
+        */}
+        {categorias.length > 0 && (
+          <nav class="flex flex-wrap gap-2" aria-label="Lo que grabo">
+            {categorias.map((c) => (
+              <a
+                href={`/${c.slug}/`}
+                class="flex min-h-12 items-center rounded-full border border-line px-3.5 text-sm transition-[transform,border-color] duration-150 hover:scale-[1.03] hover:border-brass-400"
+              >
+                {c.name}
+              </a>
+            ))}
+          </nav>
+        )}
+
+        {/*
+          El PUENTE a la página. Sin él, el bloque de la portada es un callejón:
+          se lee, se cree o no, y no hay dónde seguir mirando. Quien duda es
+          justo quien va a pulsar esto.
+        */}
+        <a
+          href="/sobre-mi/"
+          class="group flex min-h-12 w-fit items-center gap-2 text-brass-200"
+        >
+          Conóceme mejor
+          <Icono
+            nombre="flecha"
+            tamano={17}
+            clase="transition-transform duration-200 group-hover:translate-x-1"
+          />
+        </a>
+
+        <Testimonios {testimonios} total={totalTestimonios} clase="mt-2 lg:mt-6" />
+      </div>
+    </section>
+  )
+}

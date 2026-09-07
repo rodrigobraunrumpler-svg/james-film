@@ -1,6 +1,8 @@
 import { Body, Controller, Get, type INestApplication, Post } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { Prisma } from '../src/generated/prisma/client.js';
 import { Type } from 'class-transformer';
 import { IsInt, IsString, Length, Min, ValidateNested } from 'class-validator';
 import request from 'supertest';
@@ -52,16 +54,57 @@ class SondaController {
     throw new Error('secreto: SELECT * FROM "User"');
   }
 
+  /**
+   * La base caída, tal y como llega de Prisma 7. Se lanza la CLASE de verdad,
+   * no un `Error` con un `code` pegado: el filtro decide con `instanceof`, así
+   * que un error fabricado a mano cae en la rama de «desconocido» y el test
+   * comprobaría lo contrario de lo que dice comprobar.
+   *
+   * En local esto es Docker cerrado; en producción, el arranque en frío de Neon.
+   */
+  @Get('sin-base')
+  sinBase(): never {
+    throw new Prisma.PrismaClientKnownRequestError("Can't reach database server", {
+      code: 'P1001',
+      clientVersion: VERSION_PRISMA,
+      meta: { modelName: 'User', driverAdapterError: { kind: 'DatabaseNotReachable' } },
+    });
+  }
+
+  @Get('pool-lleno')
+  poolLleno(): never {
+    throw new Prisma.PrismaClientKnownRequestError('Timed out fetching a connection', {
+      code: 'P2024',
+      clientVersion: VERSION_PRISMA,
+    });
+  }
+
   @Post('validar')
   validar(@Body() dto: SondaDto) {
     return dto;
   }
 }
 
+/** Solo lo pide el constructor del error; no lo mira nadie. */
+const VERSION_PRISMA = '7.10.0';
+
 let app: INestApplication;
 
 beforeAll(async () => {
-  const mod = await Test.createTestingModule({ controllers: [SondaController] }).compile();
+  const mod = await Test.createTestingModule({
+    // `configurarApp` monta el CORS y exige `WEB_ORIGIN`. Esta sonda no carga
+    // `AppModule`, así que se le da la variable a mano. Que `getOrThrow`
+    // reviente si falta es lo correcto: en la app de verdad, no tenerla dejaría
+    // el clic a WhatsApp sin registrar y en silencio.
+    imports: [
+      ConfigModule.forRoot({
+        isGlobal: true,
+        ignoreEnvFile: true,
+        load: [() => ({ WEB_ORIGIN: ['http://localhost:4321'] })],
+      }),
+    ],
+    controllers: [SondaController],
+  }).compile();
   app = mod.createNestApplication<NestExpressApplication>();
   // Se configura con la MISMA función que main.ts: si el arranque real cambia,
   // estos tests lo ven.
@@ -153,6 +196,32 @@ describe('errores', () => {
       .expect(413);
 
     expect(body.code).toBe('FILE_TOO_LARGE');
+  });
+});
+
+describe('la base caída no es un «error interno»', () => {
+  it('P1001 sale como 503 y dice qué hacer, no «Error interno»', async () => {
+    // 503, no 500: no es que algo haya reventado dentro, es que no hay con
+    // quién hablar. Un 500 no sugiere reintentar; un 503 es temporal por
+    // definición, y el cliente del admin ya reintenta lo que es ≥500.
+    const { body } = await request(app.getHttpServer()).get('/sonda/sin-base').expect(503);
+
+    expect(body.success).toBe(false);
+    expect(body.message).toMatch(/base de datos no responde/i);
+    expect(body.message).toMatch(/vuelve a intentarlo/i);
+    // En producción es el arranque en frío de Neon: con «Error interno», la
+    // primera visita del día parecía un fallo de código.
+    expect(body.message).not.toBe('Error interno');
+  });
+
+  it('el pool saturado también es 503, no 500', async () => {
+    const { body } = await request(app.getHttpServer()).get('/sonda/pool-lleno').expect(503);
+    expect(body.message).toMatch(/saturado/i);
+  });
+
+  it('y nunca se filtra el detalle de Prisma al cliente', async () => {
+    const { body } = await request(app.getHttpServer()).get('/sonda/sin-base').expect(503);
+    expect(JSON.stringify(body)).not.toMatch(/DatabaseNotReachable|127\.0\.0\.1|5433/);
   });
 });
 

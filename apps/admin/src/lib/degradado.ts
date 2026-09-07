@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 /**
  * Una galería sin portada no debe ser un rectángulo negro: con seis eventos
  * seguidos sin miniatura, James no distingue uno de otro. Cada galería recibe
@@ -50,6 +52,37 @@ const EXTENSION = [
 const DEGRADADOS = [...DEL_PROTOTIPO, ...EXTENSION] as const;
 
 /**
+ * LA PALETA CLARA. Los seis primeros salen carácter a carácter de
+ * `docs/mockups-admin/v3-claro/Galerias.dc.html`; los diez siguientes reusan su
+ * receta —tres manchas suaves sobre una base, todas por encima del 90% de
+ * luminosidad— en los mismos tonos que la extensión oscura.
+ *
+ * No es la paleta oscura aclarada: invertir un degradado pensado para ir debajo
+ * de una foto da grises sucios. Van ALINEADOS POR ÍNDICE con `DEGRADADOS`, así
+ * que una galería conserva su sitio en la serie al cambiar de tema —cambia el
+ * tono, no la identidad—. Hay test de que las dos listas miden lo mismo.
+ */
+const DEGRADADOS_CLAROS = [
+  'radial-gradient(at 24% 20%, #F8EADF 0, transparent 55%), radial-gradient(at 76% 28%, #F0DCE3 0, transparent 52%), radial-gradient(at 48% 88%, #E7DAD0 0, transparent 60%), #F2E9E2',
+  'radial-gradient(at 26% 22%, #E5EAF6 0, transparent 55%), radial-gradient(at 78% 26%, #EFE5F4 0, transparent 50%), radial-gradient(at 44% 86%, #DCE2EE 0, transparent 60%), #E8ECF4',
+  'radial-gradient(at 22% 24%, #FBF3DD 0, transparent 55%), radial-gradient(at 74% 22%, #F7E9D5 0, transparent 50%), radial-gradient(at 56% 84%, #EEE5CC 0, transparent 60%), #F6F0DF',
+  'radial-gradient(at 28% 18%, #E9F1EA 0, transparent 55%), radial-gradient(at 72% 30%, #DEEEEC 0, transparent 50%), radial-gradient(at 50% 86%, #D8E7DD 0, transparent 60%), #E5EFE8',
+  'radial-gradient(at 25% 20%, #F3E8F2 0, transparent 55%), radial-gradient(at 75% 30%, #E8E3F3 0, transparent 50%), radial-gradient(at 48% 88%, #E4DCEC 0, transparent 60%), #EDE7F1',
+  'radial-gradient(at 22% 26%, #F1EFE9 0, transparent 55%), radial-gradient(at 78% 24%, #EAE7E0 0, transparent 50%), radial-gradient(at 50% 86%, #E4E0D8 0, transparent 60%), #EDEAE3',
+  'radial-gradient(at 27% 21%, #F9E9E0 0, transparent 55%), radial-gradient(at 73% 27%, #F3DED2 0, transparent 50%), radial-gradient(at 52% 86%, #ECDACF 0, transparent 60%), #F4E7DE',
+  'radial-gradient(at 23% 25%, #F5F1DA 0, transparent 55%), radial-gradient(at 77% 23%, #EFEBD0 0, transparent 50%), radial-gradient(at 46% 87%, #E9E5C8 0, transparent 60%), #F2EEDA',
+  'radial-gradient(at 29% 19%, #EEF2DC 0, transparent 55%), radial-gradient(at 71% 29%, #E6EDD2 0, transparent 50%), radial-gradient(at 54% 85%, #E1E8CB 0, transparent 60%), #EBF0DA',
+  'radial-gradient(at 21% 23%, #E6F0E3 0, transparent 55%), radial-gradient(at 79% 25%, #DDEBDB 0, transparent 50%), radial-gradient(at 49% 88%, #D8E6D5 0, transparent 60%), #E3EDE1',
+  'radial-gradient(at 26% 27%, #E0EFEE 0, transparent 55%), radial-gradient(at 74% 21%, #D7EAE8 0, transparent 50%), radial-gradient(at 53% 84%, #D2E5E3 0, transparent 60%), #DEEDEB',
+  'radial-gradient(at 24% 18%, #E4EDF3 0, transparent 55%), radial-gradient(at 76% 31%, #DAE6EF 0, transparent 50%), radial-gradient(at 47% 86%, #D5E1EA 0, transparent 60%), #E1EAF1',
+  'radial-gradient(at 28% 24%, #E7E8F5 0, transparent 55%), radial-gradient(at 72% 24%, #DEE0F0 0, transparent 50%), radial-gradient(at 51% 87%, #D9DBEB 0, transparent 60%), #E4E6F2',
+  'radial-gradient(at 22% 20%, #F0E6F3 0, transparent 55%), radial-gradient(at 78% 28%, #E9DEEE 0, transparent 50%), radial-gradient(at 45% 85%, #E4D9E9 0, transparent 60%), #EDE3F0',
+  'radial-gradient(at 27% 26%, #F4E6EF 0, transparent 55%), radial-gradient(at 73% 22%, #EDDEE8 0, transparent 50%), radial-gradient(at 55% 88%, #E8D9E3 0, transparent 60%), #F1E3EC',
+  'radial-gradient(at 25% 22%, #F8E6E8 0, transparent 55%), radial-gradient(at 75% 26%, #F2DDE0 0, transparent 50%), radial-gradient(at 48% 86%, #EDD8DB 0, transparent 60%), #F5E3E5',
+] as const;
+
+
+/**
  * FNV-1a sobre el id entero. Los cuid comparten prefijo (`c` + reloj), así que
  * lo que distingue una galería de otra está al FINAL: una suma que pese poco la
  * cola dejaría a las creadas el mismo día en el mismo color, que es justo el
@@ -64,8 +97,15 @@ function hash(id: string): number {
   return h;
 }
 
-export function degradadoDe(id: string): string {
-  return DEGRADADOS[hash(id) % DEGRADADOS.length]!;
+/**
+ * Devuelve el PAR de degradados como variables inline, no una cadena: el
+ * elemento las lleva las dos y la regla `.degradado` de `globals.css` elige
+ * según el tema. Con una sola cadena habría que re-renderizar al cambiar de
+ * tema —y el degradado de una portada que aún no ha cargado se vería saltar—.
+ */
+export function degradadoDe(id: string): CSSProperties {
+  const i = hash(id) % DEGRADADOS.length;
+  return { '--deg-oscuro': DEGRADADOS[i]!, '--deg-claro': DEGRADADOS_CLAROS[i]! } as CSSProperties;
 }
 
 /**
@@ -103,9 +143,30 @@ const MEDIOS = [
  * degradado dejaría de distinguir nada justo en la pantalla donde más falta hace
  * —la que tiene ocho miniaturas negras hasta que llega el póster—.
  */
-export function degradadoMedio(id: string): string {
-  return MEDIOS[hash(id) % MEDIOS.length]!;
+export function degradadoMedio(id: string): CSSProperties {
+  const i = hash(id) % MEDIOS.length;
+  return { '--deg-oscuro': MEDIOS[i]!, '--deg-claro': MEDIOS_CLAROS[i]! } as CSSProperties;
 }
 
+
+/**
+ * Los claros de la tesela. Mismos tonos que `DEGRADADOS_CLAROS` y en el mismo
+ * orden, pero las manchas caen antes (48/45/52 en vez de 55/50/60): la tesela
+ * es 3:4 y pequeña, y con la caída larga el color se diluye hasta no
+ * distinguirse del `card`. Es la misma razón por la que la receta oscura de la
+ * tesela cierra el foco.
+ */
+const MEDIOS_CLAROS = DEGRADADOS_CLAROS.map((g) =>
+  g.replace(/transparent 55%/g, 'transparent 48%')
+    .replace(/transparent 5[02]%/g, 'transparent 45%')
+    .replace(/transparent 60%/g, 'transparent 52%'),
+);
+
 /** Solo para el test: nadie puede recortar las paletas ni tocar lo aprobado. */
-export const PALETA = { todos: DEGRADADOS, delPrototipo: DEL_PROTOTIPO, medios: MEDIOS };
+export const PALETA = {
+  todos: DEGRADADOS,
+  delPrototipo: DEL_PROTOTIPO,
+  medios: MEDIOS,
+  claros: DEGRADADOS_CLAROS,
+  mediosClaros: MEDIOS_CLAROS,
+};

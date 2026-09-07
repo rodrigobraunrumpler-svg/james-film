@@ -69,6 +69,66 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   `scaleX` al enfocar. **El saludo por hora se calcula tras montar**: en el servidor renderizaría
   «Buenas tardes» y el navegador «Buenas noches», y React descarta el árbol entero por error de
   hidratación. Arranca en «Hola», cierto a cualquier hora, para que el titular no salte.
+- **El admin tiene DOS temas y el claro no es el oscuro invertido.** Se elige con
+  `[data-tema]` en el `<html>`, que pone un **script bloqueante en el `<head>`**
+  (`lib/tema.ts`): leerlo en un efecto pintaría la pantalla oscura y saltaría a clara.
+  Tres estados —`sistema`, `claro`, `oscuro`—; «sistema» **borra la clave** del
+  `localStorage`, no guarda el valor calculado, para que siga a `prefers-color-scheme`
+  si James cambia el ajuste del iPhone. El principio del oscuro se **invierte**: allí
+  `chrome` es más claro que `content` y aquí más oscuro, y así el sidebar se separa
+  sin una línea en los dos. `color-scheme` va declarado: es lo que pone en claro la
+  barra de scroll, el autorrelleno y el selector de fecha nativo de iOS.
+- **DOS latones, y la diferencia decide dónde va cada uno.** `brass` toca TEXTO e
+  iconos; `brass-relleno` es el de barras, puntos y áreas, donde no hay que leer nada.
+  En oscuro coinciden; en claro no pueden — el `#c9a96a` de la marca da **1.8:1**
+  sobre blanco. Lo mismo con `--color-velo`, el fondo de los chips que van SOBRE una
+  portada: se invierte con el tema porque lo que se pinta encima (`bone`, `brass`) ya
+  se ha invertido. Con el velo fijo en negro, «24 medios» quedaba oscuro sobre oscuro.
+  Y un chip sobre una foto **nunca lleva un fondo semitransparente del panel**: lo que
+  se transparenta es la foto, que no controlamos.
+- **Los contrastes se MIDEN sobre las superficies donde el texto vive de verdad**,
+  no sobre blanco. El `muted #5f5952` que traía la guía daba **2.80:1** sobre
+  `content` y lo llevaban las ayudas de todos los campos, los recuentos del menú y el
+  marcador del ⌘K — a 11px y en la calle eso no se lee. Subido a `#8a837a` (5.2 / 4.9 /
+  4.7). Queda casi pegado a `ash`, y es la consecuencia de que sobre ese negro **no
+  cabe un gris legible por debajo**: la jerarquía la sostiene `bone` contra los dos.
+  Lo verifica `e2e/responsive-total.spec.ts` en **los dos temas**, componiendo el fondo
+  real capa a capa. Las **vistas previas quedan fuera**: dentro de su marco ya no es el
+  admin, son la landing, Google y WhatsApp con SUS colores, y reconocerlos es el punto.
+- **Una caja con `aspect-ratio` no gana a un hijo más alto.** `h-full` no resuelve
+  dentro de ella, así que el alto intrínseco de un póster 9:16 estiraba la portada de
+  una categoría al triple y descuadraba la rejilla entera. La imagen va `absolute
+  inset-0`. No lo caza «nada se sale de su tarjeta» —no se sale, empuja— ni un test de
+  DOM, que no maqueta: tiene su propio test que **mide** y solo mira si la caja CRECE
+  (una más baja siempre es un `max-height` puesto a mano).
+- **`items-start` en toda rejilla de tarjetas de alto variable.** Sin él la fila iguala
+  alturas: un testimonio sin captura se estiraba al alto del que sí la tiene y dejaba
+  300px vacíos, que sobre blanco se leen como un fallo de carga. Y hay que quitar el
+  `h-full` de la tarjeta: en un ítem de grilla resuelve contra el alto de FILA aunque
+  el `align-self` sea `start`, así que solo con `items-start` no cambia nada.
+- **El progreso real va con curva LINEAL.** Una aceleración inventa un cambio de
+  velocidad que la subida no está teniendo, y la barra es lo único que le dice a James
+  si el 4G sigue vivo. La cascada de entrada lleva **techo de seis pasos**
+  (`min(var(--i),6)`): con 32 medios, la rejilla se movía casi dos segundos y lo último
+  en aparecer era la zona de soltar.
+- **La LANDING también lleva dos temas** (decidido el 31-ago-2026; el plan de la fase 5 decía
+  «oscura, punto» y se revisó al ver los diseños). Mismo argumento que ganó en el admin: se entra
+  desde un móvil **a pleno sol en Ayacucho**, y un negro al 100 % de brillo se lee peor que un
+  blanco. **El oscuro sigue siendo la marca** —el flyer es oscuro y dorado— y manda sin preferencia
+  declarada. Y no es el oscuro invertido: en claro el titular del hero **no** va sobre el vídeo
+  con un velo, el reel es una tarjeta y el titular va debajo; **los reels se quedan oscuros en los
+  dos temas**, porque su fondo es el material, no la página; y el latón de leer baja a `#8A6D3B`
+  —el `#C9A96A` de la marca da **1.8:1** sobre blanco—. Detalle en
+  [`docs/plans/2026-08-31-fase-5-landing.md`](docs/plans/2026-08-31-fase-5-landing.md).
+- **Todo fondo oscuro DECLARA su color de texto, nunca lo hereda.** Heredarlo funciona en el
+  tema oscuro por accidente —la raíz ya es clara— y en el claro deja **texto negro sobre negro**.
+  Se coló cuatro veces solo en los prototipos de la landing: el hero, la cifra del bento, el panel
+  de cierre y las portadas de categoría. La clase de color va en el MISMO elemento que la de
+  fondo. Y un bloque oscuro dentro del tema claro va como **panel** —redondeado y con margen—,
+  nunca a sangre: a sangre se lee como un fallo de render.
+- **Los diseños de la landing viven en `docs/mockups-web/`** (`.dc.html` + `canvas.json`, la misma
+  forma que los del admin). El contenido es el REAL: precios, bullets, diferenciadores y
+  `aboutText` salen del seed y de `preview.webp`, no son relleno.
 - **El latón del admin solo va en bordes, iconos y estado activo.** Nunca un botón sólido dorado:
   el único que existe es el CTA de WhatsApp, y ese vive en la landing.
 - **Regla del acento único**: Básico neutro → Pro latón → Premium hueso. §6
@@ -80,7 +140,17 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - LCP <2.5s · **INP <200ms con animaciones activas** · CLS <0.1. Medido en CrUX. §20
 - Animaciones **solo `transform` y `opacity`**. Nunca `top`/`left`/`width`/`height`. §6 §17
 - Todo dentro de `gsap.matchMedia("(prefers-reduced-motion: no-preference)")`. §6
-- GSAP/Lenis con `client:visible`, nunca `client:load`. **Lenis solo ≥1024px.** §6
+- **NI GSAP NI LENIS. Ninguno de los dos entró** (fase 5, medido). Lo único que hacía falta era
+  disparar la entrada AL VER el bloque —27 de 35 animaban debajo del pliegue y nadie los veía— y
+  eso es un `IntersectionObserver` de diez líneas. GSAP serían ~50 KB moviendo el trabajo al hilo
+  principal, que es lo que el presupuesto de INP protege; es el mismo argumento por el que
+  `motion` se quitó del admin. Lenis, además, secuestra la rueda y deja un `requestAnimationFrame`
+  eterno en el hilo principal a cambio de nada medible, y `scroll-behavior: smooth` ya es nativo.
+  Medido con la CPU frenada 4×: LCP 304 ms · CLS 0.015 · **INP 80 ms** en la portada. §6
+- **`:root.js .entra { opacity: 0 }`, nunca `.entra { opacity: 0 }` a secas.** La clase `js` la
+  pone el script bloqueante del tema, así que sin JS no se esconde nada: la animación de entrada
+  es un adorno, no la condición para poder leer la página. Con movimiento reducido el observador
+  ni se monta y se marca todo visible de una vez.
 - `aspect-ratio` reservado en toda imagen y video. §17
 - **Sin autoplay en la grilla.** Solo el hero autoplayea (loop 6s, ~1.5MB, silenciado). §4
 
@@ -194,9 +264,21 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   compara con `docs/openapi-public.json` commiteado y el CI falla si cambia sin querer. Mismo
   mecanismo que el drift de Prisma, aplicado a la frontera con la landing.
 - **`helmet` sí, `cookie-parser` no.** La API **nunca lee una cookie**: la pasarela sostiene la
-  sesión en el dominio del admin y manda `Authorization: Bearer`. Eso también deja a la API sin
-  CORS con credenciales y **sin superficie de CSRF** — no hay credencial que el navegador envíe
-  sola. Vuelve a hacer falta el día que un navegador hable directamente con la API.
+  sesión en el dominio del admin y manda `Authorization: Bearer`. Eso deja a la API **sin
+  superficie de CSRF** — no hay credencial que el navegador envíe sola.
+- **El CORS VOLVIÓ, y con `credentials: false`** (fase 5). Ese día llegó: el navegador de la
+  landing habla directamente con la API para registrar el clic a WhatsApp, y con
+  `Content-Type: application/json` eso dispara un preflight. Sin `enableCors` **el clic —la
+  única métrica del negocio— no se registraba, y en silencio**: el panel diría «0 clics» y
+  parecería que la web no funciona. Lo que conserva la propiedad de arriba es el
+  `credentials: false`: sin credenciales no hay cookie que el navegador mande sola, así que
+  sigue sin haber CSRF. Lista blanca desde `WEB_ORIGIN`, **nunca `*`** —no para el atacante
+  decidido, que usa `curl`, sino para que nadie empotre el botón en otra web e infle los
+  clics—, y **`app.enableCors` va lo PRIMERO** para que el `OPTIONS` no gaste cuota del
+  throttler y deje sin ella al `POST` de detrás. Con test de las dos cosas.
+- **`WEB_ORIGIN` se normaliza a `origin`.** `http://localhost:4321/` y el mismo con una ruta
+  son el mismo origen para el navegador, pero `enableCors` compara la cadena tal cual: una
+  barra de más dejaba el CORS roto sin decir por qué.
 - **La CSP por defecto de `helmet` rompe la UI de Swagger** (scripts y estilos en línea). Hay que
   exceptuar la ruta de `/docs`, no desactivar la CSP entera.
 - **Nada de Fastify, cache-manager ni compression.** La carga es cero —un usuario y unos builds
@@ -245,6 +327,20 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   - Subidas → **progreso real**, nunca indeterminado.
   - No ser optimista cuando el servidor decide algo impredecible (el slug con desambiguación) o
     en borrados con confirmación fuerte.
+- **Un `useQuery` cuyo dato el servidor NO PUEDE saber se CORTA hasta montar — y `enabled` no
+  sirve para eso.** Los recuentos de las pestañas de Galerías y los del menú se pintan solo si
+  existen —un «0» mientras carga sería mentira—, así que el HTML del servidor sale sin el
+  `<span>`. Si el dato ya está cuando React hidrata ESA parte del árbol, el navegador pinta un
+  nodo que en el HTML no estaba y **React descarta el árbol entero**.
+  **⚠ `enabled: useMontado()` NO lo arregla, y fue el primer intento**: `enabled` corta la
+  PETICIÓN, no la lectura — `useQuery` sigue devolviendo lo que haya en caché. Y lo hay: el
+  sidebar monta antes que la página y pide **la misma clave**, así que su respuesta puede llegar
+  antes del primer render de la pantalla. Lo que cierra el fallo es **devolver `undefined` desde
+  el hook** (`return montado ? data?.data : undefined`); el `enabled` se queda porque no pedir
+  antes de tiempo sigue siendo correcto. Se corta en el HOOK y no en quien pinta: si lo sostiene
+  la pantalla, el siguiente consumidor se olvida — misma regla que el botón «Quitar» de
+  `CampoImagen`. Y el test que lo guarda **precarga la caché y mira el PRIMER valor**, no el
+  último: mirando el último, las dos versiones pasan. `useMontado` vive en `lib/`.
 - **`AdminGalleryDto` y `AdminGalleryListItemDto` llevan `isPublished`; los públicos no.** Sin él
   el admin no distingue un borrador de una galería en vivo, que es lo primero que hay que ver en
   la lista. Fuera del DTO público a propósito: allí siempre valdría `true` —el controller filtra—
@@ -291,12 +387,37 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - `zustand` solo para la cola de subidas: con Context, cada tick de progreso re-renderiza a todos
   los consumidores.
 - shadcn/ui sobre Radix (código propio, no dependencia — por eso no contradice §6), `react-hook-form`
-  + `zod`, `lucide-react`, `sonner`, `motion`, `clsx` + `tailwind-merge`. **`@dnd-kit` no está
+  + `zod`, `lucide-react`, `sonner`, `clsx` + `tailwind-merge`. **`@dnd-kit` no está
   en la lista a propósito** — ver arriba.
+- **`motion` se QUITÓ, y estuvo instalada meses sin que la importara nadie.** Las
+  animaciones del admin son entradas, barras y hovers: `transform` y `opacity`,
+  que el navegador corre en el COMPOSITOR. `motion` las correría en JS sobre el
+  hilo principal, que es justo lo que §6 protege, y son 30 KB para escribir la
+  misma cantidad de código en cada componente. Los 4 keyframes y las 6
+  utilidades de `globals.css` se escriben una vez y se usan con una clase y un
+  `--i`.
+  **Donde sí ganaría es en lo que CSS no puede**: animar la SALIDA de algo que
+  se desmonta, y el reorden con FLIP. Pero las hojas y el visor usan vaul/Radix,
+  que traen sus salidas, y el ⌘K es `<dialog>` nativo: no queda ningún caso. El
+  día que lo haya, se vuelve a evaluar — no antes.
+  Y ojo con `motion-reduce:` en el código: **es una variante de Tailwind**, no
+  la librería. Un `grep motion` da falsos positivos.
 - **Base UI descartada**: sigue en `1.0.0-rc`. Radix está estable.
-- **View Transitions: NO**, aunque la guía del admin las pida. Entre documentos siguen tras un
-  flag experimental en Next, y eso choca con «nada en `experimental` en producción». Se revisa
-  cuando salgan del flag, no antes.
+- **View Transitions ENTRE DOCUMENTOS: NO**, aunque la guía del admin las pida. En Next siguen
+  tras un flag experimental, y eso choca con «nada en `experimental` en producción». Se revisa
+  cuando salgan del flag, no antes. Tampoco el `<ClientRouter />` de Astro en la landing.
+- **`document.startViewTransition()` en la MISMA página SÍ, y es lo que funde el cambio de tema
+  de la landing.** Es otra API y otra madurez: estable en Chrome 111+, Safari 18 y Firefox 144,
+  con detección de soporte y caída a cambio instantáneo. Entró **midiendo**, que es la única
+  razón por la que entra algo aquí: el fundido escrito a mano —una clase con
+  `transition: background-color, border-color, color` sobre `*` durante 240 ms— llevaba el INP
+  de **80 ms a 248 en móvil y 328 en escritorio**, sobre un techo de 200. El culpable es `color`:
+  transicionarlo repinta todo el texto de la página durante 200 ms. Solo con `background-color`
+  bajaba a 88/208, pero entonces el texto salta mientras el fondo aún se mueve, y al pasar a
+  claro son ~150 ms de letra oscura sobre fondo oscuro. Con `startViewTransition` el navegador
+  fotografía, aplica y funde **en el compositor**: **40 ms en móvil y 96 en escritorio**, o sea
+  MENOS que cambiar el tema a pelo sin transición —el recálculo de estilos deja de ocurrir
+  dentro del evento y pasa al callback, después del primer pintado—.
 - **Los recuentos de las pestañas y el uso de disco son endpoints PROPIOS**
   (`GET /admin/galleries/counts`, `GET /admin/storage`), no campos del meta paginado. Si viajaran
   en la respuesta filtrada, «Borradores 3» valdría 3 en Borradores y 0 en Publicadas — el contador
@@ -347,6 +468,77 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   landing. Aun así, animaciones solo con `transform` y `opacity`, y `prefers-reduced-motion`
   respetado sin excepciones.
 
+**El tema claro — lo que salió implementándolo**
+- **Un test que solo mira el DOM no ve un color.** Los tres fallos del tema claro fueron el
+  mismo: un color escrito a mano que en oscuro contrastaba y en claro quedaba encima de sí
+  mismo —el chip de «24 medios» en `bone` sobre un velo negro, el relleno del menú en blanco
+  al 7% sobre blanco, el degradado oscuro bajo texto claro—. Ni el typecheck ni Testing
+  Library los ven. Los caza `e2e/responsive-total.spec.ts`, que **compone el fondo real capa
+  a capa** y exige AA en los dos temas sobre las diez pantallas.
+- **Un dato que se pide y no se enseña deja de rellenarse.** `Testimonial.rating` estaba en el
+  DTO y en la hoja de edición desde la fase 4, y **no se pintaba en ninguna parte**. Ahora la
+  tarjeta lleva su fila de estrellas, y solo si hay valoración: cinco apagadas dicen «valorado
+  con cero», que es otra cosa que «todavía no se ha valorado».
+- **Los contadores de caracteres del SEO no existían**, aunque este fichero los daba por
+  hechos. Van pegados a la etiqueta, avisan en latón al pasarse y **no bloquean**: Google
+  recorta por ancho, no por caracteres.
+- **«Arrastra» en un iPhone describe algo que no se puede hacer.** El arrastre nativo de HTML5
+  no existe en iOS, así que la pista se parte por ancho: «ordena con las flechas del ⋯» bajo
+  `lg`, «arrastra para reordenar» encima. Lo mismo en la tesela de soltar («Añadir del
+  carrete» / «Suelta reels aquí») y en la tira del menú de categorías.
+- **La segunda miga era la categoría, y a una categoría no se puede ir**: la lista filtra por
+  estado y por texto, no por categoría. Ahora es el nombre de la galería.
+- **El estado de una galería se dice SIEMPRE, no solo cuando es borrador.** Con el chip
+  únicamente en los borradores, una galería en vivo se leía igual que una tarjeta a la que le
+  falta algo. Verde para lo publicado, latón para lo que no.
+- **Durante una subida el total no es lo que hay que mirar.** La cabecera de la grilla dice
+  además cuántas van subiendo y cuántas fallaron: con «32 medios» a secas, James no sabe si
+  quedan tres en vuelo o si una se cayó hace un minuto.
+- **El prototipo no modela el caso de cero.** Dibuja los clics de cada paquete siempre porque
+  tiene datos; el código los esconde mientras NINGUNO tenga tráfico, porque «0 clics» repetido
+  tres veces ocupa medio pie y no informa. Del prototipo se tomó el icono, que sí faltaba.
+  Regla general: **donde el prototipo y un test del proyecto discrepan, gana el test** — el
+  prototipo es un estado, el test es la regla.
+- **Un test no puede terminar con sus escrituras en vuelo.** El de «sin faststart» daba por
+  buena la tesela que pinta la COLA LOCAL y acababa con su `confirm` en el aire; el siguiente
+  cargaba la galería antes de que existiera la fila, medía 30 y ya nunca volvía a 30. El fallo
+  parecía de «cancelar» y estaba dos tests más arriba.
+
+**Sin conexión — lo que de verdad arregla el estado del prototipo**
+- **El presupuesto de 5 min NO corre mientras no hay red.** Existe para rendirse ante un
+  archivo que no entra —una key repetida, un bucket mal configurado—, no ante un túnel: en
+  el 4G de Ayacucho, un corte de seis minutos daba por fallidos ocho reels perfectos y había
+  que relanzarlos uno a uno. El motor espera con `esperarConexion()` y **adelanta `empezoEn`
+  lo que duró el corte**, así que el reloj se para en vez de correr en vacío. Y al volver no
+  se espera el backoff: el evento `online` ya es la señal, y sumarle ocho segundos sería
+  castigar por reconectar.
+- **`navigator.onLine` no promete internet** —un portal cautivo dice `true`— así que NO
+  sustituye al reintento: solo añade las dos cosas que el reintento no puede saber, cuándo
+  no vale la pena gastar presupuesto y cuándo volver a intentarlo ya. En la dirección que
+  importa sí es fiable: si el sistema dice que no hay red, no la hay.
+- **Se dice en DOS sitios y es a propósito.** La barra sale solo con algo EN VUELO
+  (`hayEnCurso`), así que con la red caída y tres archivos esperando turno la banda de la
+  grilla es lo único que hay. Cada una se sostiene sola; ninguna puede dar por hecha a la
+  otra.
+- **Nada de cuenta atrás.** El prototipo dibuja «Reintentando en 8 s…», pero se reanuda con
+  el evento `online`: ese número sería mentira en los dos sentidos. Se dice qué va a pasar
+  —«Se reanuda solo al volver»—, que es lo que James necesita para decidir si se mueve a
+  buscar cobertura o se espera.
+- **La banda va en el FLUJO, no flotando** —un elemento fijo taparía justo la tesela que
+  está subiendo— y **solo si hay algo pendiente**: sin nada en cola, un corte no cambia nada
+  de esa pantalla y avisar sería ruido, que es lo que entrena a no leer.
+- **Durante el corte la tesela decía «Subiendo» con la barra congelada**, y eso se lee como
+  «se colgó», no como «no hay cobertura» — dos cosas que piden reacciones distintas. Ahora
+  dice «En cola». Los fallidos quedan fuera: ésos no esperan, piden una decisión.
+- **`useEnLinea` devuelve un BOOLEAN** y su snapshot de servidor es `true`: con un objeto,
+  `useSyncExternalStore` compara por identidad y entra en bucle —el mismo fallo que la regla
+  de los selectores de zustand—, y arrancar diciendo «sin conexión» para corregirlo al
+  hidratar sería una alarma falsa parpadeando.
+- **La cola es un singleton de módulo y sobrevive ENTRE TESTS.** Es su razón de ser —James
+  se va a «Galerías» y sigue viendo «Subiendo 3 de 8»—, pero obliga a vaciarla en el
+  `afterEach`: sin eso, el reel de un test deja al siguiente con algo en cola y el aviso sale
+  cuando el test afirma que no debería.
+
 **Fase 4 — lo aprendido construyéndola**
 - **La lista de íconos sale de lo que el seed ya usa, no de la imaginación.** El primer borrador
   la inventó y no incluía `trending-up`, `crown` ni `bar-chart-3`: con `@IsIn(ICONOS)` puesto,
@@ -374,6 +566,420 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   vacía antes de borrarla. La portada se deriva del medio destacado, siempre.
 - **`RolesGuard` no protegía nada** hasta que existió `@AdminController`: devuelve `true` cuando
   no hay metadatos de `@Roles()`, y ningún controller los declaraba.
+
+**Panel, buscador ⌘K y el rediseño de categorías — lo aprendido**
+- **Disponibilidad es la NOVENA pantalla** (`/disponibilidad`), y un solo endpoint:
+  `GET /admin/availability/summary`, por el mismo motivo que el Panel — pintarla a
+  trozos daría cuatro saltos de layout en el 4G de James. La API y la landing del
+  calendario llevaban meses construidas y **el panel no tenía pantalla**: James no
+  podía marcar ni un día, así que la web enseñaba todo libre siempre. Un endpoint
+  publicado sin la pantalla que lo alimenta es una función que no existe.
+  - **Una reserva es un RANGO CONTIGUO**, y por eso se elige tocando el primer día y
+    el último, no sumando días sueltos. Sale de la conversación real que originó el
+    módulo: «quiero para dos días, 24 y 25 de octubre». Dos fines de semana distintos
+    son dos reservas y se marcan dos veces — correcto, porque en la base son dos
+    `groupId`, y eso es lo que convierte «24 y 25» en una boda y no en dos días.
+  - **El tercer toque REINICIA**, no amplía: es «me equivoqué».
+  - **Un día pasado y libre no se toca; uno pasado y OCUPADO sí.** Es la única forma
+    de deshacer un rango mal elegido, y la API ya lo permitía a propósito (rechaza
+    marcar en pasado, nunca desmarcar).
+  - **Sin optimista**, y es una de las excepciones de la regla: el servidor decide
+    dos cosas impredecibles —el `groupId` que agrupa la reserva y un posible 422 por
+    fecha pasada—, así que pintar el día ocupado antes de tiempo enseñaría un estado
+    que la respuesta puede desmentir. Misma excepción que el slug con desambiguación.
+  - Alrededor del calendario van las cuatro cosas que el dato puede decirle y que no
+    dice ninguna otra pantalla, en este orden: **lo grabado y sin publicar** —cruce de
+    `BusyDay` pasado con `Gallery.eventDate`, y es lo único que él no sabe—, **lo que
+    viene**, **los sábados libres** de tres meses contados desde HOY (a mitad de mes,
+    contar los que ya pasaron diría cuatro donde queda uno) y **los clics del
+    calendario**, separando `calendario-libre` de `calendario-ocupado`: el segundo
+    mide la demanda que se está rechazando.
+  - La **nota es privada** y no sale del DTO público (Ley 29733). La pantalla lo dice
+    donde se escribe, no en una ayuda aparte.
+- **El Panel existe y es la octava pantalla** (`/panel`). Un solo endpoint,
+  `GET /admin/dashboard`, con cinco consultas en paralelo dentro: la pantalla no
+  puede pintarse a trozos —el bloque de avisos decide el alto de todo lo de abajo—
+  y cinco peticiones darían cinco saltos de layout en el 4G de James.
+- **Los avisos van ARRIBA, antes del número grande.** §9 lo dibuja al revés. Si el
+  último deploy falló, la web sigue enseñando lo de antes, y eso cuesta más caro
+  que el total del mes. Cada aviso lleva **su acción**: uno que no se puede
+  resolver desde donde se lee obliga a buscar la pantalla, y entonces se ignora.
+- **Los medios fallidos se agrupan POR GALERÍA.** Ocho reels rotos de la misma
+  boda son un problema, no ocho: ocho avisos idénticos entrenan a descartarlos
+  sin leer, que es justo lo que hay que evitar.
+- **Un borrador avisa a los 3 días, no antes.** Antes es trabajo en curso.
+- **Las ventanas son MÓVILES** (`ahora - 30 días`), no meses de calendario, y los
+  días de la serie se agrupan con `timeZone: 'UTC'`: agrupar en la zona del
+  proceso pondría la misma fila en un día distinto en `America/Lima` que en el
+  contenedor. La serie se rellena con ceros y las columnas tienen **suelo de
+  3px** — un día a cero tiene que verse como un día, no como un hueco.
+- **`source` es una unión CERRADA en `packages/contracts`**, no `string`. Con `string` la
+  landing compilaba mandando una fuente que la API no conoce, `@IsIn(FUENTES)` devolvía 422 y
+  **el clic se perdía sin ruido** — pasó con `calendario`. Ahora las dos listas tienen que
+  moverse juntas o no compila, y al añadir una hay que regenerar `openapi-public.json`.
+- **El clic se registra con `fetch(..., { keepalive: true })`.** El clic que hay que contar es
+  justo el que ABANDONA la página: al pulsar, el navegador salta a `wa.me` y un `fetch` normal
+  muere en esa navegación. Sin la bandera se pierde el 100 % de lo que mide. Y el registro
+  **nunca** llama a `preventDefault()`: si falla, el enlace navega igual. Perder una métrica es
+  barato; perder el lead no.
+- **`POST /track/whatsapp` ya existe** (público, bajo el throttler global). Un
+  `packageId` que ya no existe **no tumba el clic**: se captura el P2003 y se
+  guarda sin atribución. Perder de qué paquete venía es barato; perder el clic es
+  perder la única métrica del negocio. `TrackingModule` va en el `include` del
+  **OpenAPI público**: lo llama el navegador de la landing, y si no está ahí la
+  fase 5 no sabe que existe.
+- **`SEED_DEMO_CLICKS` siembra clics de ejemplo, y NUNCA va en producción.**
+  Bandera propia y no `SEED_RESET`: restaurar el contenido del flyer y fabricar
+  telemetría son cosas distintas. Se salta sola si ya hay clics registrados.
+- **El ⌘K es lo que ata las ocho pantallas** y vive en el MENÚ, no en cada
+  pantalla: desde cualquier sitio a cualquier sitio sin volver atrás. Con el
+  atajo escrito al lado — si no se ve, no existe.
+- **`cmdk` NO se usa**: su último release es de hace 12 meses y 2 días, fuera de
+  la regla de dependencias por dos días. Está escrito con **`<dialog>` nativo**,
+  que trae foco atrapado, Escape, `::backdrop` y el apilado — exactamente lo que
+  hacía falta, a coste cero. Hay que llamar a **`showModal()`**, no poner el
+  atributo `open`: con `open` el diálogo se pinta pero el tabulador se pasea por
+  el panel de detrás. Y `onClose` es obligatorio: cubre Escape y el gesto de
+  retroceso, que no pasan por nuestro código, y sin él el estado se queda en
+  «abierto» y el atajo deja de funcionar. Con test E2E del foco atrapado.
+- **La búsqueda es del SERVIDOR** (`GET /admin/search`), no un filtro del cliente:
+  la lista de galerías viene paginada, así que filtrar lo cargado encontraría
+  solo lo que ya está en pantalla — justo lo que no hace falta buscar. Mínimo
+  dos caracteres (422 con uno) y el recorte va **antes** de validar. Con una sola
+  letra el atajo no muestra los atajos: has escrito algo y verlos es ruido.
+- **`<details>` NO vale para un menú**: no se cierra al pulsar fuera, así que
+  abrir uno y tocar en otro sitio lo deja abierto tapando la tarjeta de al lado.
+  Va con el Popover de Radix, que ya estaba en el proyecto. Y ojo: happy-dom no
+  implementa el ocultado de `<details>` cerrado, así que RTL veía su contenido —
+  el mismo tipo de falso verde que el de la capa con `opacity: 0`.
+- **Una categoría no es un nombre: es un montón de vídeos.** La tarjeta enseña
+  portada, **las tres galerías publicadas más recientes** y **a qué paquete van
+  sus clics** —derivado por `PackageCategory`, sin columna nueva en el clic: una
+  denormalizada quedaría desfasada en cuanto James moviera un paquete—. Cero
+  clics se DICE («Sin clics todavía»), no se deja el hueco.
+- **La tira del menú de la web va encima de la rejilla.** El orden es abstracto
+  hasta que se ve dónde acaba; moverlo y verlo ahí al momento lo convierte en una
+  decisión. Las ocultas salen **tachadas**, no desaparecen: si desaparecieran,
+  ocultar una parecería haberla borrado.
+- **Los recuentos del menú reutilizan las claves de caché de las pantallas**, no
+  unas propias. Con claves nuevas serían cuatro peticiones más por navegación y,
+  peor, **dos verdades**: el menú diría «Paquetes 3» mientras la pantalla enseña
+  cuatro. `undefined` mientras carga, nunca `0`: un cero es un dato, y ahí sería
+  mentira.
+- **El filo de latón del elemento activo es `box-shadow: inset 2px 0 0`, no un
+  `border`.** Un borde de 2px solo en el activo empuja el icono 2px y el menú
+  entero baila al navegar. Lo mismo en el subrayado de las pestañas.
+- **El verde WhatsApp aparece en TRES sitios del admin y en ninguno más**: la vista
+  previa del hero, el icono y el visto del bloque de WhatsApp en Contacto, y el **filo
+  de 3px** a la izquierda de ese bloque. Un filo, no un borde de otro color por los
+  cuatro lados —eso se lee como un error—, y nunca un botón sólido: ese vive en la
+  landing. El bloque lo lleva porque es el negocio entero; si ese campo está mal, todo
+  lo demás de la pantalla da igual.
+- **La vista previa del hero en Configuración**, y va **pegada** (`sticky`) mientras se hace scroll: cambias
+  un campo y ves el efecto sin moverte. Dentro del marco ya no es el admin, es la
+  web, así que usa la paleta de la LANDING (`void #0A0908`), no la del admin.
+  Se alimenta con `useWatch`, no con `watch()`: solo re-renderiza la previa.
+- **`?nueva=1` abre el formulario de galería nada más entrar.** Sin eso, los
+  atajos «Nueva galería» del panel y del ⌘K soltaban a James en la lista a buscar
+  el botón. En la URL con `clearOnDefault`, y **el estado de nuqs sobrevive entre
+  tests del mismo fichero**: hay que resetear `window.history` en el `beforeEach`
+  o el test que abre el formulario deja al siguiente empezando con la hoja abierta.
+- **Dos incoherencias que salieron al tocar Configuración**: sus inputs usaban
+  `min-h-11 rounded-md border px-3` a mano en vez de `.campo` —sin fondo `card`,
+  sin radio de control y **sin el foco en latón**— y tres botones estaban escritos
+  a mano en vez de con `clasesBoton()`. Y usaba **`confirm()`**, que CLAUDE.md
+  prohíbe: ahora es una `Hoja`.
+- **Guardar arranca deshabilitado y solo se habilita con cambios**: un PATCH que
+  no cambia nada marcaría la web como pendiente de publicar.
+
+**Lo que salió al comparar la implementación contra el prototipo, valor por valor**
+- **`border` SIN clase de color en Tailwind 4 hereda `currentColor`.** El
+  preflight emite `border: 0 solid`, así que `className="rounded-md border"`
+  pinta un borde **casi blanco** (`#F2EFE9`) sobre esta paleta. Estaba en nueve
+  sitios de Configuración. Todo `border` lleva su `border-line`, `border-line-strong`
+  o `border-danger-line`.
+- **Un `z-index` NEGATIVO en un descendiente lo esconde bajo el fondo de un
+  ancestro no posicionado.** `-z-10` en la luz ambiente formaba su propio
+  contexto de apilamiento y se pintaba ANTES que el `bg-content` del layout —
+  invisible en las tres pantallas. Basta el orden del DOM: primero en el
+  documento y sin `z-index`.
+- **Una transición declarada que nadie dispara es coste sin efecto.** `levanta`
+  declaraba `transition: border-color, background-color` y el `:hover` solo
+  cambiaba `transform`. Igual el botón `secundario`, que subía el fondo pero no
+  el borde — por eso `--color-line-hover` estaba casi sin usar.
+- **`font-display` NO arrastra el `letter-spacing`.** El display de la guía es
+  familia + peso 800 + `-0.02em`; la utilidad de Tailwind solo cambia la
+  familia. Los tres números grandes lo llevan escrito.
+- **La escala de gravedad de un aviso necesita TRES niveles, y `grave` solo da
+  dos.** Rojo para lo que ya salió mal en la web, latón para lo que hay que
+  mirar, línea normal para el recordatorio: se deriva de `kind`, no del booleano.
+- **La unidad se escribe una vez en un par**: «3.2 / 10 GB», no «3.2 GB /
+  10.0 GB». Y `10.0` se escribe `10` — el decimal de un entero compite con el
+  del número de al lado, que sí lo necesita. `partirTamano()` en `lib/format`.
+- **Un asa de arrastre que no arrastra es una promesa rota.** Las tarjetas de
+  categoría llevan arrastre nativo HTML5 en escritorio, el mismo patrón que las
+  teselas del editor, con las flechas como camino táctil. Con test.
+- **El buscador tiene que encontrar PANTALLAS, no solo filas de la base.**
+  Escribir «ajustes» encuentra Configuración y «crear» ofrece crear: las rutas
+  y las acciones viven en el cliente con un campo `busca` de sinónimos, y la
+  comparación va sin acentos y en minúsculas. Sin eso, el atajo solo sirve si
+  ya sabes cómo se llama la pantalla — justo lo que no sabes cuando te pierdes.
+- **`overflow-hidden` en todo contenedor redondeado con hijos de fondo propio.**
+  El pie del buscador y su fila activa asomaban por las esquinas.
+- **La vista previa que se anuncia «en vivo» no puede mentir**: pintaba
+  `whatsappNumber` crudo (`+51994724944`) donde la web pinta `whatsappDisplay`.
+- **La barra pegada va en `chrome`, no en `content`**: es más clara que aquello
+  sobre lo que se pega, que es cómo se separa. Con `content` solo la distingue
+  la línea. Y lo que va debajo del formulario —la tarjeta de Redes— tiene que ir
+  DENTRO del marco, encima de la barra: si no, «Guardar» queda a media página.
+- **El `confirm()` que quedaba estaba en el peor sitio posible**: la afirmación
+  de consentimiento de la Ley 29733. En iOS es un diálogo del SISTEMA que se
+  acepta con el pulgar sin leerlo, que es exactamente el fallo del que esa
+  confirmación tiene que proteger. Ahora hay **cero `confirm()` en el admin**,
+  verificado con grep.
+- **happy-dom no oculta el contenido de un `<details>` cerrado**, así que RTL lo
+  ve y un test puede pulsarlo. Es el mismo falso verde que la capa con
+  `opacity: 0`: lo que se apila o se colapsa se prueba en Playwright.
+
+**Responsive: la matriz entera, medida — `e2e/responsive-total.spec.ts`**
+- **Nueve anchos × diez pantallas**, más zoom al 200% y móvil horizontal, más
+  las capas abiertas (⌘K, hojas, visor), más «nada se sale de su tarjeta». El
+  test **nombra el elemento** que desborda con su clase y sus coordenadas: sin
+  eso el fallo dice «desborda» y hay que ir componente por componente.
+  Complementa a `responsive.spec.ts`, que cubre casos concretos ya conocidos.
+- **Una decoración `absolute` que se sale mete scroll horizontal en TODA la
+  pantalla.** La luz ambiente es un círculo de 640px colocado con `-right-32`:
+  a 1024px se salía 104px y desbordaba las tres pantallas. Va dentro de un
+  recortador `absolute inset-0 overflow-hidden` (`components/shared/luz-ambiente`),
+  **no** con `overflow-hidden` en el contenedor de la pantalla — eso rompería
+  el `position: sticky` de la barra de guardar.
+- **`-mx-4` dentro de una columna de grilla la hace 32px más ancha que su
+  columna**, y eso desborda la pantalla. El sangrado a los bordes solo vale
+  donde el padre tiene el `px-4` que lo compensa: bajo `lg` sí, dentro de la
+  grilla de dos columnas no.
+- **`overflow-x: auto` obliga a `overflow-y` a no ser `visible`** (CSS Overflow
+  §3), así que una fila de 44px en una caja de 44px saca **una barra vertical de
+  dos píxeles** que no scrollea nada. `overflow-y: hidden` no lo arregla —la
+  spec lo recalcula—: se quita la BARRA con `@utility sin-barra`
+  (`scrollbar-width: none` + `::-webkit-scrollbar`), nunca el scroll. Solo donde
+  el contenido cabe o se desliza con el dedo.
+- **El zoom al 200% no cambia las media queries.** `sm:` sigue casando a 768px
+  mientras el sitio real es la mitad, así que `sm:flex-none` en la cabecera de
+  Galerías dejaba al buscador y al botón sumando 786px dentro de 768. Un grupo
+  en una cabecera va `flex-1 min-w-0` con `basis-*`, nunca `flex-none`.
+- **`e.key` NO siempre es una cadena.** El autorrelleno, el teclado predictivo
+  de iOS y algunas extensiones despachan `keydown` sin `key`, y un
+  `e.key.toLowerCase()` en un listener GLOBAL se lleva la página entera. El
+  tipo de TypeScript dice `string`; el navegador no lo garantiza.
+- **Un recuento se toma cuando la lista está QUIETA.** El test de cancelar una
+  subida comparaba contra un `count()` tomado nada más abrir la galería, y los
+  tests de arriba del mismo fichero suben reels de verdad a ESA galería: su
+  `confirm` seguía en vuelo y el número cambiaba después de medirlo. Fallaba una
+  de cada tres y **no era un timeout corto** —subírselo no lo arregló—: era
+  medir mientras el dato se movía. `recuentoEstable()` en `e2e/apoyo.ts` lee
+  hasta que dos lecturas seguidas coinciden.
+- **Medir o capturar espera a que acaben las animaciones, saltándose las
+  INFINITAS**: `animation.finished` de una que no acaba nunca no resuelve nunca,
+  y el test agota el timeout con un fallo que parece del test. `esperarAnimaciones`
+  en `e2e/apoyo.ts`. Y se espera al CONTENIDO, no al `h1`: el titular se pinta
+  con el skeleton puesto y las animaciones arrancan cuando llegan los datos.
+- **`locator.click()` hace scroll-into-view ANTES de pulsar**, así que cualquier medida
+  de «¿se movió la página al pulsar esto?» está midiendo el desplazamiento del propio
+  Playwright. Dio **−450 px constantes en cuatro anchos distintos** al abrir el menú de
+  la landing —tan estable que parecía un fallo real— y con `mouse.click()` sobre las
+  coordenadas del botón el desplazamiento es cero. Lo que se mide con un clic sintético
+  se confirma con uno por coordenadas antes de tocar código.
+- **Un alto fijo ESCONDE que el texto se parte dentro.** Las entradas del menú de
+  escritorio son `h-12`, así que el ancla se queda en 48px mientras el
+  `overflow-wrap: anywhere` del `body` **rompe la palabra dentro de la caja**: con seis
+  entradas y el número de teléfono, a 1280 salía «Trabaj / os» y «Testimoni / os» y el
+  `scrollWidth` no se movía un píxel. Ningún test de desbordes lo ve, y en una captura
+  es lo primero que salta. Se mide con `Range.getClientRects().length > 1` sobre el nodo
+  de TEXTO, no con la caja del elemento — y **después de `document.fonts.ready`**, porque
+  con la fuente sin cargar el texto mide menos y el fallo desaparece.
+- **`fullPage: true` miente con `min-h-dvh`**: Playwright agranda el viewport a
+  la altura del contenido, `dvh` crece con él y la página se estira sola. Las
+  capturas de móvil van sin `fullPage`, con un tiro arriba y otro abajo.
+
+**Un fallo de RED no puede cerrar la sesión — y «Error interno» no es una respuesta**
+- `refrescar()` hacía `fetch` sin `try/catch` y trataba cualquier `!res.ok` como
+  «el refresh no vale». Con la API caída o devolviendo un 5xx, la pasarela
+  **borraba la cookie** y James veía «Tu sesión caducó» con un refresh token
+  perfectamente bueno de 30 días. Un corte de red le pedía la contraseña.
+- Ahora `refrescar()` devuelve **tres** resultados, y la diferencia decide si se
+  borra la cookie: `SESSION_EXPIRED`/`SESSION_REVOKED` es **la API diciendo que
+  no** (4xx, y solo 4xx); `SIN_RESPUESTA` es **no haber podido preguntar** —red
+  caída, 5xx, timeout— y ahí la sesión NO se toca. Con cuatro tests, y
+  comprobado que fallan con el código de antes.
+- **`P1001` es 503, no 500**, y lo mismo `P1002` y `P2024`. Un 500 dice «error
+  interno» y no invita a reintentar; un 503 es temporal por definición. No es
+  hipotético: en local es Docker cerrado y en producción **el arranque en frío
+  de Neon**, que es el único cuello real del proyecto — con «Error interno» la
+  primera visita del día parecía un fallo de código.
+- El síntoma de Docker cerrado es inconfundible: **`P1001 · DatabaseNotReachable
+  · 127.0.0.1:5433`**. No hay nada que arreglar en el código; hay que abrir
+  Docker Desktop en Windows. `docker` deja de existir en la WSL cuando se cierra.
+
+**La pasarela DEBE capturar el fallo de red: si no, un 500 mudo**
+- Si la API no contesta —no está levantada, se reinicia, o vence el timeout— el
+  `fetch` de `pasarela.ts` **lanza**, y sin `try/catch` Next devuelve un **500
+  con el cuerpo vacío**. El cliente del admin espera el sobre y solo puede
+  decir «respuesta no válida del servidor», que no explica nada y hace pensar
+  que el fallo es del dato que mandaste.
+- Ahora devuelve el sobre con **504 si venció el tiempo y 502 si no había nadie
+  al otro lado**, y un mensaje que dice qué hacer. Los dos son ≥500, así que
+  `isRetryable` deja que TanStack Query lo reintente solo: si la API estaba
+  arrancando, la pantalla se arregla sin tocar nada. Con tres tests.
+- El síntoma en desarrollo es inconfundible: **`/api/...` da 500 sin cuerpo y la
+  API del 3000 no responde**. No es un fallo del admin, es que falta levantarla.
+
+**El autorrelleno del navegador TAPA la línea de ayuda**
+- En Configuración proponía «James Films / James Film» justo encima del hint que
+  dice dónde sale el campo. Y no tiene nada útil que sugerir: **no son los datos
+  de quien rellena, es el contenido de la web**. `autoComplete="off"` más
+  `data-1p-ignore` y `data-lpignore`, que son lo que respetan 1Password y
+  LastPass — ellos ignoran el `autocomplete`.
+
+**Un componente con un botón «Quitar» tiene que saber que lo han pulsado**
+- `CampoImagen` hacía `previa ?? valorUrl`: al pulsar «Quitar» ponía `previa` a
+  `null` y **la miniatura volvía a salir**, porque caía otra vez en el
+  `valorUrl` del padre — que no cambia hasta guardar y refetchear. Cada
+  pantalla lo apañaba por su cuenta con un `xKey === null ? null : url`, y
+  **seis de las nueve se olvidaron**: testimonios, categorías, paquetes y el
+  hero tenían el botón roto.
+- Ahora el estado interno tiene **tres** valores: `undefined` (nadie tocó nada
+  → manda `valorUrl`), `string` (recién subido) y `null` (quitado). El `null`
+  es justo lo que un `??` no puede distinguir de «no hay nada». Con eso, los
+  consumidores pasan `valorUrl` a secas y no hay dos verdades.
+- Regla: **si un componente ofrece la acción, el componente sostiene su
+  resultado.** Repartir esa lógica entre nueve llamadas garantiza que alguna se
+  quede atrás. Con test, y comprobado que el test falla si se vuelve al `??`.
+
+**Avisar al padre DURANTE el render es un `setState` en render — React lo grita**
+- `Marco` hacía `if (isDirty) onSucio(true)` en su propio render, y `onSucio`
+  era un `setState` de `PanelConfiguracion`: «Cannot update a component while
+  rendering a different component». Saltaba al teclear en cualquier pestaña.
+- El arreglo NO es envolverlo en un efecto y ya: **el panel no se pinta distinto
+  según ese valor**, solo lo consulta al pulsar otra pestaña. Un `useState` ahí
+  re-renderizaba las cinco pestañas y el formulario entero en la primera tecla,
+  para nada. Va en un **`useRef`** con un `useCallback` estable, y `Marco` avisa
+  en un `useEffect`. Con el ref, el fallo deja de ser posible por diseño.
+- **No dejé el test que escribí para cazarlo**: con el padre en un ref no hay
+  `setState` que disparar, así que pasaba igual con y sin el fallo. Un test que
+  no distingue las dos versiones es peor que ninguno.
+- **nuqs NO escucha `replaceState`**: guarda el estado en un emisor del módulo,
+  así que resetear la URL en el `beforeEach` no devuelve la pestaña a su sitio y
+  el test que acababa en SEO dejaba al siguiente empezando ahí. Los tests
+  **abren la pestaña** que necesitan en vez de darla por hecha.
+
+**El `prefetch` del login ENVENENABA la caché del router — bucle de login**
+- `formulario-login.tsx` precargaba el destino mientras James escribía. Sin
+  sesión, `/` responde **307 a `/login?desde=/`**, y eso es lo que quedaba
+  cacheado en el Router Cache de Next. Al acertar la contraseña,
+  `router.replace('/')` reusaba esa entrada y **volvía al login con la sesión ya
+  creada**. No precargaba nada útil: lo que guardaba era la redirección.
+- Era una **carrera**: se ganaba o se perdía según lo rápido que llegara el 307,
+  y por eso pasó meses sin dar la cara. Empezó a fallar siempre al añadir los
+  recuentos del menú, que retrasan la primera carga lo justo.
+- **Nunca se precarga una ruta protegida desde una pantalla sin sesión.** Y
+  `router.refresh()` va **ANTES** de `router.replace()`: al revés navega con la
+  caché de cuando no había sesión. Con dos tests: uno de que NO se precarga y
+  otro del orden de las dos llamadas.
+
+**Configuración y Testimonios — el hueco se llena con la previa, no con aire**
+- **Cada pestaña de Configuración enseña DÓNDE acaba lo que edita.** Identidad,
+  Contacto y Hero → el hero en marco de móvil. Diferenciadores → la tira como
+  sale bajo el hero. **SEO → el resultado de Google y la tarjeta de WhatsApp al
+  pegar el enlace.** Eso es lo que resuelve el «espacio enorme» de las pestañas
+  cortas: no es relleno, es el efecto de lo que estás escribiendo. Y hace la
+  navegación intuitiva — nunca hay que adivinar dónde sale un campo.
+- **Las previas usan la paleta de SU destino, no la del admin**: la landing
+  (`void #0A0908`) en el hero y los diferenciadores, el azul de Google y el
+  verde `#d9fdd3` de la burbuja de WhatsApp en SEO. Reconocerlo ES el punto; en
+  gris y latón no se parecería a lo que va a ver el cliente.
+- **`Campo` lleva `ayuda`, y va DEBAJO del input.** La etiqueta dice qué es; la
+  ayuda dice dónde sale y para qué sirve — sin ella «Frase corta» y «Eslogan»
+  son dos cajas indistinguibles, y James no tiene a quién preguntar. Encima
+  empujaría el campo y se leería antes que la etiqueta.
+- **Contador de caracteres en el SEO, que avisa y no bloquea**: Google recorta
+  por ANCHO, no por caracteres, así que el número es una guía. Sin él, un
+  título de 120 caracteres se ve a medias sin saber por qué.
+- **Dos campos cortos van en una fila, no apilados**, y las imágenes también:
+  dos cajas 3:1 a ancho completo se comían más alto que todos los campos juntos.
+- **Testimonios: UNA acción visible, la que toca ahora.** Tenía siete controles
+  con texto en el pie —dos flechas, consentimiento, publicar, destacar, editar,
+  borrar— y se leía como una barra de herramientas. Ahora: primaria según el
+  estado (`Dio su permiso` → `Publicar` → `Despublicar`), estrella y `⋯`. Tener
+  las tres a la vez obligaba a mirar cuál estaba deshabilitada para saber en qué
+  estado estabas.
+- **`auto-fill`, no `auto-fit`, donde puede haber UNA tarjeta.** `auto-fit`
+  colapsa las pistas vacías y estira esa única tarjeta a todo el ancho: en
+  Testimonios eso convertía una captura 3:4 en 1500px de alto. `auto-fill`
+  conserva las pistas. Y toda imagen dentro de una tarjeta lleva **techo de
+  alto** además de proporción.
+
+**La landing — lo aprendido cerrando la fase 5**
+- **Un enlace que el build EMITE no es una página que el build GENERE.** Las cinco tarjetas de
+  categoría apuntaban a `/bodas`, `/xv-anos`… y ninguna de esas páginas existía: cinco 404 en la
+  portada, con el typecheck, el build y 56 tests en verde. No lo ve nada que mire el código; se
+  ve comparando los `href` del HTML construido con `dist/`. Lo hace `e2e/enlaces.spec.ts`, y es
+  el primer test que hay que escribir al añadir una plantilla nueva.
+- **Una tarjeta solo se pinta si su destino existe.** La portada filtra las categorías sin
+  trabajos, porque `[categoria].astro` tampoco las genera: pintarla sería un 404 con forma de
+  tarjeta bonita. La regla general — **quien enlaza comprueba que hay adónde ir**.
+- **Un `<h1>` por página, y el hero lo tenía DUPLICADO.** El bloque de móvil y el de escritorio
+  eran dos, cada uno oculto en el ancho del otro: a ojo nunca se veían los dos a la vez, pero un
+  rastreador y un lector de pantalla ven el documento entero. Un solo bloque con clases `lg:`.
+- **El cuerpo son 17 px y el objetivo táctil son 48, no 44.** El alto casi nunca falla; **el
+  ancho sí**: los días del calendario medían 42 px a 390 px porque una rejilla de siete columnas
+  reparte lo que queda tras el `padding` y el `gap`. Se mide el ancho, no solo el alto.
+- **Sacar un color con una expresión regular está MAL.** Tailwind 4 sirve `bg-void/90` como
+  `oklab(0.985 -0.00005 0.004 / 0.9)`: leído como RGB 0-255 da casi negro, y el test de
+  contraste acusaba de 1.04:1 a una barra blanca. Se pinta sobre blanco y sobre negro en un
+  canvas y se despeja el color y su alfa — exacto para oklab, `color()`, lab, y lo que venga.
+  ⚠ **`apps/admin/e2e/responsive-total.spec.ts` tiene el mismo fallo y sigue sin arreglar.**
+- **`background-color` NO ve un degradado.** Un `linear-gradient` es una `background-image`, así
+  que el fondo real del panel de cierre era invisible para el test, que creía ver el `body`
+  blanco detrás. Se extraen las paradas del degradado y manda **la peor**.
+- **Lo que un ancestro RECORTA no desborda la página.** El aura del hero mide 720 px dentro de su
+  `overflow-hidden`. Sin esa comprobación el test acusa a lo que está bien mientras el scroll
+  horizontal real está en cero — y ese cero es la señal de que el equivocado es el test.
+- **`[hidden]` no gana solo**: la regla es del navegador y cualquier `display: flex` de Tailwind
+  la pisa, así que `el.hidden = true` deja el elemento a la vista **sin que nada falle**. Hay un
+  `[hidden] { display: none !important }` en `global.css`.
+- **Un comentario `{/* … */}` DENTRO de la lista de atributos de un componente Astro
+  compila y luego revienta `astro check`.** `pnpm build` lo acepta —el compilador de Astro
+  lo tolera— y `astro check` lo lee como JSX y lanza `Unterminated string literal` en la
+  línea del `</Layout>`, o sea **a decenas de líneas del error real**. Pasó tres veces en
+  una sesión: en `<Layout>`, en `<Calendario>` y en un `<a>` del pie. El comentario va
+  SIEMPRE encima de la etiqueta, nunca entre sus atributos. Y ojo con el síntoma: si el
+  build pasa y el typecheck falla señalando una etiqueta de cierre, busca el comentario.
+- **La landing tiene su propio Playwright** (`apps/web/e2e`), no cuelga del admin: aquel apunta
+  al 3001 y arranca con sesión. Se prueba `dist/` con `astro preview`, **nunca `astro dev`**.
+  Y ojo: **`astro preview` de Astro 7 daemoniza y vuelve**, así que Playwright lo lee como «el
+  servidor murió al empezar» y el error no nombra ni a Astro ni al puerto; el comando acaba en
+  un proceso de espera. Si se cuelga, `astro preview stop` — matar el pid deja vivo el registro
+  del demonio y el siguiente arranque se niega a levantar.
+- **Un `astro preview` propio en OTRO puerto también rompe la suite**, y el fallo no se
+  parece a su causa: el demonio de Astro es uno solo, así que levantar un preview en el
+  4322 para mirar algo mientras Playwright levanta el suyo en el 4321 deja a los dos
+  peleándose por el mismo registro. El síntoma fue **20 tests rojos repartidos por seis
+  ficheros** que pasaban de uno en uno, y otra vez `Timed out waiting for
+  config.webServer`. Antes de lanzar la suite: `ss -ltnp | grep -E '432[12]'` tiene que
+  no devolver nada. Y `astro preview stop` para UNO por llamada — con dos vivos hay que
+  llamarlo dos veces o matar el pid que quede.
+- **Un `astro dev` en el 4321 hace que la suite pase probando OTRA COSA, y sin decirlo.** Con
+  `reuseExistingServer` en local, Playwright ve el puerto ocupado, **no construye** y lanza los
+  49 tests contra el servidor de desarrollo: otro pipeline, y con los datos EN VIVO de la API en
+  vez de los del build. El síntoma es absurdo y por eso despista —una galería que la lista
+  enlaza y que da 404, porque el dev la resuelve al vuelo mientras `dist/` ni la tiene—, y el
+  resto de la suite sale verde sin haber tocado el código que acabas de escribir. Antes de medir
+  o de dar una suite por buena: `ss -ltnp | grep 4321`. Y `astro dev stop` no siempre lo mata
+  —si el registro del demonio se perdió dice «No dev server is running» con el proceso vivo—,
+  así que ahí sí toca `kill` del pid que nombre `ss`.
+- **`qs` y `mysql2` van forzados** en `overrides`. El primero SÍ está en el camino de una
+  petición —parsea la query string de Express— y el segundo no se carga nunca aquí, pero acaba
+  en el árbol de `pnpm deploy --prod`. Con ellos, `pnpm audit` da cero.
 
 **Estabilidad — nada deprecado, nada experimental**
 - **Ninguna API deprecada.** Si TypeScript, el linter o el runtime avisan de una deprecación,
@@ -445,6 +1051,23 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   saberlo: un test que pasa o falla según qué tengas abierto es peor que no tenerlo.
 - **El E2E entra UNA vez** y reutiliza la sesión con `storageState`. El login limita a 5 intentos
   por minuto, y hace bien: sin esto la suite se autobloquea y el fallo parece de credenciales.
+- **Un test verde a la primera y rojo a la tercera cuenta filas que nadie borra.** El de «las
+  más pedidas» sembraba 3 clics y afirmaba `count: 3`: a la tercera corrida seguida decía **9**,
+  porque el `beforeEach` limpiaba `busyDay` y no `whatsappClick`. Se borra **por `source`**, como
+  el resto de specs, no la tabla entera — los ficheros van en serie, pero un `deleteMany()` a
+  pelo se lleva por delante lo que siembre otro. Regla: **quien siembra, limpia lo suyo**, y una
+  afirmación sobre un contador absoluto solo vale si la tabla arranca vacía.
+- **Un test NUNCA redeclara la forma de un DTO.** `dashboard.integration.spec.ts` llevaba un
+  `interface Panel` copiado a mano de la fase 4, así que al añadir `bySource` y `saturdays` el
+  test los leía en runtime —y pasaba— mientras el typecheck decía que no existían. Con
+  `DashboardDto` importado de `packages/contracts`, un campo que la API mueva mueve el test o no
+  compila. Es la misma regla que ya rige en el admin, aplicada a los tests de la API.
+- **Un número escrito a mano en un test es una afirmación sobre los DATOS, no sobre el código.**
+  «enseña las CINCO entradas» del menú móvil pasaba a rojo cada vez que James despublicaba la
+  última galería: la portada esconde «Trabajos» sin galerías y «Testimonios» sin ninguno con
+  permiso, así que el menú tiene cuatro entradas o seis según el día. Lo que hay que afirmar es
+  el **invariante** —todas las que se pintan se ven de una vez, sin scroll y sin desvanecer—,
+  que es lo que el test existía para proteger.
 
 **Prisma 7 — cuatro cosas que cambiaron respecto a lo que describe §13 y §16**
 - Generador **`prisma-client`** (no `prisma-client-js`), con salida a **`apps/api/src/generated/prisma`**.
@@ -482,7 +1105,7 @@ El `.md` se contradice en estos puntos. Resueltos así:
 | Autoplay | Solo el hero | §1 pide autoplay en viewport |
 | Categorías en el admin | **Pantalla propia.** Diferenciadores y redes van en Configuración | §9 dice las dos cosas |
 | Tabs de Configuración | Identidad · Contacto y redes · **Diferenciadores** · Hero · SEO | §9 omite Diferenciadores |
-| Pantallas del admin | **Ocho** (incluye Dashboard) | §9 y §21 dicen "siete" |
+| Pantallas del admin | **Nueve**: las siete del doc, el Panel (`/panel`) y Disponibilidad (`/disponibilidad`) | §9 y §21 dicen "siete" |
 | Exposición de la API | **Es accesible desde internet** (build de Astro + `/track/whatsapp`). Por eso hay throttler global y los controllers públicos filtran siempre | §4 dice "la API no queda expuesta al público" |
 | Por qué no Vercel | Porque el **debounce de 60s del `DeployService` necesita un proceso vivo**. En serverless cada invocación es un proceso nuevo y el debounce no existe | §2 lo funda en BullMQ/ffmpeg, ambos fuera del v1 |
 | Quién dispara el deploy | **NestJS** | El diagrama de §4 lo dibuja en el admin |

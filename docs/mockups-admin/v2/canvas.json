@@ -1,0 +1,15 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",          "title": "Panel",         "x": 0,    "y": 0,    "w": 1440, "h": 900 },
+    { "file": "Categorias.dc.html",    "title": "Categorías",    "x": 1560, "y": 0,    "w": 1440, "h": 900 },
+    { "file": "Configuracion.dc.html", "title": "Configuración", "x": 0,    "y": 1060, "w": 1440, "h": 900 },
+    { "file": "Buscador.dc.html",      "title": "Buscador ⌘K",   "x": 1560, "y": 1060, "w": 920,  "h": 660 }
+  ],
+  "annotations": [
+    { "id": "nota-nav", "x": 2560, "y": 1060, "w": 300,
+      "text": "El ⌘K es lo que ata las cuatro pantallas: desde cualquier sitio se llega a cualquier sitio sin volver atrás. En el menú se ve siempre, con su atajo escrito." },
+    { "id": "nota-cat", "x": 3060, "y": 0, "w": 300,
+      "text": "Categorías dejaba de ser una lista de nombres: cada tarjeta muestra qué hay dentro y a qué paquete van sus clics. La tira de arriba es el menú de la web con este mismo orden." }
+  ],
+  "launch": { "view": "canvas" }
+}

@@ -1,5 +1,23 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { abrirGaleriaConMedios, abrirPrimeraGaleria, irAlPanel } from './apoyo';
+import {
+  abrirGaleriaConMedios,
+  abrirPrimeraGaleria,
+  esperarAnimaciones,
+  irAlPanel,
+} from './apoyo';
+
+/**
+ * El objetivo táctil de §7 son 44px, y se comprueba con medio píxel de holgura.
+ *
+ * No es relajar la regla: un botón `min-h-11` —44px exactos— que cae en una `y`
+ * fraccionaria (502.7215…) lo devuelve el navegador como **43.999969482421875**,
+ * porque redondea la caja a píxeles de dispositivo. Falla una de cada tres
+ * corridas según lo que haya scrolleado el test anterior, y el fallo no es un
+ * fallo. Con 43.5 no se cuela nada: aquí todos los controles se declaran a 44
+ * (`min-h-11`, `size-11`) o no se declaran, y el siguiente escalón hacia abajo
+ * son los 28px de `lg:size-7`, que ni se acerca.
+ */
+const TACTIL_MIN = 43.5;
 
 /**
  * Botones que NO son UI nuestra: los inyectan Next y TanStack Query en
@@ -28,6 +46,9 @@ const desbordaHorizontal = (page: Page): Promise<boolean> =>
 /** Las cuatro pantallas de la fase 4, además de las de la fase 3. */
 const PANTALLAS = [
   { nombre: 'Galerías', ruta: '/' },
+  // El Panel titula con el saludo («Buenas noches, James.»), que depende de la
+  // hora: se comprueba por el nombre, no por la frase entera.
+  { nombre: 'James', ruta: '/panel' },
   { nombre: 'Categorías', ruta: '/categorias' },
   { nombre: 'Paquetes', ruta: '/paquetes' },
   { nombre: 'Testimonios', ruta: '/testimonios' },
@@ -41,7 +62,7 @@ test.describe('responsive', () => {
 
     for (const { nombre, ruta } of PANTALLAS) {
       await page.goto(ruta);
-      await expect(page.getByRole('heading', { name: nombre, level: 1 })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1 })).toContainText(nombre);
       expect(await desbordaHorizontal(page), `${nombre} desborda a 320 px`).toBe(false);
     }
   });
@@ -52,12 +73,25 @@ test.describe('responsive', () => {
 
     for (const { ruta } of PANTALLAS) {
       await page.goto(ruta);
+      // Se mide con las animaciones ACABADAS. La cascada de entrada termina en
+      // `scale(1)`, así que medir un instante antes devuelve 43,99996 en un
+      // botón de 44: el test falla por algo que no es un fallo. Es la misma
+      // razón por la que `responsive-total.spec.ts` espera aquí.
+      await esperarAnimaciones(page);
       for (const boton of await page.getByRole('button').all()) {
         if (!(await boton.isVisible())) continue;
         if (await boton.evaluate((el) => el.matches('input[type="file"]'))) continue;
         if (await esDeDesarrollo(boton)) continue;
         const caja = await boton.boundingBox();
-        expect(caja?.height ?? 0, `botón bajo en ${ruta}`).toBeGreaterThanOrEqual(44);
+        // Se nombra el elemento: sin esto el fallo dice «botón bajo» y hay que
+        // ir componente por componente a buscar cuál.
+        const quien = await boton.evaluate(
+          (el) => `${(el.getAttribute('class') ?? '').slice(0, 90)} | y=${el.getBoundingClientRect().y}`,
+        );
+        expect(
+          caja?.height ?? 0,
+          `botón bajo en ${ruta}: ${quien}`,
+        ).toBeGreaterThanOrEqual(TACTIL_MIN);
       }
     }
   });
@@ -134,7 +168,7 @@ test.describe('responsive', () => {
       if (await esDeDesarrollo(boton)) continue;
       const caja = await boton.boundingBox();
       // §7: es el pulgar de James en una pantalla pequeña, no una preferencia.
-      expect(caja?.height ?? 0).toBeGreaterThanOrEqual(44);
+      expect(caja?.height ?? 0).toBeGreaterThanOrEqual(TACTIL_MIN);
     }
   });
 });
@@ -234,15 +268,13 @@ test.describe('el editor y el visor en todos los anchos', () => {
     await expect(visor).toBeVisible();
     // El visor entra con `scale(0.97)`: midiendo a mitad de la animación un
     // botón de 44px da 43,65 y el test falla por algo que no es un fallo.
-    // `getAnimations` espera a que termine de verdad, sin un `waitForTimeout`
-    // a ojo que se quedaría corto en una máquina lenta.
-    await visor.evaluate((el) =>
-      Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
-    );
+    await esperarAnimaciones(visor);
     for (const boton of await visor.getByRole('button').all()) {
       if (!(await boton.isVisible())) continue;
       const caja = await boton.boundingBox();
-      expect(caja?.height ?? 0, 'control del visor bajo de 44px').toBeGreaterThanOrEqual(44);
+      expect(caja?.height ?? 0, 'control del visor bajo de 44px').toBeGreaterThanOrEqual(
+        TACTIL_MIN,
+      );
     }
   });
 

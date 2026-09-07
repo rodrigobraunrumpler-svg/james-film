@@ -1,0 +1,165 @@
+---
+/**
+ * Los testimonios. La API ya filtra por `hasConsent`, así que si uno llega es
+ * que lo tenía — pero **hay test de que no llega ninguno sin permiso**: la web
+ * no vuelve a decidirlo, solo se niega a confiar a ciegas. Ley 29733, y hay
+ * menores en los XV.
+ *
+ * **La captura de WhatsApp SE VE.** Es la única prueba que no se puede
+ * inventar, James ya la sube desde el panel (`format: SCREENSHOT`) y el primer
+ * diseño la escondía. Recortada con degradado y con su línea de permiso.
+ *
+ * `items-start` en la rejilla: sin él la fila iguala alturas y un testimonio
+ * sin captura se estira al alto del que sí la tiene. Es la misma regla que ya
+ * se ganó en el admin.
+ */
+import Icono from './Icono.astro';
+import Seccion from './Seccion.astro';
+import { SECCIONES } from '../content/copy';
+import { corto } from '../lib/fechas';
+import { ESCONDER_SI_FALLA, SIZES, src, srcset } from '../lib/imagen';
+import type { TestimonialDto } from '@james-film/contracts';
+
+interface Props {
+  testimonios: TestimonialDto[];
+  /**
+   * La cabecera solo en la PORTADA. En `/testimonios` el titular es el `<h1>`
+   * de la página, y repetirlo aquí dejaría dos encabezados diciendo lo mismo.
+   */
+  cabecera?: boolean;
+  /**
+   * Cuántos hay EN TOTAL. Si son más de los que se pintan, aparece la salida a
+   * la página. Sin ella la portada sería un callejón para quien quiere leer más
+   * — y con cincuenta publicados sería además un muro que no lee nadie.
+   */
+  total?: number;
+  /**
+   * Ya NO es una sección suelta: vive dentro de «Sobre mí», a dos columnas,
+   * como el prototipo. Suelto quedaba flotando entre el calendario y las
+   * preguntas, y la cara de quien graba y la voz de quien le contrató se leen
+   * juntas o no se leen.
+   */
+  clase?: string;
+}
+
+const { testimonios, clase = '', cabecera = true, total = testimonios.length } = Astro.props;
+const hayMas = total > testimonios.length;
+---
+
+{
+  testimonios.length > 0 && (
+    <div id="testimonios" class:list={['flex scroll-mt-48 flex-col gap-4', clase]}>
+      {cabecera && <Seccion {...SECCIONES.testimonios} />}
+      <div class="grid items-start gap-3 lg:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] lg:gap-4">
+        {testimonios.map((t, i) => (
+          <figure
+            data-tipo={t.eventType ?? ''}
+            class="entra m-0 flex flex-col gap-3 rounded-card border border-line bg-surface p-4 lg:p-5"
+            style={`--i: ${i}`}
+          >
+            <figcaption class="flex items-center gap-2.75">
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-elevated text-brass-400">
+                {t.avatarUrl ? (
+                  <img
+                    src={src(t.avatarUrl)}
+                    alt=""
+                    loading="lazy"
+                    onerror={ESCONDER_SI_FALLA}
+                    class="h-full w-full object-cover"
+                  />
+                ) : (
+                  t.authorName.trim().charAt(0).toUpperCase()
+                )}
+              </span>
+              <span class="min-w-0">
+                <span class="block font-medium">{t.authorName}</span>
+                <span class="block text-sm text-ash">
+                  {[t.eventType, t.eventDate && corto(t.eventDate)].filter(Boolean).join(' · ')}
+                </span>
+              </span>
+              {/*
+                Las estrellas SOLO si hay valoración: cinco apagadas dicen
+                «valorado con cero», que es otra cosa que «aún sin valorar».
+              */}
+              {t.rating !== null && (
+                <span
+                  class="ml-auto flex shrink-0 gap-0.5"
+                  role="img"
+                  aria-label={`Valoración: ${t.rating} de 5`}
+                >
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill={n <= t.rating! ? '#c9a96a' : 'none'}
+                      stroke={n <= t.rating! ? '#c9a96a' : 'currentColor'}
+                      stroke-width="1.6"
+                      class={n <= t.rating! ? '' : 'text-line-strong'}
+                      aria-hidden="true"
+                    >
+                      <path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9Z" />
+                    </svg>
+                  ))}
+                </span>
+              )}
+            </figcaption>
+
+            {t.quote && <blockquote class="m-0 leading-snug">«{t.quote}»</blockquote>}
+
+            {t.screenshotUrl && (
+              <>
+                {/*
+                  ALTO FIJO, no `max-h`. El hueco tiene que estar reservado
+                  antes de que la imagen llegue: sin eso cada captura que entra
+                  empuja la rejilla, y con cincuenta testimonios eso es medio
+                  metro de página moviéndose mientras se lee. Es lo que un
+                  skeleton finge resolver y aquí se resuelve de verdad.
+
+                  Y `h-60` en vez de `aspect-ratio` + `max-h`: esas dos juntas
+                  no reservan, **encogen el ANCHO** para conservar la
+                  proporción, y la tarjeta se quedaría con la mitad de su
+                  columna en blanco. Ya pasó en el bento de la portada.
+                */}
+                <div class="relative h-60 overflow-hidden rounded-control border border-line bg-void">
+                  <img
+                    src={src(t.screenshotUrl)}
+                    srcset={srcset(t.screenshotUrl)}
+                    sizes={SIZES.tesela}
+                    alt={`Mensaje de ${t.authorName}`}
+                    loading="lazy"
+                    onerror={ESCONDER_SI_FALLA}
+                    class="h-full w-full object-cover object-top"
+                  />
+                  {/* Se difumina el corte: recortar en seco parece un fallo. */}
+                  <span
+                    class="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-surface to-transparent"
+                    aria-hidden="true"
+                  />
+                </div>
+                <p class="flex items-center gap-1.5 text-xs text-ash">
+                  <Icono nombre="chat" tamano={13} grosor={2} />
+                  Captura compartida con su permiso.
+                </p>
+              </>
+            )}
+          </figure>
+        ))}
+      </div>
+
+      {hayMas && (
+        <a
+          href="/testimonios/"
+          class="group flex min-h-12 w-fit items-center gap-2 text-brass-200"
+        >
+          Leer los {total}
+          <Icono
+            nombre="flecha"
+            tamano={17}
+            clase="transition-transform duration-200 group-hover:translate-x-1"
+          />
+        </a>
+      )}
+    </div>
+  )
+}

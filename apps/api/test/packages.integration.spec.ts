@@ -19,6 +19,7 @@ interface Paquete {
   slug: string;
   items: { id: string; text: string; included: boolean; order: number }[];
   isHighlighted: boolean;
+  isActive: boolean;
   priceAmount: number | null;
   categoryIds: string[];
   subtitle: string | null;

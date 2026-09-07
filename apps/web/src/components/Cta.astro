@@ -1,0 +1,96 @@
+---
+/**
+ * El botón verde y SU PISTA. Van juntos siempre, y por eso son un componente:
+ * separados, alguien acaba poniendo el botón sin la línea que quita el miedo a
+ * pulsarlo — que es la fricción real, no el precio.
+ *
+ * Texto OSCURO sobre el verde en los dos temas: sobre `#25D366` el negro
+ * contrasta 6,3 y el blanco 3,1.
+ */
+import Icono from './Icono.astro';
+import { PISTAS } from '../content/copy';
+import { idUnico } from '../lib/id';
+import { enlace, type Fuente } from '../lib/whatsapp';
+import type { IsoDate } from '../lib/fechas';
+
+interface Props {
+  numero: string;
+  base: string;
+  texto: string;
+  fuente: Fuente;
+  paqueteId?: string | null;
+  desde?: IsoDate | null;
+  hasta?: IsoDate | null;
+  ocupado?: boolean;
+  /** `null` quita la pista: solo donde ya hay una a dos dedos. */
+  pista?: string | null;
+  /** El principal mide 58; los de dentro de una tarjeta, 52. */
+  alto?: 'grande' | 'medio';
+  clase?: string;
+}
+
+const {
+  numero,
+  base,
+  texto,
+  fuente,
+  paqueteId = null,
+  desde = null,
+  hasta = null,
+  ocupado = false,
+  pista = PISTAS.whatsapp,
+  alto = 'grande',
+  clase = '',
+} = Astro.props;
+
+const href = enlace({ numero, base, desde, hasta, ocupado });
+const alturas = { grande: 'h-[58px] text-[17px]', medio: 'h-[52px] text-base' };
+
+/**
+ * La pista se ATA al enlace con `aria-describedby`.
+ *
+ * Estaba en un `<p>` hermano sin ninguna relación programática: quien navega
+ * con teclado o lector oía «enlace, ¡Hablemos de tu evento!» y no se enteraba
+ * de que se va a abrir otra aplicación — que es justo lo que la pista existe
+ * para decir.
+ *
+ * El id NO puede derivarse de `fuente`: en la portada hay tres `Cta` con
+ * `fuente="paquetes"` y `aria-describedby` apuntaría siempre al primero. Se
+ * genera uno por instancia, y esto corre en el build: no llega ni un byte al
+ * navegador.
+ */
+const idPista = pista ? idUnico('pista-wa') : undefined;
+---
+
+<div class:list={['flex flex-col gap-2.5', clase]}>
+  <a
+    href={href}
+    data-wa
+    data-fuente={fuente}
+    data-paquete={paqueteId}
+    target="_blank"
+    rel="noopener"
+    aria-describedby={idPista}
+    class:list={[
+      'flex items-center justify-center gap-2.5 rounded-control boton-wa font-semibold',
+      'shadow-[0_10px_34px_rgba(37,211,102,0.22)] transition-transform duration-200',
+      'motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0',
+      alturas[alto],
+    ]}
+  >
+    <Icono nombre="chat" tamano={20} grosor={2.1} />
+    {texto}
+    {/*
+      Y dicho también DENTRO del enlace, para el caso en que no hay pista: el
+      nombre accesible tiene que decir que se sale de la web.
+    */}
+    <span class="sr-only">(se abre WhatsApp)</span>
+  </a>
+  {
+    pista && (
+      <p id={idPista} class="text-center text-sm text-ash">
+        {pista}
+      </p>
+    )
+  }
+</div>

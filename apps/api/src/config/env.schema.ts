@@ -24,6 +24,32 @@ export const envSchema = z.object({
    */
   REFRESH_GRACE_SECONDS: z.coerce.number().int().nonnegative().default(30),
 
+  /**
+   * Los orígenes de la LANDING que pueden hablar con la API desde el navegador.
+   * Lista separada por comas, sin `*`.
+   *
+   * El único que la necesita es `POST /track/whatsapp`: el clic a WhatsApp lo
+   * registra el navegador de quien visita, y con `Content-Type: application/json`
+   * eso dispara un preflight. La lista blanca no para a un atacante decidido
+   * —CORS no detiene a `curl`— sino a quien empotre el botón en otra web e infle
+   * los clics.
+   *
+   * Se normaliza a `origin`: `http://localhost:4321/` y `.../algo` son el mismo
+   * origen para el navegador, pero `enableCors` compara la cadena tal cual, y
+   * una barra de más dejaría el CORS roto sin decir por qué.
+   */
+  WEB_ORIGIN: z
+    .string()
+    .default('http://localhost:4321')
+    .transform((v) =>
+      v
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.url()).min(1))
+    .transform((lista) => lista.map((o) => new URL(o).origin)),
+
   // --- Rate limiting ---
   // OJO: `z.coerce.boolean()` convierte la cadena "false" en `true`. Es la misma
   // trampa por la que no activamos enableImplicitConversion en el ValidationPipe.
@@ -45,7 +71,7 @@ export const envSchema = z.object({
     .default('true')
     .transform((v) => v === 'true'),
 
-  /** Lo lee SOLO el MediaUrlInterceptor. Ningún servicio conoce el dominio. */
+  /** Lo lee SOLO StorageService. Ningún servicio conoce el dominio. */
   CDN_BASE_URL: z.url(),
 
   MAX_VIDEO_MB: z.coerce.number().int().positive().default(200),

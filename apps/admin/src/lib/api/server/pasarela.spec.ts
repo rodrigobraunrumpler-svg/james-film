@@ -150,6 +150,127 @@ describe('pasarela', () => {
   });
 });
 
+describe('un fallo de red NO cierra la sesión', () => {
+  /** Primero un 401 (el access caducó), luego lo que le pase al refresh. */
+  const accessCaducadoYLuego = (alRefrescar: () => Promise<Response>) =>
+    mockFetch((url) =>
+      String(url).includes('/auth/refresh')
+        ? alRefrescar()
+        : Promise.resolve(respuesta({ code: 'UNAUTHORIZED' }, 401)),
+    );
+
+  it('con la API caída al refrescar, la cookie SIGUE ahí', async () => {
+    await guardarSesion({ accessToken: 'viejo', refreshToken: 'ref-bueno' });
+    vi.stubGlobal(
+      'fetch',
+      accessCaducadoYLuego(() => Promise.reject(new TypeError('fetch failed'))),
+    );
+
+    const res = await pasarela(peticion(), ctx(['admin', 'galleries']));
+
+    // No pudimos ni preguntar: el refresh sigue siendo válido 30 días. Borrarla
+    // obligaba a James a reescribir la contraseña por una caída del servidor.
+    expect(almacen.get(COOKIE)).toBeDefined();
+    expect(res.status).toBe(502);
+    expect(((await res.json()) as { code: string }).code).toBe('INTERNAL');
+  });
+
+  it('si la API devuelve 500 al refrescar, tampoco se borra', async () => {
+    await guardarSesion({ accessToken: 'viejo', refreshToken: 'ref-bueno' });
+    vi.stubGlobal(
+      'fetch',
+      accessCaducadoYLuego(() => Promise.resolve(respuesta({ code: 'INTERNAL' }, 500))),
+    );
+
+    const res = await pasarela(peticion(), ctx(['admin', 'galleries']));
+
+    // Un 5xx es un problema de la API, no un veredicto sobre el refresh.
+    expect(almacen.get(COOKIE)).toBeDefined();
+    expect(res.status).toBe(502);
+  });
+
+  it('pero si la API DICE que el refresh no vale, sí se borra', async () => {
+    await guardarSesion({ accessToken: 'viejo', refreshToken: 'ref-muerto' });
+    vi.stubGlobal(
+      'fetch',
+      accessCaducadoYLuego(() =>
+        Promise.resolve(respuesta({ code: 'SESSION_EXPIRED' }, 401)),
+      ),
+    );
+
+    const res = await pasarela(peticion(), ctx(['admin', 'galleries']));
+
+    expect(almacen.get(COOKIE)).toBeUndefined();
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as { code: string }).code).toBe('SESSION_EXPIRED');
+  });
+
+  it('y el reuso del refresh se distingue: se cerró por seguridad', async () => {
+    await guardarSesion({ accessToken: 'viejo', refreshToken: 'ref-reusado' });
+    vi.stubGlobal(
+      'fetch',
+      accessCaducadoYLuego(() =>
+        Promise.resolve(respuesta({ code: 'SESSION_REVOKED' }, 401)),
+      ),
+    );
+
+    const res = await pasarela(peticion(), ctx(['admin', 'galleries']));
+
+    expect(almacen.get(COOKIE)).toBeUndefined();
+    expect(((await res.json()) as { code: string }).code).toBe('SESSION_REVOKED');
+  });
+});
+
+describe('cuando la API no contesta', () => {
+  it('con la API caída devuelve 502 y el SOBRE, no un 500 mudo', async () => {
+    // Sin capturar el fallo del `fetch`, Next devolvía un 500 con el cuerpo
+    // vacío: el cliente del admin espera el sobre y solo podía decir
+    // «respuesta no válida del servidor», que no explica nada.
+    vi.stubGlobal(
+      'fetch',
+      mockFetch(() => Promise.reject(new TypeError('fetch failed'))),
+    );
+
+    const res = await pasarela(peticion(), ctx(['admin', 'galleries']));
+
+    expect(res.status).toBe(502);
+    const cuerpo = (await res.json()) as { success: boolean; code: string; message: string };
+    expect(cuerpo.success).toBe(false);
+    expect(cuerpo.code).toBe('INTERNAL');
+    // El mensaje dice QUÉ hacer, no «error interno».
+    expect(cuerpo.message).toMatch(/reiniciándose|vuelve a intentarlo/i);
+  });
+
+  it('si vence el tiempo devuelve 504, que es lo que de verdad pasó', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetch(() => Promise.reject(new DOMException('The operation timed out', 'TimeoutError'))),
+    );
+
+    const res = await pasarela(peticion(), ctx(['admin', 'galleries']));
+
+    expect(res.status).toBe(504);
+    expect(((await res.json()) as { message: string }).message).toMatch(/tardó demasiado/i);
+  });
+
+  it('ambos son ≥500, así que TanStack Query los reintenta solo', async () => {
+    // `isRetryable` en `lib/api/errors` es `status >= 500`: si la API estaba
+    // arrancando, la pantalla se arregla sin que James toque nada.
+    for (const [error, esperado] of [
+      [new TypeError('fetch failed'), 502],
+      [new DOMException('t', 'TimeoutError'), 504],
+    ] as const) {
+      vi.stubGlobal(
+        'fetch',
+        mockFetch(() => Promise.reject(error)),
+      );
+      const res = await pasarela(peticion(), ctx(['admin', 'galleries']));
+      expect(res.status).toBe(esperado);
+      expect(res.status).toBeGreaterThanOrEqual(500);
+    }
+  });
+});
+
 describe('cookie de sesión', () => {
   it('es httpOnly, sameSite lax, path / y con maxAge', async () => {
     await guardarSesion({ accessToken: 'a', refreshToken: 'b' });

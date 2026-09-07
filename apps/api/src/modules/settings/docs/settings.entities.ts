@@ -18,6 +18,8 @@ export class SiteSettingsEntity implements SiteSettingsDto {
     description: 'Markdown con SOLO negrita. Se renderiza en build time.',
   })
   aboutText!: string | null;
+  /** La CARA de James, no el logo: ése es una tira de película. */
+  @ApiProperty({ type: String, nullable: true }) photoUrl!: string | null;
   @ApiProperty({ type: String, nullable: true }) logoUrl!: string | null;
   @ApiProperty({ type: String, nullable: true }) signatureUrl!: string | null;
   @ApiProperty({

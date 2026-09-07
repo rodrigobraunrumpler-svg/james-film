@@ -71,6 +71,8 @@ const fabrica = (over: Partial<DepsCola> = {}) => {
     // promesa ya resuelta, el reintento se queda girando en microtareas y NADA
     // macro llega a ejecutarse — ni el propio `hasta` de este test.
     dormir: () => new Promise((r) => setTimeout(r, 0)),
+    // Con red por defecto: los tests que prueban el corte la sustituyen.
+    esperarConexion: () => Promise.resolve(),
     ...over,
   };
 
@@ -252,6 +254,38 @@ describe('cola de subidas', () => {
     expect(reloj).toBeGreaterThanOrEqual(PRESUPUESTO_MS);
   });
 
+  it('un corte de red NO gasta presupuesto: el reloj se para hasta que vuelve', async () => {
+    // Los cinco minutos existen para rendirse ante un archivo que no entra, no
+    // ante un túnel. Sin esto, seis minutos sin cobertura daban por fallidos
+    // ocho reels perfectos y había que relanzarlos uno a uno.
+    let reloj = 0;
+    const corte = diferida<void>();
+    let cortes = 0;
+    const { cola, registro } = fabrica({
+      ahora: () => reloj,
+      dormir: () => new Promise((r) => setTimeout(r, 0)),
+      esperarConexion: () => {
+        // El primer fallo pilla la red caída; el corte dura DIEZ minutos, el
+        // doble del presupuesto.
+        cortes += 1;
+        return cortes === 1 ? corte.promesa : Promise.resolve();
+      },
+      subir: () => (cortes === 0 ? Promise.reject(new Error('sin señal')) : Promise.resolve()),
+    });
+
+    const [id] = cola.anadir('g1', reels(1));
+    await hasta(() => cortes === 1);
+
+    reloj += 10 * 60_000;
+    corte.resolver();
+
+    // Llega a LISTO: el corte no cuenta. Con el reloj corriendo, el primer
+    // reintento habría encontrado el presupuesto agotado y lo habría dado por
+    // fallido sin volver a intentarlo ni una vez.
+    await hasta(() => cola.store.getState().items[id]?.estado === 'LISTO', 5000);
+    expect(registro.filter((r) => r.startsWith('firmar')).length).toBe(2);
+  });
+
   it('cancelar a mitad de subida no deja un Media PENDING huérfano', async () => {
     const puerta = diferida<void>();
     const { cola, registro } = fabrica({ subir: () => puerta.promesa });
@@ -264,6 +298,48 @@ describe('cola de subidas', () => {
     // El Media nace PENDING en el PRESIGN, no en la subida: sin el DELETE queda
     // una tarjeta muerta en la grilla hasta el cron de la fase 6.
     expect(registro).toContain(`borrar:media-${id}`);
+    expect(registro.some((r) => r.startsWith('confirmar'))).toBe(false);
+    expect(cola.store.getState().items[id]).toBeUndefined();
+  });
+
+  it('cancelar MIENTRAS SE FIRMA tampoco sube ni confirma nada', async () => {
+    // El caso real, y el que no estaba cubierto: James pulsa Cancelar justo
+    // después de elegir el archivo. Ahí todavía no hay PUT en vuelo, así que no
+    // hay nada que abortar — la función de aborto la registra `subir`, que aún
+    // no ha empezado. Sin comprobar `cancelados` después de la firma, la subida
+    // seguía hasta el final y confirmaba un medio cancelado; y como el item no
+    // tenía `mediaId` todavía, `cancelar` tampoco lo borraba: la fila se
+    // quedaba en la galería para siempre.
+    const puerta = diferida<{
+      mediaId: string;
+      uploadUrl: string;
+      posterUploadUrl: string;
+      storageKey: string;
+      posterKey: string;
+    }>();
+    const firmando: string[] = [];
+    const { cola, registro } = fabrica({
+      firmar: (_g, item) => {
+        firmando.push(String(item.clientUploadId));
+        return puerta.promesa;
+      },
+    });
+
+    const [id] = cola.anadir('g1', reels(1));
+    await hasta(() => firmando.length === 1);
+
+    // Cancela con la firma todavía en vuelo.
+    await cola.cancelar(id);
+    puerta.resolver({
+      mediaId: 'media-tarde',
+      uploadUrl: 'https://r2.test/put',
+      posterUploadUrl: 'https://r2.test/poster',
+      storageKey: 'videos/x.mp4',
+      posterKey: 'posters/x.jpg',
+    });
+    await hasta(() => registro.includes('borrar:media-tarde'));
+
+    expect(registro.some((r) => r.startsWith('subir'))).toBe(false);
     expect(registro.some((r) => r.startsWith('confirmar'))).toBe(false);
     expect(cola.store.getState().items[id]).toBeUndefined();
   });

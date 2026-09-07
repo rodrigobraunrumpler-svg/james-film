@@ -1,4 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
+import { NuqsAdapter } from 'nuqs/adapters/react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -60,6 +61,7 @@ const galeria = (over: Record<string, unknown> = {}) => ({
   coverUrl: null,
   isFeatured: false,
   isPublished: false,
+  hasConsent: false,
   category: { id: 'c1', slug: 'bodas', name: 'Bodas' },
   media: [],
   updatedAt: '2026-08-26T10:00:00.000Z',
@@ -116,15 +118,20 @@ function servidor(opciones: { lista?: unknown[]; detalle?: unknown } = {}) {
 
 let cliente = crearQueryClient(() => {});
 const Envoltorio = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={cliente}>
-    {children}
-    <Toaster />
-  </QueryClientProvider>
+  <NuqsAdapter>
+    <QueryClientProvider client={cliente}>
+      {children}
+      <Toaster />
+    </QueryClientProvider>
+  </NuqsAdapter>
 );
 
 const ESPERA = { timeout: 5000 } as const;
 
 beforeEach(() => {
+  // `?nueva=1` sobrevive entre tests del mismo fichero: sin esto, el test que
+  // abre el formulario deja al siguiente empezando con la hoja ya abierta.
+  window.history.replaceState(null, '', '/');
   cliente = crearQueryClient(() => {});
   filtros = { estado: 'todas', q: '', page: 1, pageSize: 20 };
   vi.clearAllMocks();
@@ -218,7 +225,9 @@ describe('«Ver en la web» y destacar', () => {
     const api = servidor();
     render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
 
-    await usuario.click(await screen.findByRole('button', { name: 'Destacar en la portada' }));
+    await usuario.click(
+      await screen.findByRole('button', { name: 'Ponerla la primera en la web' }),
+    );
 
     await waitFor(() => expect(api.de('PATCH', '/admin/galleries/g1')).toHaveLength(1), ESPERA);
     expect(api.de('PATCH', '/admin/galleries/g1')[0].cuerpo).toEqual({ isFeatured: true });
@@ -254,5 +263,71 @@ describe('el alt de un medio', () => {
     expect(await screen.findByRole('button', { name: /Editar la descripción/ })).toHaveTextContent(
       'Descripción ✓',
     );
+  });
+});
+
+
+/**
+ * PUBLICAR PREGUNTA POR LA AUTORIZACIÓN, y solo la primera vez.
+ *
+ * En una galería salen caras de gente real y en los XV años salen MENORES. La
+ * API lo rechaza con 422 `CONSENT_REQUIRED`, pero un 422 llega DESPUÉS de
+ * pulsar y se lee como un fallo del sistema, no como una pregunta.
+ *
+ * En una `Hoja`, nunca con `confirm()`: en iOS el nativo se acepta con el
+ * pulgar sin leerlo, que es justo el fallo del que esto protege.
+ */
+describe('la autorización de imagen', () => {
+  it('sin permiso, publicar abre la hoja y NO manda nada todavía', async () => {
+    const usuario = userEvent.setup();
+    const api = servidor({ detalle: galeria({ isPublished: false, hasConsent: false }) });
+    render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+
+    await usuario.click(await screen.findByRole('button', { name: 'Publicar galería' }));
+
+    expect(await screen.findByText(/autorización firmada/i)).toBeInTheDocument();
+    expect(
+      api.de('PATCH', '/admin/galleries/g1'),
+      'se publicó sin preguntar',
+    ).toHaveLength(0);
+  });
+
+  it('al confirmar manda el permiso y la publicación en UN solo patch', async () => {
+    // Dos peticiones dejarían la galería con el permiso marcado y sin publicar
+    // si fallara la segunda: mintiendo sobre lo que se acaba de confirmar.
+    const usuario = userEvent.setup();
+    const api = servidor({ detalle: galeria({ isPublished: false, hasConsent: false }) });
+    render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+
+    await usuario.click(await screen.findByRole('button', { name: 'Publicar galería' }));
+    await usuario.click(await screen.findByRole('button', { name: /Sí, la tengo firmada/ }));
+
+    await waitFor(() => expect(api.de('PATCH', '/admin/galleries/g1')).toHaveLength(1), ESPERA);
+    expect(api.de('PATCH', '/admin/galleries/g1')[0]!.cuerpo).toEqual({
+      isPublished: true,
+      hasConsent: true,
+    });
+  });
+
+  it('con el permiso YA marcado no vuelve a preguntar', async () => {
+    const usuario = userEvent.setup();
+    const api = servidor({ detalle: galeria({ isPublished: false, hasConsent: true }) });
+    render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+
+    await usuario.click(await screen.findByRole('button', { name: 'Publicar galería' }));
+
+    await waitFor(() => expect(api.de('PATCH', '/admin/galleries/g1')).toHaveLength(1), ESPERA);
+    expect(api.de('PATCH', '/admin/galleries/g1')[0]!.cuerpo).toEqual({ isPublished: true });
+  });
+
+  it('DESPUBLICAR nunca pregunta: retirar algo es como se atiende una cancelación', async () => {
+    const usuario = userEvent.setup();
+    const api = servidor({ detalle: galeria({ isPublished: true, hasConsent: true }) });
+    render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+
+    await usuario.click(await screen.findByRole('button', { name: 'Pasar a borrador' }));
+
+    await waitFor(() => expect(api.de('PATCH', '/admin/galleries/g1')).toHaveLength(1), ESPERA);
+    expect(api.de('PATCH', '/admin/galleries/g1')[0]!.cuerpo).toEqual({ isPublished: false });
   });
 });

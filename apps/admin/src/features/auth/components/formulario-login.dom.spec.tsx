@@ -153,11 +153,35 @@ describe('formulario de login', () => {
     expect(screen.queryByText('Tienes Bloq Mayús activado.')).not.toBeInTheDocument();
   });
 
-  it('precarga el destino mientras James escribe', async () => {
+  it('NO precarga el destino: sin sesión, lo que cachearía es la redirección', async () => {
     parametros = new URLSearchParams('desde=%2Fgalerias%2Fg1');
     render(<FormularioLogin />);
 
-    // Lo más lento del flujo es el primer render DESPUÉS de acertar la clave.
-    await waitFor(() => expect(navegacion.prefetch).toHaveBeenCalledWith('/galerias/g1'));
+    // Precargarlo envenenaba la caché del router: sin sesión, `/galerias/g1`
+    // responde 307 a `/login?desde=…`, y eso es lo que quedaba guardado. Tras
+    // acertar la contraseña, `replace()` reusaba esa entrada y volvía al login
+    // con la sesión ya creada. Una carrera que se ganaba o se perdía según lo
+    // rápido que llegara el 307.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(navegacion.prefetch).not.toHaveBeenCalled();
+  });
+
+  it('invalida la caché ANTES de navegar, no después', async () => {
+    const usuario = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(respuesta(200, { success: true, code: 'OK', data: { ok: true } })),
+      ),
+    );
+    render(<FormularioLogin />);
+    await rellenarYEnviar(usuario);
+
+    // Al revés navega con lo viejo: la caché guarda las respuestas de cuando no
+    // había sesión.
+    await waitFor(() => expect(navegacion.replace).toHaveBeenCalled());
+    const ordenRefresh = navegacion.refresh.mock.invocationCallOrder[0]!;
+    const ordenReplace = navegacion.replace.mock.invocationCallOrder[0]!;
+    expect(ordenRefresh).toBeLessThan(ordenReplace);
   });
 });

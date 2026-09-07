@@ -5,6 +5,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { keys } from '@/lib/api/keys';
 import { prepararArchivo } from '../validacion/preparar';
 import { medios } from '../servicios';
+import { esperarConexion } from './conexion';
 import { crearCola, type EstadoCola } from './motor';
 import { subir } from './subir';
 import type { ItemCola } from './tipos';
@@ -31,6 +32,7 @@ export const cola = crearCola({
   nuevoId: () => crypto.randomUUID(),
   ahora: () => Date.now(),
   dormir: (ms) => new Promise((r) => setTimeout(r, ms)),
+  esperarConexion,
 });
 
 /**

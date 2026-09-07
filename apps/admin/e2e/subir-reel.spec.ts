@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { abrirPrimeraGaleria, irAlPanel, REEL, REEL_HEVC, REEL_SIN_FASTSTART } from './apoyo';
+import {
+  abrirPrimeraGaleria,
+  irAlPanel,
+  recuentoEstable,
+  REEL,
+  REEL_HEVC,
+  REEL_SIN_FASTSTART,
+} from './apoyo';
 
 /**
  * Se comprueba la CAPACIDAD, no el canal. El plan daba por hecho que el
@@ -35,7 +42,9 @@ test.describe('subir un reel', () => {
     // Contar ANTES: si no, la aserción la satisfacen las tarjetas que ya había
     // de una ejecución anterior y el test pasa sin haber subido nada.
     const tarjetas = page.getByRole('listitem');
-    const antes = await tarjetas.count();
+    // Estable, no a ojo: los tests de arriba suben reels a esta misma galería
+    // y su `confirm` puede seguir en vuelo cuando este empieza.
+    const antes = await recuentoEstable(tarjetas);
 
     await page.setInputFiles('input[type="file"]', REEL);
     await expect(page.getByText(/1 archivo · /)).toBeVisible();
@@ -56,7 +65,9 @@ test.describe('subir un reel', () => {
     // se ve perfectamente, solo tarda más el primer play — y bloquearlo dejaba
     // a James sin salida si su editor no ofrece esa opción.
     const tarjetas = page.getByRole('listitem');
-    const antes = await tarjetas.count();
+    // Estable, no a ojo: los tests de arriba suben reels a esta misma galería
+    // y su `confirm` puede seguir en vuelo cuando este empieza.
+    const antes = await recuentoEstable(tarjetas);
 
     await page.setInputFiles('input[type="file"]', REEL_SIN_FASTSTART);
     await page.getByRole('button', { name: 'Subir el archivo' }).click();
@@ -66,6 +77,13 @@ test.describe('subir un reel', () => {
     await expect.poll(() => tarjetas.count(), { timeout: 60_000 }).toBe(antes + 1);
     await expect(page.getByText('No se pudo subir')).toHaveCount(0);
     await expect(page.getByText(/inicio rápido|optimizar para web/).first()).toBeVisible();
+
+    // Y se espera a que TERMINE. La tesela de arriba la pinta la cola local, no
+    // el servidor: sin esta línea el test acababa con su `confirm` en vuelo, y
+    // el siguiente cargaba la galería antes de que la fila existiera. Medía 30,
+    // el `confirm` llegaba después y ya nunca volvía a 30 — un fallo que parecía
+    // de «cancelar» y era de este test, dos más arriba.
+    await expect(page.getByText(/^Subiendo /)).toHaveCount(0, { timeout: 60_000 });
   });
 
   test('un HEVC se rechaza ANTES de subir un byte', async ({ page }) => {
@@ -97,7 +115,9 @@ test.describe('subir un reel', () => {
     });
 
     const tarjetas = page.getByRole('listitem');
-    const antes = await tarjetas.count();
+    // Estable, no a ojo: los tests de arriba suben reels a esta misma galería
+    // y su `confirm` puede seguir en vuelo cuando este empieza.
+    const antes = await recuentoEstable(tarjetas);
 
     await page.setInputFiles('input[type="file"]', REEL);
     await page.getByRole('button', { name: 'Subir el archivo' }).click();
@@ -108,7 +128,14 @@ test.describe('subir un reel', () => {
 
     // El Media nace PENDING en el PRESIGN: sin el DELETE quedaría una tarjeta
     // muerta en la grilla hasta el cron de la fase 6.
-    await expect(page.getByRole('button', { name: 'Cancelar' })).toHaveCount(0);
+    //
+    // Con timeout explícito porque cancelar aborta el XHR pero el `route` de
+    // arriba sigue durmiendo sus 10 s. (El fallo intermitente que se le achacó
+    // primero NO era esto: era medir `antes` mientras la lista todavía se movía
+    // por los reels de los tests anteriores. Lo arregla `recuentoEstable`.)
+    await expect(page.getByRole('button', { name: 'Cancelar' })).toHaveCount(0, {
+      timeout: 20_000,
+    });
     await page.reload();
     await expect(page.getByLabel('Título', { exact: true })).toBeVisible();
     await expect.poll(() => tarjetas.count(), { timeout: 20_000 }).toBe(antes);

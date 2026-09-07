@@ -32,7 +32,7 @@ export default defineConfig({
     { name: 'setup', testMatch: /auth\.setup\.ts/, use: { channel: CANAL } },
     {
       name: 'chrome',
-      testIgnore: /responsive\.spec\.ts/,
+      testIgnore: /responsive(-total)?\.spec\.ts/,
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
@@ -52,7 +52,7 @@ export default defineConfig({
       // descriptor arrastra WebKit y el canal de Chrome no le vale. El Safari
       // real se prueba en el iPhone de James, no aquí.
       name: 'movil',
-      testMatch: /responsive\.spec\.ts/,
+      testMatch: /responsive(-total)?\.spec\.ts/,
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],

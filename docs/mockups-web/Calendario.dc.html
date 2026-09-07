@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=Inter:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #0A0908; }
+    a { color: #C9A96A; text-decoration: none; }
+    a:hover { color: #E5D3AC; }
+    .d { font-family: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+    .b { font-family: Inter, system-ui, -apple-system, sans-serif; }
+    .lab { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #9A7F47; font-weight: 500; }
+    .nota { font-size: 14px; line-height: 1.5; color: #9C958C; }
+    .pista { font-size: 14px; line-height: 1.5; color: #9C958C; }
+    .eyebrow { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #9A7F47; font-weight: 500; }
+    /* Celda del calendario: 44px de alto SIEMPRE, el ancho lo reparte la rejilla */
+    .dia { display: flex; align-items: center; justify-content: center; height: 48px; border-radius: 10px; font-size: 16px; border: 1px solid transparent; }
+    .libre { border-color: #2E2A26; color: #F2EFE9; }
+    .ocupado { color: #6B655C; background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(155,148,140,.14) 5px 10px); }
+    .sel { background: #C9A96A; color: #0A0908; font-weight: 600; border-color: #C9A96A; }
+    .rango { background: rgba(201,169,106,.18); border-color: rgba(201,169,106,.4); color: #E5D3AC; }
+    .fuera { color: #3D362F; }
+    @keyframes latido { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.82); } }
+    @media (prefers-reduced-motion: no-preference) { .vivo { animation: latido 2.1s ease-in-out infinite; } }
+  </style>
+</helmet>
+
+<div class="b" style="width: 1180px; background: #0A0908; color: #F2EFE9; font-size: 16px; line-height: 1.6; padding: 36px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 34px;">
+
+  <div>
+    <h1 class="d" style="margin: 0 0 6px; font-size: 30px;">El calendario · dónde va y cómo funciona</h1>
+    <p class="nota" style="margin: 0;">Va DESPUÉS de los paquetes y ANTES del cierre: primero se convence, después se comprueba la fecha. Y el hero ya lo engancha con «quedan 3 sábados libres en octubre».</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 40px; align-items: start;">
+
+    <!-- ═══════════ LA SECCIÓN, EN SU SITIO ═══════════ -->
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <span class="lab">En la página · móvil</span>
+      <div style="border: 1px solid #2E2A26; border-radius: 20px; overflow: hidden; background: #0A0908;">
+
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 26px 20px; background: #141210; border-bottom: 1px solid #2E2A26;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="eyebrow">Disponibilidad</span>
+            <h2 class="d" style="margin: 0; font-size: 27px;">¿Está libre tu día?</h2>
+            <p class="pista" style="margin: 4px 0 0;">Toca el día de tu evento y te escribo con la fecha ya puesta.</p>
+          </div>
+
+          <!-- Escasez HONESTA: solo si ese mes tiene algún sábado ocupado -->
+          <div style="display: flex; align-items: center; gap: 9px; padding: 11px 14px; border-radius: 11px; border: 1px solid rgba(201,169,106,.4); background: rgba(201,169,106,.08);">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span style="font-size: 15px; color: #E5D3AC;">Quedan <b style="font-weight: 600;">3 sábados libres</b> en octubre</span>
+          </div>
+
+          <!-- Mes -->
+          <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 14px; border: 1px solid #2E2A26; background: #0A0908;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <button type="button" style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 10px; border: 1px solid #2E2A26; background: transparent; cursor: pointer;" aria-label="Mes anterior">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <span class="d" style="font-size: 19px;">Octubre 2026</span>
+              <button type="button" style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 10px; border: 1px solid #2E2A26; background: transparent; cursor: pointer;" aria-label="Mes siguiente">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2EFE9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; font-size: 12px; color: #6B655C; text-align: center;">
+              <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;">
+              <span class="dia fuera">28</span><span class="dia fuera">29</span><span class="dia fuera">30</span>
+              <span class="dia libre">1</span><span class="dia libre">2</span><span class="dia ocupado">3</span><span class="dia libre">4</span>
+              <span class="dia libre">5</span><span class="dia libre">6</span><span class="dia libre">7</span><span class="dia libre">8</span><span class="dia libre">9</span><span class="dia ocupado">10</span><span class="dia libre">11</span>
+              <span class="dia libre">12</span><span class="dia libre">13</span><span class="dia libre">14</span><span class="dia libre">15</span><span class="dia libre">16</span><span class="dia libre">17</span><span class="dia libre">18</span>
+              <span class="dia libre">19</span><span class="dia libre">20</span><span class="dia libre">21</span><span class="dia libre">22</span><span class="dia libre">23</span><span class="dia sel">24</span><span class="dia rango">25</span>
+              <span class="dia libre">26</span><span class="dia libre">27</span><span class="dia libre">28</span><span class="dia libre">29</span><span class="dia libre">30</span><span class="dia ocupado">31</span><span class="dia fuera">1</span>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 14px; padding-top: 10px; border-top: 1px solid #2E2A26; font-size: 13px; color: #9C958C;">
+              <span style="display: flex; align-items: center; gap: 7px;"><span style="width: 14px; height: 14px; border-radius: 4px; border: 1px solid #2E2A26;"></span>Libre</span>
+              <span style="display: flex; align-items: center; gap: 7px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: repeating-linear-gradient(135deg, transparent 0 4px, rgba(155,148,140,.3) 4px 8px);"></span>Ocupado</span>
+              <span style="display: flex; align-items: center; gap: 7px;"><span style="width: 14px; height: 14px; border-radius: 4px; background: #C9A96A;"></span>Tu fecha</span>
+            </div>
+          </div>
+
+          <!-- Lo elegido, con salida -->
+          <div style="display: flex; align-items: center; gap: 12px; padding: 13px 15px; border-radius: 12px; border: 1px solid #C9A96A; background: rgba(201,169,106,.08);">
+            <div style="min-width: 0; flex: 1;">
+              <p style="margin: 0; font-size: 13px; color: #9C958C;">Tu fecha</p>
+              <p style="margin: 1px 0 0; font-size: 17px; font-weight: 500; color: #E5D3AC;">Del 24 al 25 de octubre</p>
+            </div>
+            <button type="button" style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 10px; border: 1px solid #2E2A26; background: transparent; cursor: pointer;" aria-label="Quitar la fecha elegida">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 56px; border-radius: 12px; background: #25D366; color: #0A0908; font-size: 17px; font-weight: 600;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0908" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+              Preguntar por esos días
+            </a>
+            <p class="pista" style="margin: 0; text-align: center;">Se abre tu WhatsApp con la fecha ya escrita.</p>
+          </div>
+
+          <p style="margin: 0; text-align: center; font-size: 13px; color: #6B655C;">Actualizado hace 2 días</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ ESTADOS Y MENSAJES ═══════════ -->
+    <div style="display: flex; flex-direction: column; gap: 30px;">
+
+      <!-- Estados de un día -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <span class="lab">Los seis estados de un día</span>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 68px; justify-content: center; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;"><span class="dia libre">18</span></div>
+            <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">Libre.</b> Borde fino, se puede pulsar.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 68px; justify-content: center; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;"><span class="dia ocupado">10</span></div>
+            <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">Ocupado.</b> Trama diagonal, no un rojo: no es un error, es una agenda. <b style="color: #F2EFE9;">Se sigue pudiendo pulsar.</b></p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 68px; justify-content: center; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;"><span class="dia sel">24</span></div>
+            <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">Tu fecha.</b> Latón sólido. Solo puede haber una selección.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 68px 64px; justify-content: center; gap: 4px; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;"><span class="dia sel">24</span><span class="dia rango">25</span></div>
+            <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">Dos días.</b> Un segundo toque hace el rango. El tercero reinicia.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 68px; justify-content: center; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;"><span class="dia libre" style="border-color: #9A7F47; position: relative;">7<span style="position: absolute; bottom: 5px; width: 4px; height: 4px; border-radius: 999px; background: #C9A96A;"></span></span></div>
+            <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">Hoy.</b> Un punto, no un relleno: relleno querría decir «elegido».</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: grid; grid-template-columns: 68px; justify-content: center; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;"><span class="dia fuera">30</span></div>
+            <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">Sin dato.</b> Pasado, o más allá de los 12 meses. No es «libre»: es que no se sabe.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Qué mensaje sale -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <span class="lab">Qué llega a WhatsApp · esto es lo que vería la clienta</span>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start;">
+
+          <div style="display: flex; flex-direction: column; gap: 9px;">
+            <div style="padding: 14px; border-radius: 12px; background: #0B141A;">
+              <div style="max-width: 92%; margin-left: auto; padding: 9px 12px; border-radius: 10px 10px 3px 10px; background: #005C4B; color: #E9EDEF; font-size: 14px; line-height: 1.45;">
+                Hola James, me interesa contratar tus servicios. ¿Tienes libre el <b>sábado 24 de octubre</b>?
+              </div>
+            </div>
+            <p class="nota" style="margin: 0;">Un día libre.</p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 9px;">
+            <div style="padding: 14px; border-radius: 12px; background: #0B141A;">
+              <div style="max-width: 92%; margin-left: auto; padding: 9px 12px; border-radius: 10px 10px 3px 10px; background: #005C4B; color: #E9EDEF; font-size: 14px; line-height: 1.45;">
+                Hola James, me interesa contratar tus servicios. ¿Tienes libre <b>del 24 al 25 de octubre</b>?
+              </div>
+            </div>
+            <p class="nota" style="margin: 0;">Dos días, como lo pidió la clienta de la conversación real.</p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 9px;">
+            <div style="padding: 14px; border-radius: 12px; background: #0B141A;">
+              <div style="max-width: 92%; margin-left: auto; padding: 9px 12px; border-radius: 10px 10px 3px 10px; background: #005C4B; color: #E9EDEF; font-size: 14px; line-height: 1.45;">
+                Hola James, me interesa el paquete <b>PRO</b> para el <b>24 de octubre</b>. ¿Sigue libre?
+              </div>
+            </div>
+            <p class="nota" style="margin: 0;">Con fecha elegida <b style="color: #F2EFE9;">y</b> paquete: los dos datos que James pregunta primero.</p>
+          </div>
+        </div>
+        <p class="nota" style="margin: 0;">El texto base sale de <b style="color: #F2EFE9;">Configuración</b>, no del código. Lo único que compone la web es la frase de la fecha — si no, editar el mensaje en el panel dejaría de cambiar la web y el botón de «Probar» del admin pasaría a mentir.</p>
+      </div>
+
+      <!-- Día ocupado: no es un callejón -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <span class="lab">Un día ocupado NO es un callejón sin salida</span>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start;">
+          <div style="display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 14px; border: 1px solid #2E2A26; background: #141210;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="dia ocupado" style="width: 48px; flex-shrink: 0;">10</span>
+              <div>
+                <p style="margin: 0; font-size: 16px; font-weight: 500;">Sábado 10 · ya tomado</p>
+                <p style="margin: 2px 0 0; font-size: 15px; color: #9C958C;">Los sábados libres más cercanos: 17, 24 y 31.</p>
+              </div>
+            </div>
+            <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 9px; height: 50px; border-radius: 11px; border: 1px solid #C9A96A; color: #E5D3AC; font-size: 16px; font-weight: 500;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E5D3AC" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+              Preguntar por otra fecha
+            </a>
+          </div>
+          <p class="nota" style="margin: 0;">Quien quería el 10 muchas veces coge el 17, <b style="color: #F2EFE9;">y perder a ése sí es perder</b>. Por eso el ocupado sigue abriendo WhatsApp, y por eso se le ofrecen las alternativas cercanas en vez de dejarlo en un «no».<br><br>El verde se reserva al día libre: aquí el botón es de contorno. La acción existe, pero no compite con la principal.</p>
+        </div>
+      </div>
+
+      <!-- Lo que no se hace -->
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 20px; border-radius: 14px; border: 1px solid #2E2A26; background: #141210;">
+        <span class="lab">Lo que el calendario NO hace</span>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+          <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">No reserva.</b> No hay confirmación, ni pago, ni «apartado». Elegir un día solo escribe la fecha en el mensaje.</p>
+          <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">No dice POR QUÉ está ocupado.</b> Ni el evento ni el lugar: son datos de un cliente que no dio permiso (Ley 29733).</p>
+          <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">No hay cuenta atrás.</b> «Actualizado hace 2 días» es verdad y comprobable; «quedan 4 horas» sería una presión inventada.</p>
+          <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">Nada más allá de 12 meses.</b> Un día del que no hay dato no se pinta como libre: no se pinta.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

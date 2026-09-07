@@ -1,0 +1,313 @@
+---
+/**
+ * `/fechas-libres` · la disponibilidad, con su propia página.
+ *
+ * Vive aparte por decisión de Javier. El coste que hay que tener presente: mete
+ * una carga entre «está interesada» y «pulsa WhatsApp», que es la única
+ * conversión de este sitio. Se compensa con dos cosas:
+ *
+ *  · **La fecha elegida VUELVE con el visitante.** Se guarda en `sessionStorage`
+ *    y la portada la recoge, así que elegir aquí el 24 y volver a los paquetes
+ *    deja los botones con «…el sábado 24 de octubre» ya escrito. Sin eso, la
+ *    página sería un desvío que no aporta nada al resto.
+ *  · **El CTA está en la página**, no solo al final: quien ya sabe su fecha
+ *    escribe desde aquí y no vuelve a ninguna parte.
+ */
+import Layout from '../layouts/Layout.astro';
+import Barra from '../components/Barra.astro';
+import BarraPegada from '../components/BarraPegada.astro';
+import Calendario from '../components/Calendario.astro';
+import Icono from '../components/Icono.astro';
+import Paquetes from '../components/Paquetes.astro';
+import Pie from '../components/Pie.astro';
+import { ESTADOS_DIA, PASOS_FECHA, PISTAS, SECCIONES } from '../content/copy';
+import { api } from '../lib/api';
+import { hoy, largo, relativo, sabadosLibres } from '../lib/fechas';
+
+const [ajustes, redes, disponibilidad, paquetes] = await Promise.all([
+  api.ajustes(),
+  api.redes(),
+  api.disponibilidad(),
+  api.paquetes(),
+]);
+
+const numero = ajustes.whatsappNumber;
+const base = ajustes.whatsappMessage ?? '';
+const display = ajustes.whatsappDisplay ?? numero;
+
+const escasez = sabadosLibres(disponibilidad.busy, disponibilidad.until);
+
+/**
+ * Los cuatro sábados libres más cercanos. Casi todo el mundo quiere sábado, y
+ * buscarlo en la rejilla es el paso que sobra: aquí se toca y ya está elegido.
+ * Salen del dato REAL, así que si no hay ninguno no se pinta nada.
+ */
+const tomados = new Set(disponibilidad.busy);
+const sabados: string[] = [];
+{
+  const cursor = new Date(`${hoy()}T00:00:00.000Z`);
+  for (let i = 0; i < 200 && sabados.length < 4; i++) {
+    const iso = cursor.toISOString().slice(0, 10);
+    if (iso > disponibilidad.until) break;
+    if (cursor.getUTCDay() === 6 && !tomados.has(iso) && iso >= hoy()) sabados.push(iso);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+}
+
+/** «sábado 19 de setiembre» → «19 de setiembre», que es lo que cabe en un chip. */
+const corto = (iso: string) => largo(iso).replace(/^\S+\s+/, '');
+---
+
+{/* El `title` lleva la CIUDAD: ninguno de los nueve la mencionaba, y «fechas
+    libres» a secas no es la búsqueda de nadie — quien busca escribe dónde. */}
+<Layout
+  titulo={`Fechas libres en Ayacucho · ${ajustes.brandName}`}
+  descripcion="Mira qué días tengo libres y escríbeme con tu fecha ya puesta. Ayacucho y alrededores."
+  imagen={ajustes.ogImageUrl}
+>
+  <Barra
+    {numero}
+    {display}
+    {base}
+    anclas={['/trabajos/', '#paquetes', '/fechas-libres/', '/negocios/', '/sobre-mi/']}
+    prefijo="/"
+    locales={['#paquetes']}
+    fuente="calendario-libre"
+  />
+
+  <main id="contenido" class="marco flex flex-col gap-6 py-6 lg:gap-10 lg:py-12">
+    <div class="flex flex-col gap-3">
+      <a href="/" class="flex min-h-12 w-fit items-center gap-2 text-ash">
+        <Icono nombre="atras" tamano={18} />
+        Volver al inicio
+      </a>
+      <div class="flex flex-col gap-1.5">
+        <p class="text-xs font-medium tracking-[0.18em] text-brass-600 uppercase">
+          {SECCIONES.calendario.eyebrow}
+        </p>
+        <h1
+          class="font-display text-[34px] leading-[1.06] font-extrabold tracking-[-0.025em] lg:text-[52px]"
+        >
+          {SECCIONES.calendario.titulo}
+        </h1>
+        <p class="max-w-[56ch] text-ash">{PISTAS.calendario}</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {
+          escasez && (
+            <p class="flex items-center gap-2.5 rounded-control border border-brass-400/45 bg-brass-relleno/8 px-4 py-2.5 text-brass-200">
+              <Icono nombre="reloj" tamano={18} grosor={1.9} clase="shrink-0 text-brass-400" />
+              <span
+                set:html={escasez.texto.replace(
+                  /(\d+ sábados? libres?)/,
+                  '<b class="font-semibold">$1</b>',
+                )}
+              />
+            </p>
+          )
+        }
+        {
+          disponibilidad.updatedAt && (
+            <p class="text-sm text-ash">Actualizado {relativo(disponibilidad.updatedAt)}</p>
+          )
+        }
+      </div>
+    </div>
+
+    <!--
+      El calendario primero en MÓVIL y a la derecha en escritorio. Es lo que se
+      viene a hacer: ponerlo debajo de tres bloques de explicación obligaría a
+      bajar para hacer lo único que trae aquí a nadie.
+
+      Y va PRIMERO EN EL DOM, con `lg:order-*` moviéndolo sólo en escritorio.
+      Antes era al revés —las explicaciones primero y `order` cambiando lo que se
+      ve en móvil—, así que el orden del tabulador iba al contrario que el
+      visual: el foco saltaba 690 px hacia abajo, recorría las explicaciones y
+      volvía a subir al calendario. `order` mueve los píxeles, no el foco.
+
+      En MÓVIL, que es la mayoría, ahora coinciden: cero saltos hacia atrás,
+      medido. En escritorio queda uno de 523 px —se tabula el calendario, que
+      está a la derecha, antes que las explicaciones de la izquierda— y **es
+      deliberado**: con un solo orden de DOM no se pueden tener los dos, y el
+      calendario primero sigue siendo un orden con sentido (WCAG 2.4.3 pide que
+      sea significativo, no que siga al ojo). Es lo único que se viene a hacer
+      aquí.
+    -->
+    <div class="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:items-start lg:gap-16">
+      <div class="lg:order-2">
+        {/*
+          `hrefPaquetes` sale de aquí y no del componente: quien enlaza comprueba
+          que hay adónde ir. Sin paquetes no se pinta la sección de abajo, y el
+          texto del enlace promete que está justo debajo.
+        */}
+        <Calendario
+          {numero}
+          {base}
+          hrefPaquetes={paquetes.length > 0 ? '#paquetes' : null}
+          ocupados={disponibilidad.busy}
+          hasta={disponibilidad.until}
+        />
+      </div>
+      <div class="flex flex-col gap-7 max-lg:mt-7 lg:order-1 lg:gap-9">
+        {
+          sabados.length > 0 && (
+            <section class="entra flex flex-col gap-3" style="--i: 0">
+              <h2 class="flex items-center gap-2.5 font-display text-[19px] font-extrabold lg:text-[22px]">
+                <Icono nombre="rayo" tamano={19} grosor={1.9} clase="text-brass-400" />
+                Los sábados libres más cercanos
+              </h2>
+              {/*
+                Tocables: eligen la fecha en el calendario de al lado. Es el
+                atajo del 90 % — una boda o unos XV caen en sábado casi siempre,
+                y buscarlo en la rejilla es el paso que sobra.
+              */}
+              <div class="flex flex-wrap gap-2">
+                {sabados.map((d) => (
+                  <button
+                    type="button"
+                    data-sabado={d}
+                    class="flex min-h-12 items-center gap-2 rounded-control border border-line px-4 text-sm transition-[transform,border-color,background-color] duration-150 hover:scale-[1.03] hover:border-brass-400 active:scale-[0.97] aria-pressed:border-brass-400 aria-pressed:bg-brass-relleno/10 aria-pressed:text-brass-200"
+                    aria-pressed="false"
+                  >
+                    <Icono nombre="calendario" tamano={15} grosor={1.8} clase="text-brass-600" />
+                    {corto(d)}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )
+        }
+
+        <section class="entra flex flex-col gap-3" style="--i: 1">
+          <h2 class="font-display text-[19px] font-extrabold lg:text-[22px]">Cómo funciona</h2>
+          <ol class="flex list-none flex-col gap-2.5 p-0">
+            {
+              PASOS_FECHA.map((p) => (
+                <li class="flex items-start gap-3">
+                  <span class="flex size-7 shrink-0 items-center justify-center rounded-full border border-line font-display text-sm font-extrabold text-brass-400">
+                    {p.n}
+                  </span>
+                  <span class="pt-0.5">{p.texto}</span>
+                </li>
+              ))
+            }
+          </ol>
+        </section>
+
+        <section class="entra flex flex-col gap-3" style="--i: 2">
+          <h2 class="font-display text-[19px] font-extrabold lg:text-[22px]">
+            Qué significa cada día
+          </h2>
+          <ul class="flex list-none flex-col gap-3 p-0">
+            {
+              ESTADOS_DIA.map((e) => (
+                <li class="flex items-start gap-3.5">
+                  {/* El ejemplo DIBUJADO, no un cuadradito de leyenda: se
+                      reconoce en la rejilla porque es el mismo elemento. */}
+                  <span class="dia-muestra" data-estado={e.estado} aria-hidden="true">
+                    12
+                  </span>
+                  <span class="min-w-0">
+                    <span class="font-medium">{e.titulo}</span>
+                    <span class="mt-0.5 block text-sm text-ash">{e.texto}</span>
+                  </span>
+                </li>
+              ))
+            }
+          </ul>
+        </section>
+      </div>
+
+    </div>
+
+    {/*
+      Los paquetes, AQUÍ. Antes esto era una fila de chips con el nombre a
+      secas y un enlace a `/#paquetes`: para saber qué separa al Pro del
+      Premium había que irse a otra página y volver, y volver perdía el hilo.
+
+      Es el MISMO componente de la portada, no una copia: `suelto` le quita el
+      `marco` porque este `main` ya lo trae, y `fuente="calendario-libre"` hace
+      que el clic viaje con el día pedido —`fechaPedida()` en el `Layout` solo
+      adjunta la fecha si la fuente empieza por `calendario`—. En el panel se
+      distinguen del CTA del calendario porque llevan `packageId` y él no.
+
+      Va fuera de la rejilla de dos columnas y a ancho completo: dentro de la
+      columna izquierda (372 px a 1024) el carrusel no cabría, y `auto-fit` con
+      `minmax(240px,1fr)` ya reparte los tres en fila con el ancho del `marco`.
+    */}
+    <Paquetes {paquetes} {numero} baseGeneral={base} suelto fuente="calendario-libre" />
+  </main>
+
+  <Pie {redes} email={ajustes.email} marca={ajustes.brandName} />
+  <BarraPegada {numero} {base} fuente="calendario-libre" />
+</Layout>
+
+<style>
+  /**
+   * La muestra de cada estado. Repite EXACTAMENTE lo que pinta la rejilla —los
+   * mismos tokens, la misma trama— porque si no se parecen, explicar no sirve
+   * de nada: hay que reconocerlo al verlo arriba.
+   */
+  .dia-muestra {
+    display: flex;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--color-line);
+    font-size: 1rem;
+    color: var(--color-bone);
+  }
+  .dia-muestra[data-estado='ocupado'] {
+    border-color: transparent;
+    color: var(--color-ash);
+    background: repeating-linear-gradient(
+      135deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--color-ash) 26%, transparent) 5px 10px
+    );
+  }
+  .dia-muestra[data-estado='elegido'] {
+    background: var(--color-brass-relleno);
+    border-color: var(--color-brass-relleno);
+    color: #0a0908;
+    font-weight: 600;
+  }
+</style>
+
+<script>
+  /**
+   * Los sábados rápidos: eligen la fecha en el calendario de al lado.
+   *
+   * Se hace pulsando el DÍA de verdad en vez de duplicar la lógica de
+   * selección: así el rango, el mensaje y el estado del botón salen del mismo
+   * sitio que si lo hubieras tocado en la rejilla, y no hay dos verdades.
+   */
+  const chips = document.querySelectorAll<HTMLElement>('[data-sabado]');
+
+  for (const chip of chips) {
+    chip.addEventListener('click', () => {
+      /**
+       * Se le PIDE al calendario que elija, no se busca el botón aquí.
+       *
+       * Buscarlo fallaba en silencio con cualquier sábado del mes siguiente:
+       * la rejilla solo pinta el mes visible, así que `[data-dia="2026-10-03"]`
+       * no existía y el chip no hacía nada. El calendario sabe navegar; el
+       * chip solo tiene que decir a dónde.
+       */
+      document.dispatchEvent(new CustomEvent('jf:elegir', { detail: { dia: chip.dataset.sabado } }));
+      document.getElementById('calendario')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+  }
+
+  // El chip se marca cuando SU día es el elegido, venga de donde venga.
+  document.addEventListener('jf:fecha', (e) => {
+    const { desde } = (e as CustomEvent).detail as { desde: string | null };
+    for (const chip of chips) {
+      chip.setAttribute('aria-pressed', String(chip.dataset.sabado === desde));
+    }
+  });
+</script>

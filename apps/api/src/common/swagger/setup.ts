@@ -5,6 +5,8 @@ import { GalleriesModule } from '../../modules/galleries/galleries.module.js';
 import { PackagesModule } from '../../modules/packages/packages.module.js';
 import { SettingsModule } from '../../modules/settings/settings.module.js';
 import { TestimonialsModule } from '../../modules/testimonials/testimonials.module.js';
+import { AvailabilityModule } from '../../modules/availability/availability.module.js';
+import { TrackingModule } from '../../modules/tracking/tracking.module.js';
 
 /**
  * DOS documentos, no uno. El público es el contrato que consume Astro en build
@@ -31,6 +33,13 @@ export function construirDocPublico(app: INestApplication): OpenAPIObject {
       PackagesModule,
       TestimonialsModule,
       SettingsModule,
+      // `GET /availability` lo hornea el BUILD de Astro. Si no está aquí, la
+      // landing no sabe que existe — es lo que pasó con TrackingModule.
+      AvailabilityModule,
+      // `/track/whatsapp` lo llama el NAVEGADOR de la landing, no el build:
+      // es el clic que mide el negocio entero, y si no está aquí la fase 5 no
+      // sabe que existe.
+      TrackingModule,
     ],
   });
 
@@ -90,7 +99,26 @@ export function construirDocAdmin(app: INestApplication): OpenAPIObject {
   return SwaggerModule.createDocument(app, config);
 }
 
+/**
+ * El de ADMIN no se monta en producción, y hasta ahora sí se montaba.
+ *
+ * CLAUDE.md lo dice por escrito —«con bearer, no se expone en producción»— y el
+ * código montaba los dos sin condición. La UI de Swagger es una página
+ * PÚBLICA: el bearer protege los endpoints, no el catálogo. O sea que
+ * `/docs/admin` publicaba la superficie entera de administración —cada ruta,
+ * cada parámetro, cada forma de cuerpo— a quien la pidiera.
+ *
+ * No es una fuga de datos, es un mapa. Y el mapa es justo lo que no hace falta
+ * regalar de un panel con una sola cuenta.
+ *
+ * El PÚBLICO sí se queda: es el contrato que la fase 5 consume y que el CI
+ * congela en `docs/openapi-public.json`. Ahí no hay nada que esconder — son las
+ * mismas rutas que la landing llama desde el navegador de cualquiera.
+ */
 export function montarSwagger(app: INestApplication): void {
   SwaggerModule.setup('docs/public', app, construirDocPublico(app));
-  SwaggerModule.setup('docs/admin', app, construirDocAdmin(app));
+
+  if (process.env.NODE_ENV !== 'production') {
+    SwaggerModule.setup('docs/admin', app, construirDocAdmin(app));
+  }
 }

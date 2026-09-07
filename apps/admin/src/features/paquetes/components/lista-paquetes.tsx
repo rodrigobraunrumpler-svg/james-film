@@ -6,9 +6,11 @@ import { toast } from 'sonner';
 import {
   ArrowLeft,
   ArrowRight,
+  Check,
   Eye,
   EyeOff,
   Info,
+  MessageCircle,
   MoreHorizontal,
   Package,
   Pencil,
@@ -23,6 +25,7 @@ import { VerEnLaWeb } from '@/components/shared/ver-en-la-web';
 import { urlPaquetes } from '@/lib/enlaces';
 import { esApiError } from '@/lib/api/errors';
 import { ocultarSiFalla } from '@/lib/imagen';
+import { Pista } from '@/components/shared/pista';
 import { cn } from '@/lib/utils/cn';
 import { monedaPartida } from '@/lib/format';
 import { iconoDe } from '@/lib/iconos/mapa';
@@ -42,6 +45,13 @@ const ICONO =
 
 export function ListaPaquetes() {
   const { data, isPending, isError, refetch } = usePaquetes();
+  /**
+   * «0 clics» repetido en las tres tarjetas ocupa medio pie y no informa. En
+   * cuanto UNO tenga tráfico, el cero de los demás pasa a ser lo más importante
+   * que hay ahí. El prototipo los dibuja siempre porque es un mockup con datos:
+   * no modela el caso de cero tráfico, que es el del primer mes.
+   */
+  const hayClics = (data ?? []).some((p) => p.whatsappClickCount > 0);
   const categorias = useCategoriasComoOpciones();
   const { reordenar, fallo } = useOrdenPaquetes();
   const destacar = useDestacarPaquete();
@@ -55,7 +65,6 @@ export function ListaPaquetes() {
   const porId = new Map((categorias.data ?? []).map((c) => [c.id, c.name]));
   // Mientras nadie haya pulsado nada, el contador no informa y ocupa medio pie.
   // En cuanto hay tráfico, un 0 pasa a ser el dato más importante de la tarjeta.
-  const hayClics = (data ?? []).some((p) => p.whatsappClickCount > 0);
 
   if (isPending || categorias.isPending) return <SkeletonPaquetes />;
 
@@ -109,7 +118,9 @@ export function ListaPaquetes() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
           <h1 className="text-xl font-semibold tracking-[-0.01em]">Paquetes</h1>
-          <p className="text-ash text-sm">Lo primero que mira quien entra en la web.</p>
+          <p className="text-ash text-sm">
+            Lo que el cliente compara antes de escribirte. Un solo destacado.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* §9 lo pide para galerías Y paquetes. Aquí es la sección de la
@@ -248,7 +259,13 @@ export function ListaPaquetes() {
                     las de al lado se moverían con ella. */}
                 <span className="flex min-h-[19px] items-center">
                   {p.isHighlighted && (
-                    <span className="text-brass border-brass/40 bg-brass/10 rounded px-2 py-0.5 text-[10px] tracking-[0.12em] uppercase">
+                    <span
+                      // Relleno OPACO, no un latón al 10%: la tarjeta destacada
+                      // ya va tintada, así que en claro el chip quedaba en 4.26
+                      // sobre ella. Con `card` el latón contrasta 5.6 y la
+                      // insignia además resalta más, que es su trabajo.
+                      className="text-brass border-brass/40 bg-card rounded border px-2 py-0.5 text-[10px] tracking-[0.12em] uppercase"
+                    >
                       {p.badgeText ?? 'Nuestro más vendido'}
                     </span>
                   )}
@@ -269,9 +286,18 @@ export function ListaPaquetes() {
                     key={item.id}
                     className={cn('flex gap-2', !item.included && 'text-muted line-through')}
                   >
-                    <span aria-hidden className="text-line-hover">
-                      ·
-                    </span>
+                    <Check
+                      aria-hidden
+                      strokeWidth={2.4}
+                      className={cn(
+                        'mt-0.75 size-3 shrink-0',
+                        item.included
+                          ? p.isHighlighted
+                            ? 'text-brass'
+                            : 'text-sutil'
+                          : 'text-muted',
+                      )}
+                    />
                     <span className="dato">{item.text}</span>
                   </li>
                 ))}
@@ -288,9 +314,10 @@ export function ListaPaquetes() {
                 ))}
                 {hayClics && (
                   <span
-                    className="text-muted ml-auto shrink-0 text-xs tabular-nums"
+                    className="text-ash ml-auto flex shrink-0 items-center gap-1.25 text-xs tabular-nums"
                     title="Clics a WhatsApp atribuidos a este paquete"
                   >
+                    <MessageCircle className="size-3 text-[#1FA855]" aria-hidden strokeWidth={2} />
                     {p.whatsappClickCount} {p.whatsappClickCount === 1 ? 'clic' : 'clics'}
                   </span>
                 )}
@@ -299,24 +326,28 @@ export function ListaPaquetes() {
               {/* Los botones de orden, discretos y abajo: reordenar es raro y no
                   merece el sitio que ocupaba en la fila de acciones. */}
               <div className="absolute right-3 bottom-3 flex gap-1 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100">
-                <button
-                  type="button"
-                  aria-label={`Mover ${p.name} antes`}
-                  disabled={i === 0}
-                  onClick={() => reordenar(i, i - 1)}
-                  className={ICONO}
-                >
-                  <ArrowLeft className="size-3.5" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Mover ${p.name} después`}
-                  disabled={i >= data.length - 1}
-                  onClick={() => reordenar(i, i + 1)}
-                  className={ICONO}
-                >
-                  <ArrowRight className="size-3.5" aria-hidden />
-                </button>
+                <Pista texto={`Mover ${p.name} antes`} lado="arriba">
+                  <button
+                    type="button"
+                    aria-label={`Mover ${p.name} antes`}
+                    disabled={i === 0}
+                    onClick={() => reordenar(i, i - 1)}
+                    className={ICONO}
+                  >
+                    <ArrowLeft className="size-3.5" aria-hidden />
+                  </button>
+                </Pista>
+                <Pista texto={`Mover ${p.name} después`} lado="arriba">
+                  <button
+                    type="button"
+                    aria-label={`Mover ${p.name} después`}
+                    disabled={i >= data.length - 1}
+                    onClick={() => reordenar(i, i + 1)}
+                    className={ICONO}
+                  >
+                    <ArrowRight className="size-3.5" aria-hidden />
+                  </button>
+                </Pista>
               </div>
             </li>
           );

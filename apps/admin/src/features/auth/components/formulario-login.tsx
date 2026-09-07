@@ -1,9 +1,9 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { clasesBoton } from '@/components/shared/boton';
 import { useCuentaAtras } from '../hooks/use-cuenta-atras';
@@ -56,12 +56,17 @@ export function FormularioLogin() {
   const [espera, setEspera] = useState<number | undefined>();
   const restante = useCuentaAtras(espera);
 
-  // El panel se precarga mientras escribe: lo más lento del flujo es el primer
-  // render DESPUÉS de acertar la contraseña, y para entonces ya no hay nada que
-  // enseñar mientras tanto.
-  useEffect(() => {
-    router.prefetch(params.get('desde') ?? '/');
-  }, [router, params]);
+  /**
+   * NO se precarga el destino. Se hacía —«el panel se precarga mientras
+   * escribe»— y **envenenaba la caché del router**: sin sesión, `/` responde
+   * 307 a `/login?desde=/`, y eso es lo que quedaba cacheado. Después de
+   * acertar la contraseña, `router.replace('/')` reusaba esa entrada y volvía
+   * al login con la sesión ya creada, en bucle.
+   *
+   * Y no precargaba nada útil: la respuesta que cacheaba era la redirección,
+   * no el panel. Era una carrera que se ganaba o se perdía según lo rápido que
+   * llegara el 307.
+   */
 
   const {
     register,
@@ -88,9 +93,12 @@ export function FormularioLogin() {
     setErrorGeneral(null);
     try {
       await iniciarSesion(datos);
+      // `refresh()` ANTES del `replace()`: invalida la caché del router, que
+      // todavía guarda las respuestas de cuando no había sesión. Al revés,
+      // navega primero y limpia después — o sea, navega con lo viejo.
+      router.refresh();
       // `desde` lo pone proxy.ts al redirigir: se vuelve a donde iba.
       router.replace(params.get('desde') ?? '/');
-      router.refresh();
     } catch (e) {
       setErrorGeneral(mensajeDe(e));
       if (e instanceof ErrorLogin && e.code === 'RATE_LIMITED') setEspera(e.esperaSegundos);
@@ -233,9 +241,31 @@ export function FormularioLogin() {
           // el throttler reinicie la ventana y James espere más.
           disabled={isSubmitting || restante > 0}
           aria-busy={isSubmitting}
-          className={clasesBoton('principal', 'w-full text-base')}
+          className={clasesBoton(
+            'principal',
+            'entrar group h-13 w-full text-base font-semibold tracking-[0.02em] lg:min-h-13',
+          )}
         >
-          {isSubmitting ? 'Entrando…' : restante > 0 ? `Espera ${restante} s` : 'Entrar'}
+          {isSubmitting ? (
+            <>
+              {/* El punto latiendo dice «está pasando algo» sin un spinner que
+                  gire en bucle: es `opacity`, no un repintado por fotograma. */}
+              <span className="bg-brass size-1.5 animate-pulse rounded-full" aria-hidden />
+              Entrando…
+            </>
+          ) : restante > 0 ? (
+            `Espera ${restante} s`
+          ) : (
+            <>
+              Entrar
+              {/* La flecha se adelanta al pasar por encima: dice hacia dónde
+                  lleva el botón. Solo `transform`. */}
+              <ArrowRight
+                className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+                aria-hidden
+              />
+            </>
+          )}
         </button>
       </div>
     </form>

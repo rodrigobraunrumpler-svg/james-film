@@ -341,6 +341,58 @@
           "configuración"
         ]
       }
+    },
+    "/availability": {
+      "get": {
+        "description": "Lo hornea el build de Astro. **Por defecto todo está libre**: se guardan los días ocupados, nunca los libres, así que con la tabla vacía el año entero sale libre y es verdad.\n\n**No acepta ningún parámetro**, y es a propósito: un endpoint público que no recibe nada no se puede filtrar mal. Y **nunca lleva la nota** — es información de un cliente que no dio permiso para publicarla (Ley 29733). En la web un día ocupado dice «ocupado» y nada más.\n\n`until` es imprescindible: sin él la landing no puede distinguir «libre» de «no lo sé», y un día a catorce meses saldría libre.",
+        "operationId": "AvailabilityController_publica",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Sin contenido"
+          }
+        },
+        "summary": "Los días ocupados de los próximos 12 meses",
+        "tags": [
+          "availability"
+        ]
+      }
+    },
+    "/track/whatsapp": {
+      "post": {
+        "description": "El clic a WhatsApp **es** el lead: no hay formulario de contacto (§1 §9). Devuelve 204 y no bloquea nada — la landing lo manda con `sendBeacon` y se va a WhatsApp sin esperar.\n\nUn `packageId` que ya no existe **no tumba el clic**: se guarda sin atribución. Perder de qué paquete venía es barato; perder el clic no.",
+        "operationId": "TrackingController_clic",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackClickDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Sin contenido"
+          },
+          "422": {
+            "description": "La validación del DTO falló. Mira `details` para el campo concreto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiFailureEntity"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Registra un clic al botón de WhatsApp",
+        "tags": [
+          "tracking"
+        ]
+      }
     }
   },
   "info": {
@@ -597,6 +649,11 @@
             "type": "number",
             "description": "La lista NO trae los medios: solo cuántos hay listos.",
             "example": 3
+          },
+          "photoCount": {
+            "type": "number",
+            "example": 3,
+            "description": "Cuántos de esos medios son fotos. Los vídeos son la resta."
           }
         },
         "required": [
@@ -607,7 +664,8 @@
           "location",
           "coverUrl",
           "isFeatured",
-          "category"
+          "category",
+          "photoCount"
         ]
       },
       "MediaEntity": {
@@ -952,6 +1010,10 @@
             "nullable": true,
             "description": "Markdown con SOLO negrita. Se renderiza en build time."
           },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "logoUrl": {
             "type": "string",
             "nullable": true
@@ -1014,6 +1076,7 @@
           "tagline",
           "slogan",
           "aboutText",
+          "photoUrl",
           "logoUrl",
           "signatureUrl",
           "whatsappNumber",
@@ -1085,6 +1148,34 @@
           "url",
           "icon"
         ]
+      },
+      "TrackClickDto": {
+        "type": "object",
+        "properties": {
+          "packageId": {
+            "type": "string",
+            "description": "Qué paquete miraba. Se ignora si ya no existe."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "hero",
+              "barra",
+              "menu",
+              "paquetes",
+              "footer",
+              "galeria",
+              "calendario-libre",
+              "calendario-ocupado",
+              "negocios"
+            ]
+          },
+          "requestedDate": {
+            "type": "object",
+            "example": "2026-10-24",
+            "description": "Solo desde el calendario"
+          }
+        }
       }
     }
   }

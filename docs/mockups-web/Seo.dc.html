@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=Inter:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #0A0908; }
+    a { color: #C9A96A; text-decoration: none; }
+    a:hover { color: #E5D3AC; }
+    .d { font-family: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+    .b { font-family: Inter, system-ui, -apple-system, sans-serif; }
+    .lab { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #9A7F47; font-weight: 500; }
+    .nota { font-size: 14px; line-height: 1.5; color: #9C958C; }
+  </style>
+</helmet>
+
+<div class="b" style="width: 1000px; background: #0A0908; color: #F2EFE9; font-size: 16px; line-height: 1.6; padding: 36px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 32px;">
+
+  <div>
+    <h1 class="d" style="margin: 0 0 6px; font-size: 30px;">SEO y compartir</h1>
+    <p class="nota" style="margin: 0;">Las dos previas usan los colores de SU destino —los de Google y los de WhatsApp—, no la paleta de la marca. Reconocerlos ES el punto: en latón y gris no se parecerían a lo que va a ver el cliente.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; align-items: start;">
+
+    <!-- ═══ GOOGLE ═══ -->
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <span class="lab">Resultado en Google</span>
+      <div style="padding: 20px; border-radius: 14px; background: #FFFFFF;">
+        <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
+          <span style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: #0A0908;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2.5" stroke="#C9A96A" stroke-width="1.8"/><path d="M2 9h20M2 15h20M7 4v16M17 4v16" stroke="#C9A96A" stroke-width="1.3"/></svg>
+          </span>
+          <div style="line-height: 1.25;">
+            <div style="font-size: 14px; color: #202124;">James Film</div>
+            <div style="font-size: 12px; color: #4d5156;">https://jamesfilm.pe</div>
+          </div>
+        </div>
+        <div style="font-size: 20px; line-height: 1.3; color: #1a0dab; margin-bottom: 3px;">James Film · Reels y aftermovies para eventos en Ayacucho</div>
+        <div style="font-size: 14px; line-height: 1.58; color: #4d5156;">Grabo y edito reels y aftermovies para bodas, XV años y cumpleaños en Ayacucho. Los primeros te llegan en 24 horas, listos para subir.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">El título lleva lo que se busca</b>: «reels», «Ayacucho», «bodas». No «Inicio» ni «Bienvenidos».</p>
+        <p class="nota" style="margin: 0;">Google recorta por <b style="color: #F2EFE9;">ancho</b>, no por caracteres: por eso el contador del admin avisa y no bloquea.</p>
+      </div>
+    </div>
+
+    <!-- ═══ WHATSAPP ═══ -->
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <span class="lab">Al pegar el enlace en WhatsApp</span>
+      <div style="padding: 20px; border-radius: 14px; background: #0B141A;">
+        <div style="max-width: 300px; margin-left: auto; border-radius: 10px 10px 3px 10px; background: #005C4B; overflow: hidden;">
+          <div style="aspect-ratio: 1200/630; background: radial-gradient(120% 90% at 62% 28%, #4A3A28 0%, #1C1512 55%, #080706 100%); display: flex; align-items: flex-end; padding: 14px;">
+            <span class="d" style="font-size: 20px; color: #F2EFE9;">Transformo momentos<br>en historias</span>
+          </div>
+          <div style="padding: 9px 12px;">
+            <div style="font-size: 13px; font-weight: 600; color: #E9EDEF; line-height: 1.35;">James Film · Reels y aftermovies en Ayacucho</div>
+            <div style="font-size: 12px; color: #8696A0; line-height: 1.4; margin-top: 2px;">Bodas, XV años y cumpleaños. Los primeros reels en 24 horas.</div>
+            <div style="font-size: 12px; color: #8696A0; margin-top: 4px;">jamesfilm.pe</div>
+          </div>
+          <div style="padding: 0 12px 9px; font-size: 14px; color: #E9EDEF;">Mira, esta es su página 👇</div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 7px;">
+        <p class="nota" style="margin: 0;"><b style="color: #F2EFE9;">Esta es la que más importa</b>: James comparte enlaces por WhatsApp veinte veces al día. Es su tarjeta de visita real, no el resultado de Google.</p>
+        <p class="nota" style="margin: 0;">La imagen es <b style="color: #F2EFE9;">1200×630</b> sacada de una portada 9:16. Hay que <b style="color: #F2EFE9;">comprobarla con una foto real</b>: un recorte mal centrado decapita a la novia, y eso se comparte igual.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ QUÉ ENTRA EN EL SEO ═══ -->
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    <span class="lab">Lo que entra en la fase 5</span>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 13px; border: 1px solid #2E2A26; background: #141210;">
+        <p style="margin: 0; font-size: 16px; font-weight: 500;">Título y descripción</p>
+        <p class="nota" style="margin: 0;">Desde <b style="color: #F2EFE9;">Configuración</b>: los edita James, no están en el código. Canónica en cada página.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 13px; border: 1px solid #2E2A26; background: #141210;">
+        <p style="margin: 0; font-size: 16px; font-weight: 500;">Imagen por galería</p>
+        <p class="nota" style="margin: 0;">Cada trabajo comparte con SU portada, no con la del sitio. Es lo que hace que compartir una boda concreta funcione.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 13px; border: 1px solid #2E2A26; background: #141210;">
+        <p style="margin: 0; font-size: 16px; font-weight: 500;">Negocio local</p>
+        <p class="nota" style="margin: 0;">Datos estructurados con dirección, teléfono y horario. Es lo que alimenta el panel de Google al buscar «video bodas Ayacucho».</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 13px; border: 1px solid #2E2A26; background: #141210;">
+        <p style="margin: 0; font-size: 16px; font-weight: 500;">Sitemap y robots</p>
+        <p class="nota" style="margin: 0;">La integración de sitemap ya está instalada. Una URL por galería, todas indexables.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 13px; border: 1px solid #2E2A26; background: #141210;">
+        <p style="margin: 0; font-size: 16px; font-weight: 500;">Velocidad</p>
+        <p class="nota" style="margin: 0;">Es SEO, no solo comodidad: Google mide LCP, INP y CLS de visitas reales. Por eso las animaciones se miden entre paso y paso.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 13px; border: 1px solid #C9A96A; background: #141210;">
+        <p style="margin: 0; font-size: 16px; font-weight: 500; color: #E5D3AC;">Y lo que más rinde: <span style="color: #F2EFE9;">no es código</span></p>
+        <p class="nota" style="margin: 0;">Dar de alta el <b style="color: #F2EFE9;">perfil de Google Business</b>. Para un negocio local eso pesa más que todo lo de arriba junto, y lo tiene que hacer James.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

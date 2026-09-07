@@ -8,14 +8,19 @@ import { RolesGuard } from './common/guards/roles.guard.js';
 import { validateEnv } from './config/env.schema.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
+import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { GalleriesModule } from './modules/galleries/galleries.module.js';
 import { IconsModule } from './modules/icons/icons.module.js';
 import { MediaModule } from './modules/media/media.module.js';
 import { PackagesModule } from './modules/packages/packages.module.js';
+import { SearchModule } from './modules/search/search.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
 import { TestimonialsModule } from './modules/testimonials/testimonials.module.js';
+import { AvailabilityModule } from './modules/availability/availability.module.js';
+import { TrackingModule } from './modules/tracking/tracking.module.js';
 import { UploadsModule } from './modules/uploads/uploads.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { HealthModule } from './modules/health/health.module.js';
 import { StorageModule } from './storage/storage.module.js';
 
 @Module({
@@ -36,6 +41,7 @@ import { StorageModule } from './storage/storage.module.js';
     }),
     PrismaModule,
     CommonModule,
+    HealthModule,
     StorageModule,
     AuthModule,
     CategoriesModule,
@@ -46,6 +52,10 @@ import { StorageModule } from './storage/storage.module.js';
     SettingsModule,
     IconsModule,
     UploadsModule,
+    DashboardModule,
+    SearchModule,
+    AvailabilityModule,
+    TrackingModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

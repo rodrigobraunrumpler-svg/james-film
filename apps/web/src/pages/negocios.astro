@@ -1,0 +1,212 @@
+---
+/**
+ * `/negocios` · la segunda línea de James, que la web no tenía.
+ *
+ * Es un público DISTINTO al de la portada: el dueño de un restaurante o de un
+ * gimnasio no busca «bodas, XV años y cumpleaños», y si llega a la portada no
+ * encuentra nada suyo y se va. Por eso va aparte y no como una sección más:
+ * dos conversaciones muy distintas mezcladas se estorban.
+ *
+ * Todo el contenido sale del flyer de publicidad, palabra por palabra.
+ * **Sin precios, y es fiel**: el flyer de eventos los publica y éste no. Aquí
+ * la conversión es la conversación, no comparar tres columnas.
+ */
+import Layout from '../layouts/Layout.astro';
+import Barra from '../components/Barra.astro';
+import BarraPegada from '../components/BarraPegada.astro';
+import Cta from '../components/Cta.astro';
+import Icono, { type NombreIcono } from '../components/Icono.astro';
+import Pie from '../components/Pie.astro';
+import {
+  NEGOCIOS,
+  POR_QUE_NEGOCIOS,
+  PROCESO_NEGOCIOS,
+  QUE_CREAMOS,
+  TRABAJAMOS_CON,
+} from '../content/negocios';
+import { api } from '../lib/api';
+
+const [ajustes, redes] = await Promise.all([api.ajustes(), api.redes()]);
+
+const numero = ajustes.whatsappNumber;
+/**
+ * El mensaje base cambia: quien escribe desde aquí no tiene un evento, tiene
+ * un negocio. Reusar el de eventos le haría empezar la conversación diciendo
+ * algo que no es suyo, y James tendría que deshacerlo.
+ */
+const base = 'Hola James, me interesa contenido publicitario para mi negocio';
+const display = ajustes.whatsappDisplay ?? numero;
+
+const negrita = (t: string) =>
+  t.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-brass-400">$1</strong>');
+---
+
+<Layout
+  titulo={`Video publicitario para negocios en Ayacucho · ${ajustes.brandName}`}
+  descripcion="Contenido publicitario para restaurantes, tiendas, gimnasios y empresas en Ayacucho. Videos que venden, conectan y posicionan tu marca."
+  imagen={ajustes.ogImageUrl}
+>
+  {/*
+    Los SEIS botones de esta página cuentan como `negocios`, no solo los dos del
+    cuerpo. Es otro público y otro producto: medirlo con un tercio de sus clics
+    es no medirlo.
+  */}
+  <Barra
+    {numero}
+    {display}
+    {base}
+    anclas={['/trabajos/', '#paquetes', '/fechas-libres/', '/negocios/', '/sobre-mi/']}
+    prefijo="/"
+    fuente="negocios"
+  />
+
+  <main id="contenido" class="flex flex-col">
+    <!-- ── Cabecera ─────────────────────────────────────────────────────── -->
+    <section class="marco flex flex-col gap-4 py-7 lg:gap-6 lg:py-14">
+      <a href="/" class="flex min-h-12 w-fit items-center gap-2 text-ash">
+        <Icono nombre="atras" tamano={18} />
+        Volver al inicio
+      </a>
+      <p class="text-xs font-medium tracking-[0.18em] text-brass-600 uppercase">
+        {NEGOCIOS.eyebrow}
+      </p>
+      <h1
+        class="max-w-[18ch] font-display text-[34px] leading-[1.04] font-extrabold tracking-[-0.025em] lg:text-[56px]"
+      >
+        {NEGOCIOS.titulo}
+      </h1>
+      <div class="flex max-w-[54ch] flex-col gap-2.5 text-[17px] leading-snug lg:text-[19px]">
+        <p set:html={negrita(NEGOCIOS.entradilla)} />
+        <p set:html={negrita(NEGOCIOS.segundo)} />
+      </div>
+
+      <Cta {numero} {base} texto={NEGOCIOS.cta} fuente="negocios" clase="lg:w-[420px]" />
+
+      <!-- El proceso, como la tira del flyer. -->
+      <ul
+        class="sin-barra -mx-5 mt-2 flex list-none gap-2.5 overflow-x-auto px-5 lg:mx-0 lg:mt-4 lg:flex-wrap lg:px-0"
+      >
+        {
+          PROCESO_NEGOCIOS.map((p, i) => (
+            <li
+              class="entra flex shrink-0 items-center gap-2.5 rounded-control border border-line px-4 py-3"
+              style={`--i: ${i}`}
+            >
+              <Icono nombre={p.icono as NombreIcono} tamano={18} grosor={1.8} clase="text-brass-400" />
+              <span class="text-sm font-medium tracking-[0.06em] uppercase">{p.texto}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <!-- ── Qué creamos ──────────────────────────────────────────────────── -->
+    <section class="marco flex flex-col gap-4 border-t border-line bg-surface py-9 lg:gap-7 lg:py-16">
+      <h2
+        class="font-display text-[26px] leading-tight font-extrabold tracking-[-0.02em] lg:text-[40px]"
+      >
+        ¿Qué creamos para tu negocio?
+      </h2>
+      <ul class="grid list-none grid-cols-1 gap-3.5 p-0 sm:grid-cols-2 lg:grid-cols-5 lg:gap-4">
+        {
+          QUE_CREAMOS.map((q, i) => (
+            <li
+              class="entra flex flex-col gap-2.5 rounded-card border border-line bg-void p-5 transition-transform duration-200 hover:-translate-y-1"
+              style={`--i: ${i}`}
+            >
+              <Icono nombre={q.icono as NombreIcono} tamano={22} grosor={1.8} clase="text-brass-400" />
+              <p class="font-medium">{q.titulo}</p>
+              <p class="text-sm text-ash">{q.texto}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <!-- ── Con quién trabaja ────────────────────────────────────────────── -->
+    <section class="marco flex flex-col gap-4 py-9 lg:flex-row lg:items-center lg:gap-14 lg:py-16">
+      <div class="flex flex-col gap-2 lg:w-[38%]">
+        <h2 class="font-display text-[24px] leading-tight font-extrabold lg:text-[34px]">
+          Trabajamos con
+        </h2>
+        <p class="text-ash">
+          {/*
+            Es lo que ningún competidor de Ayacucho ofrece, y por eso va con su
+            propio bloque en vez de perdido en una lista de ventajas.
+          */}
+          No solo grabamos: ponemos delante de la cámara a quien tu marca
+          necesita.
+        </p>
+      </div>
+      <ul class="flex list-none flex-wrap gap-2.5 p-0">
+        {
+          TRABAJAMOS_CON.map((t, i) => (
+            <li
+              class="entra flex items-center gap-2.5 rounded-control border border-brass-400/45 bg-brass-relleno/8 px-5 py-3.5 text-brass-200"
+              style={`--i: ${i}`}
+            >
+              <Icono nombre="check" tamano={18} grosor={2.1} clase="text-brass-400" />
+              <span class="font-medium">{t}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <!-- ── Por qué ──────────────────────────────────────────────────────── -->
+    <section class="marco flex flex-col gap-4 border-y border-line bg-surface py-9 lg:gap-7 lg:py-14">
+      <h2 class="font-display text-[24px] leading-tight font-extrabold lg:text-[34px]">
+        ¿Por qué yo?
+      </h2>
+      <ul class="grid list-none grid-cols-2 gap-3.5 p-0 lg:grid-cols-5 lg:gap-4">
+        {
+          POR_QUE_NEGOCIOS.map((p, i) => (
+            <li
+              class="entra flex flex-col gap-2.5 rounded-card border border-line bg-void p-4 lg:p-5"
+              style={`--i: ${i}`}
+            >
+              <Icono nombre={p.icono as NombreIcono} tamano={22} grosor={1.7} clase="text-brass-400" />
+              <p class="text-sm font-medium tracking-[0.04em] uppercase lg:text-base">{p.titulo}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <!--
+      El cierre. PANEL con margen y esquinas, nunca a sangre: en el tema claro
+      un rectángulo oscuro de borde a borde se lee como un fallo de render. Y
+      declara su color de texto, no lo hereda.
+    -->
+    <div class="marco my-8 lg:my-14">
+      <section
+        class="relative isolate flex flex-col items-center gap-4 overflow-hidden rounded-panel border border-line px-6 py-10 text-center lg:gap-5 lg:px-16 lg:py-16"
+        style="background: linear-gradient(160deg, #1e1b18, #0f0d0b); color: #f2efe9"
+      >
+        <div
+          class="aura pointer-events-none absolute -top-44 left-1/2 h-[460px] w-[760px] -translate-x-1/2 rounded-full blur-[30px]"
+          style="background: radial-gradient(circle, rgba(37,211,102,.14) 0%, transparent 68%)"
+          aria-hidden="true"
+        >
+        </div>
+        <h2
+          class="relative font-display text-[28px] leading-tight font-extrabold tracking-[-0.02em] lg:text-[44px]"
+          style="color: #f2efe9"
+        >
+          {NEGOCIOS.cierre.titulo}
+        </h2>
+        <p class="relative max-w-[46ch]" style="color: #9c958c">{NEGOCIOS.cierre.texto}</p>
+        <Cta
+          {numero}
+          {base}
+          texto={display}
+          fuente="negocios"
+          clase="relative w-full max-w-sm [&_p]:text-[#9c958c]"
+        />
+      </section>
+    </div>
+  </main>
+
+  <Pie {redes} email={ajustes.email} marca={ajustes.brandName} />
+  <BarraPegada {numero} {base} fuente="negocios" />
+</Layout>

@@ -48,7 +48,7 @@ describe('presign genérico', () => {
       ['AVATAR_TESTIMONIO', 'image/jpeg', 'avatars'],
       ['CAPTURA_TESTIMONIO', 'image/png', 'screenshots'],
       ['OG', 'image/jpeg', 'og'],
-      ['HERO_POSTER', 'image/jpeg', 'posters'],
+      ['HERO_POSTER', 'image/png', 'posters'],
     ];
 
     for (const [proposito, mimeType, prefijo] of casos) {

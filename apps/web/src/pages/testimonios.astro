@@ -1,0 +1,169 @@
+---
+/**
+ * `/testimonios` · todos, con filtro por tipo de evento.
+ *
+ * **La portada enseña TRES y esta página el resto.** Más testimonios no es
+ * mejor: una pared de cincuenta no la lee nadie, la prueba social satura muy
+ * rápido y cincuenta mediocres convierten peor que tres buenos porque diluyen a
+ * los buenos. Los tres de la portada los elige James con el `order` del panel;
+ * aquí caben todos sin que estorben.
+ *
+ * **Estática y sin scroll infinito**, y las dos razones son concretas:
+ *
+ *  · El infinito necesitaría una API en runtime —y la de James duerme a los 15
+ *    minutos en el plan gratis: medio minuto cargando justo cuando alguien
+ *    mira— o tener los cincuenta ya en el HTML, y entonces paginar no ahorra
+ *    nada porque los bytes ya están pagados.
+ *  · Y se carga el PIE, donde viven privacidad, términos y uso de imagen. Con
+ *    scroll infinito no se llega nunca, y la Ley 29733 es lo único de este
+ *    proyecto que puede traerle un problema real a James — hay menores en los
+ *    XV. Eso no es una preferencia de diseño.
+ *
+ * Cincuenta testimonios en HTML son unos pocos KB de texto. Lo que pesa son las
+ * capturas, y de eso se encargan `loading="lazy"` y el alto reservado de cada
+ * una: el navegador solo baja las que se ven y nada salta.
+ */
+import Layout from '../layouts/Layout.astro';
+import Barra from '../components/Barra.astro';
+import BarraPegada from '../components/BarraPegada.astro';
+import Cta from '../components/Cta.astro';
+import Icono from '../components/Icono.astro';
+import Pie from '../components/Pie.astro';
+import Testimonios from '../components/Testimonios.astro';
+import { PISTAS, SECCIONES } from '../content/copy';
+import { api } from '../lib/api';
+
+const [ajustes, redes, testimonios] = await Promise.all([
+  api.ajustes(),
+  api.redes(),
+  api.testimonios(),
+]);
+
+const numero = ajustes.whatsappNumber;
+const base = ajustes.whatsappMessage ?? '';
+const display = ajustes.whatsappDisplay ?? numero;
+
+/**
+ * Los tipos salen de los testimonios que HAY, no del catálogo de categorías.
+ * Un chip que no filtra nada es un chip que decepciona: se pulsa, no pasa nada
+ * y deja de confiarse en los demás. Y así cada chip tiene al menos uno.
+ */
+const tipos = [...new Set(testimonios.map((t) => t.eventType).filter((t): t is string => !!t))];
+---
+
+{/* `sinIndexar`: igual que /trabajos. Sin ninguno publicado no hay nada que
+    indexar, y la description promete «mensajes reales de clientes» sobre una
+    página vacía. */}
+<Layout
+  sinIndexar={testimonios.length === 0}
+  titulo={`Lo que dicen · ${ajustes.brandName}`}
+  descripcion="Mensajes reales de clientes después de su evento. Todos publicados con su permiso."
+  imagen={ajustes.ogImageUrl}
+>
+  <Barra
+    {numero}
+    {display}
+    {base}
+    anclas={['/trabajos/', '#paquetes', '/fechas-libres/', '/negocios/', '/testimonios/', '/sobre-mi/']}
+    prefijo="/"
+  />
+
+  <main id="contenido" class="flex flex-col gap-5 marco py-6 lg:gap-8 lg:py-10">
+    <a href="/" class="flex min-h-12 w-fit items-center gap-2 text-ash">
+      <Icono nombre="atras" tamano={18} />
+      Volver al inicio
+    </a>
+
+    <div class="flex flex-col gap-2">
+      <p class="text-xs font-medium tracking-[0.18em] text-brass-600 uppercase">
+        {SECCIONES.testimonios.eyebrow}
+      </p>
+      <h1 class="font-display text-[clamp(1.9rem,5vw,3rem)] leading-[1.05] font-extrabold tracking-[-0.025em]">
+        {SECCIONES.testimonios.titulo}
+      </h1>
+      {/*
+        El número y el permiso, juntos. «Todos con su permiso» no es un adorno
+        legal: es lo que separa esto de las reseñas inventadas que hay en medio
+        internet, y decirlo cuesta seis palabras.
+      */}
+      <p class="text-ash">
+        {testimonios.length}{' '}
+        {testimonios.length === 1 ? 'mensaje' : 'mensajes'} de clientes, publicados con su permiso.
+      </p>
+    </div>
+
+    {
+      tipos.length > 1 && (
+        <div class="sin-barra -mx-5 flex gap-2 overflow-x-auto px-5 lg:mx-0 lg:flex-wrap lg:px-0">
+          {/*
+            Filtra en el CLIENTE sobre lo que ya está horneado: sin API, sin
+            esperas y sin una página por tipo que multiplicaría el build. Sin JS
+            salen todos, que es la respuesta correcta.
+          */}
+          <button
+            type="button"
+            data-filtro=""
+            aria-pressed="true"
+            class="flex h-12 shrink-0 items-center rounded-control border border-line px-4 text-sm aria-pressed:border-brass-400 aria-pressed:text-brass-200"
+          >
+            Todos
+          </button>
+          {tipos.map((t) => (
+            <button
+              type="button"
+              data-filtro={t}
+              aria-pressed="false"
+              class="flex h-12 shrink-0 items-center rounded-control border border-line px-4 text-sm aria-pressed:border-brass-400 aria-pressed:text-brass-200"
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )
+    }
+
+    {
+      testimonios.length > 0 ? (
+        <div data-lista>
+          <Testimonios {testimonios} cabecera={false} />
+        </div>
+      ) : (
+        // El vacío se DICE. Un hueco no distingue «todavía no hay» de «no cargó».
+        <p class="text-ash">
+          Todavía no hay ninguno publicado. Los subo en cuanto quien los escribe me da permiso.
+        </p>
+      )
+    }
+
+    {/*
+      Y el cierre, para que la página no sea un callejón: se lee la prueba y el
+      siguiente paso está aquí mismo, no de vuelta en la portada.
+    */}
+    <div class="flex flex-col gap-3 rounded-card border border-line bg-surface p-5 lg:p-7">
+      <p class="font-display text-[21px] font-extrabold lg:text-[26px]">
+        ¿Quieres el tuyo dentro de un mes?
+      </p>
+      <Cta {numero} {base} texto={ajustes.ctaText ?? 'Escríbeme por WhatsApp'} fuente="footer" pista={PISTAS.whatsapp} />
+    </div>
+  </main>
+
+  <Pie {redes} email={ajustes.email} marca={ajustes.brandName} />
+  <BarraPegada {numero} {base} />
+</Layout>
+
+<script>
+  const chips = document.querySelectorAll<HTMLButtonElement>('[data-filtro]');
+  const tarjetas = document.querySelectorAll<HTMLElement>('[data-lista] [data-tipo]');
+
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const tipo = chip.dataset.filtro ?? '';
+      chips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+      tarjetas.forEach((t) => {
+        // `hidden` y no `style.display`: `global.css` lo fuerza a
+        // `display: none !important` justo para que gane al `flex` de la tarjeta.
+        t.hidden = Boolean(tipo) && t.dataset.tipo !== tipo;
+      });
+    });
+  });
+</script>

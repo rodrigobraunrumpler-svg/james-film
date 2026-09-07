@@ -2,7 +2,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cola } from '@/lib/media/cola/store';
 import { crearQueryClient } from '@/lib/query/cliente';
 import { EditorGaleria } from './editor-galeria';
 
@@ -268,5 +269,48 @@ describe('grilla de medios', () => {
     await screen.findByLabelText('Título');
 
     expect(screen.queryByRole('button', { name: 'Hacer portada' })).not.toBeInTheDocument();
+  });
+
+  describe('sin conexión', () => {
+    /** `navigator.onLine` es de solo lectura: se redefine la propiedad. */
+    const conRed = (hay: boolean) =>
+      Object.defineProperty(window.navigator, 'onLine', { value: hay, configurable: true });
+
+    afterEach(() => {
+      conRed(true);
+      // La cola es un singleton de MÓDULO —sobrevive a la navegación, que es su
+      // razón de ser— así que también sobrevive entre tests: sin vaciarla, el
+      // reel del test de arriba deja al de abajo con algo en cola y el aviso
+      // sale cuando el test afirma que no debería.
+      for (const id of Object.keys(cola.store.getState().items)) cola.descartar(id);
+    });
+
+    it('con la red caída y algo en cola, lo dice y no lo esconde', async () => {
+      servidor();
+      conRed(false);
+      cola.anadir('g1', [
+        { archivo: new File(['x'], 'reel.mp4', { type: 'video/mp4' }), tipo: 'REEL' },
+      ]);
+
+      render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+      await screen.findByLabelText('Título');
+
+      const aviso = await screen.findByRole('status');
+      expect(aviso).toHaveTextContent('Sin conexión');
+      // Y dice qué va a pasar: sin esto, «sin conexión» se lee como «se perdió».
+      expect(aviso).toHaveTextContent('Se reanuda solo al volver');
+    });
+
+    it('con la red caída y NADA en cola no avisa de nada', async () => {
+      // Un corte de red no cambia nada de esta pantalla si no hay nada
+      // subiendo: avisar ahí es ruido, y el ruido entrena a no leer.
+      servidor();
+      conRed(false);
+
+      render(<EditorGaleria id="g1" />, { wrapper: Envoltorio });
+      await screen.findByLabelText('Título');
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
   });
 });

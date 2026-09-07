@@ -1,0 +1,77 @@
+---
+/**
+ * El JSON-LD que alimenta el panel de Google.
+ *
+ * **No lleva `address`, y es a propósito.** James no ha dado una dirección
+ * fiscal y no graba en un local: trabaja donde esté el evento. Inventar una
+ * calle para que el esquema quede «completo» sería poner un dato falso en lo
+ * único que Google lee sin que nadie lo revise. En su lugar va `areaServed`,
+ * que es lo cierto. El día que James dé una dirección, entra aquí.
+ *
+ * Y el mayor retorno de todo el SEO local no es esto: es que James complete su
+ * Google Business Profile. Eso es tarea suya y ningún JSON-LD lo sustituye.
+ */
+import type { SocialLinkDto } from '@james-film/contracts';
+import type { AjustesUsables } from '../lib/api';
+import { ZONAS } from '../content/copy';
+
+interface Props {
+  ajustes: AjustesUsables;
+  redes: SocialLinkDto[];
+  /** Absoluta. La calcula la página, que es quien conoce `Astro.site`. */
+  url: string;
+}
+
+const { ajustes, redes, url } = Astro.props;
+
+/** `+51 994 724 944` desde el `51994724944` que ya vive en la base. */
+const telefono = `+${ajustes.whatsappNumber}`;
+
+const datos = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  '@id': `${url}#negocio`,
+  name: ajustes.brandName,
+  description: ajustes.metaDescription ?? ajustes.tagline,
+  url,
+  telephone: telefono,
+  ...(ajustes.email ? { email: ajustes.email } : {}),
+  /**
+   * `image` SIEMPRE, con el mismo respaldo commiteado que usa el `Layout`.
+   *
+   * Es una propiedad recomendada de `LocalBusiness` y antes solo salía si James
+   * había subido la suya, o sea nunca. `logo` se queda fuera hasta que exista el
+   * SVG: `og.jpg` es una tarjeta de compartir, no un logotipo, y declararlo como
+   * tal sería un dato falso en el sitio que nadie revisa.
+   */
+  image: ajustes.ogImageUrl ?? new URL('/og.jpg', url).href,
+  ...(ajustes.logoUrl ? { logo: ajustes.logoUrl } : {}),
+  /**
+   * Las zonas salen de `ZONAS`, la MISMA lista que la tira de contexto y la
+   * respuesta del FAQ. Antes aquí había una ciudad escrita a mano mientras el
+   * texto de la página prometía tres: la versión que lee la máquina era la más
+   * pobre de las tres verdades que había sobre lo mismo.
+   *
+   * Ojo con lo que esto hace y lo que no: `areaServed` NO alimenta el paquete
+   * local del mapa —eso lo deciden las áreas de servicio de la ficha de Google
+   * Business—. Entra por coherencia y para tener una sola lista que copiar allí.
+   */
+  areaServed: ZONAS.map((nombre) => ({
+    '@type': 'City',
+    name: nombre,
+    address: { '@type': 'PostalAddress', addressCountry: 'PE' },
+  })),
+  // «Contesto de 9 a. m. a 9 p. m.», el mismo dato que la tira de contexto:
+  // dos verdades distintas sobre el horario serían peor que ninguna.
+  openingHoursSpecification: {
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    opens: '09:00',
+    closes: '21:00',
+  },
+  priceRange: 'S/',
+  ...(redes.length > 0 ? { sameAs: redes.map((r) => r.url) } : {}),
+};
+---
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(datos)} />

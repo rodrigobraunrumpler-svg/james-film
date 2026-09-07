@@ -1,0 +1,93 @@
+---
+/**
+ * Las cuatro categorías. **No son decoración: son las cuatro búsquedas reales
+ * del negocio** —«video bodas Ayacucho», «video XV años Ayacucho»— y cada una
+ * es una URL propia. Es la puerta de entrada desde Google a la mitad del
+ * tráfico que este negocio puede tener.
+ */
+import Seccion from './Seccion.astro';
+import { SECCIONES } from '../content/copy';
+import { degradado } from '../lib/degradado';
+import { ESCONDER_SI_FALLA, SIZES, src, srcset } from '../lib/imagen';
+import type { CategoryDto } from '@james-film/contracts';
+
+interface Props {
+  /** Reels —VÍDEOS— por categoría, para el pie «12 eventos · 280 reels». */
+  reels?: Record<string, number>;
+  /**
+   * Y las fotos, aparte. Antes todo iba bajo «reels» contra el total de medios,
+   * así que una categoría de fotos anunciaba reels que no existen.
+   */
+  fotos?: Record<string, number>;
+  categorias: CategoryDto[];
+  /** Cuántas galerías tiene cada una. Sin dato, no se pinta el recuento. */
+  cuantas: Record<string, number>;
+}
+
+const { categorias, cuantas, reels = {}, fotos = {} } = Astro.props;
+---
+
+{
+  categorias.length > 0 && (
+    <section class="flex flex-col gap-4 marco py-9 lg:gap-7 lg:py-18">
+      <Seccion {...SECCIONES.categorias} pista="Entra en el tuyo y mira solo esos trabajos." ancho />
+      <!--
+        Cada tarjeta tiene fondo OSCURO en los dos temas —debajo hay una foto o
+        un degradado, no la superficie de la página—, así que DECLARA su color
+        de texto en vez de heredarlo. Con `text-bone`, en el tema claro salía
+        `#17150f` sobre el degradado: negro sobre negro, 1.00:1. Es el cuarto
+        sitio donde se coló el mismo fallo.
+      -->
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        {categorias.map((c, i) => (
+          <a
+            href={`/${c.slug}/`}
+            class="entra group relative flex h-[152px] flex-col justify-end overflow-hidden rounded-card border border-line p-3.5 transition-transform duration-200 hover:-translate-y-1 lg:h-60 lg:p-5"
+            style={`--i: ${i}; background: ${degradado(c.id)}; color: #f2efe9`}
+          >
+            {c.coverUrl && (
+              <img
+                src={src(c.coverUrl)}
+                srcset={srcset(c.coverUrl)}
+                sizes={SIZES.categoria}
+                alt=""
+                loading="lazy"
+                onerror={ESCONDER_SI_FALLA}
+                class="absolute inset-0 h-full w-full object-cover object-[center_35%] transition-transform duration-500 group-hover:scale-[1.05]"
+              />
+            )}
+            {/* Suelo de contraste: la portada la elige James y puede ser clara. */}
+            <span
+              class="absolute inset-0"
+              style="background: linear-gradient(to top, rgba(10,9,8,.92) 8%, rgba(10,9,8,.28) 55%, transparent)"
+              aria-hidden="true"
+            />
+            <span class="relative font-medium lg:font-display lg:text-[26px] lg:font-extrabold">
+              {c.name}
+            </span>
+            {cuantas[c.slug] ? (
+              // `#b5aea4` y no `ash`: el token se invierte con el tema y aquí el
+              // fondo no. Tampoco vale el `#9c958c` del oscuro — sobre la parada
+              // más clara de estos degradados da 3.68:1.
+              <span class="relative text-sm" style="color: #b5aea4">
+                {[
+                  `${cuantas[c.slug]} ${cuantas[c.slug] === 1 ? 'evento' : 'eventos'}`,
+                  // Cada cosa solo si la hay: «· 0 reels» dice que la categoría
+                  // está vacía, que es otra cosa que no tener el dato.
+                  reels[c.slug]
+                    ? `${reels[c.slug]} ${reels[c.slug] === 1 ? 'reel' : 'reels'}`
+                    : null,
+                  fotos[c.slug]
+                    ? `${fotos[c.slug]} ${fotos[c.slug] === 1 ? 'foto' : 'fotos'}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+            ) : null}
+          </a>
+        ))}
+      </div>
+    </section>
+  )
+}

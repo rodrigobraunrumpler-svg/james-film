@@ -169,6 +169,42 @@ export class MediaService {
     await this.prisma.media.update({ where: { id }, data: { deletedAt: new Date() } });
   }
 
+  /**
+   * RETIRAR POR SOLICITUD. Es otra cosa que borrar, y por eso es otro método.
+   *
+   * `borrar` es soft delete: la fila se marca y **el objeto sigue servido en el
+   * dominio `media.`** hasta que el cron de la fase 6 lo purgue a los 30 días.
+   * Para el panel eso está bien —deshacer un borrado accidental es un `PATCH`—,
+   * pero no sirve para lo que la Ley 29733 llama cancelación y oposición: quien
+   * pide que se retire su cara no acepta «en 30 días», y cualquiera con el
+   * enlace lo sigue viendo mientras tanto. `/uso-de-imagen` promete que «se
+   * retira de la web en cuanto se lee el mensaje».
+   *
+   * Aquí el archivo se va del bucket AHORA y la fila queda con `deletedAt`
+   * puesto, no borrada: hace falta para que el cron no la vuelva a mirar y para
+   * que el recuento de disco no cuente lo que ya no existe.
+   *
+   * **Sin deshacer.** En todo lo demás de este panel deshacer sale gratis
+   * porque el objeto sigue ahí; aquí deshacer sería volver a publicar
+   * exactamente lo que alguien pidió quitar. Por eso el nombre no es «Borrar».
+   */
+  async retirarPorSolicitud(id: string): Promise<void> {
+    const media = await this.prisma.media.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, storageKey: true, posterKey: true },
+    });
+    if (!media) throw new NotFoundException();
+
+    await this.prisma.media.update({ where: { id }, data: { deletedAt: new Date() } });
+
+    // Después de marcar la fila: si el bucket falla, el medio ya no se sirve
+    // desde la web y queda un objeto huérfano — infinitamente mejor que una
+    // fila retirada con el archivo todavía público.
+    for (const clave of [media.storageKey, media.posterKey]) {
+      if (clave) await this.storage.delete(clave).catch(() => undefined);
+    }
+  }
+
   // ---------------------------------------------------------------- privado
 
   private validar(item: PresignItemDto): void {

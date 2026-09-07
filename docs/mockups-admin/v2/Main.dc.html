@@ -1,0 +1,203 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Panel</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;font-family:Inter,-apple-system,"Segoe UI",sans-serif;font-size:13px;background:#0F0D0C;color:#F2EFE9;-webkit-font-smoothing:antialiased;}
+  *{box-sizing:border-box;}
+  .h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em;}
+  .disp{font-family:'Bricolage Grotesque',Inter,sans-serif;font-weight:800;letter-spacing:-.02em;}
+  .sub{color:#8E877E;font-size:12px;margin:2px 0 0;}
+  .lab{color:#5F5952;font-size:11px;}
+  .card{background:#171412;border:1px solid #262220;border-radius:8px;}
+  .chip{border-radius:4px;background:#221E1A;color:#8E877E;padding:2px 7px;font-size:10px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:6px;background:#171412;border:1px solid #3D362F;color:#F2EFE9;font:inherit;font-size:12px;font-weight:500;transition:border-color .15s,background-color .15s;}
+  .btn:hover{border-color:#4A4038;background:#1C1917;}
+  .btn-b{background:transparent;border-color:#C9A96A;color:#C9A96A;}
+  .btn-b:hover{background:rgba(201,169,106,.1);border-color:#C9A96A;}
+  .campo{display:flex;align-items:center;height:34px;padding:0 10px;border-radius:6px;background:#171412;border:1px solid #262220;}
+  .num{font-variant-numeric:tabular-nums;}
+
+  /* Entrada escalonada: el orden en que aparecen es el orden en que hay que
+     leerlos. Solo transform y opacity, ≤350ms. */
+  @keyframes sube{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes creceX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes creceY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  @keyframes aparece{from{opacity:0}to{opacity:1}}
+  @keyframes deriva{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.05)}}
+  @media (prefers-reduced-motion: no-preference){
+    .e{animation:sube .35s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*60ms)}
+    .bar{transform-origin:left center;animation:creceX .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(220ms + var(--i,0)*60ms)}
+    .col{transform-origin:bottom;animation:creceY .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(260ms + var(--i,0)*22ms)}
+    .luz{animation:aparece .4s ease both, deriva 24s ease-in-out .4s infinite alternate}
+  }
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+
+  /* La fila y la tarjeta se levantan al pasar por encima: dice «esto se puede
+     tocar» sin añadir un botón más. */
+  .lift{transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s,background-color .2s;}
+  .lift:hover{transform:translateY(-2px);border-color:#4A4038;background:#1C1917;}
+</style>
+</helmet>
+
+<div style="display:flex;width:1440px;height:900px;background:#0F0D0C;position:relative;overflow:hidden;">
+  <div class="luz" aria-hidden="true" style="position:absolute;top:-22%;right:-8%;width:640px;aspect-ratio:1;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(201,169,106,.10) 0%,rgba(201,169,106,.03) 42%,transparent 70%);filter:blur(16px);"></div>
+  <aside style="display:flex;flex-direction:column;width:236px;flex-shrink:0;background:#151311;border-right:1px solid #262220;">
+    <div class="e" style="--i:0;display:flex;align-items:center;gap:10px;padding:18px 16px 14px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 4v16M17 4v16M2 9h5M2 15h5M17 9h5M17 15h5"/></svg>
+      <span style="font-size:11px;letter-spacing:.2em;font-weight:600;">JAMES FILM</span>
+    </div>
+
+    <!-- El buscador vive en el menú y no en cada pantalla: desde cualquier sitio
+         se llega a cualquier sitio sin volver atrás. Es lo que quita el «me pierdo». -->
+    <button class="e" style="--i:1;display:flex;align-items:center;gap:8px;margin:0 10px 14px;height:32px;padding:0 9px;border-radius:6px;background:#0F0D0C;border:1px solid #262220;color:#5F5952;font:inherit;font-size:12px;text-align:left;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <span style="flex:1;">Buscar o ir a…</span>
+      <span style="border:1px solid #3D362F;border-radius:4px;padding:1px 5px;font-size:10px;">⌘K</span>
+    </button>
+
+    <nav style="display:flex;flex-direction:column;gap:2px;padding:0 10px;">
+      <div class="e" style="--i:2;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L3 21"/></svg><span>Galerías</span><span style="margin-left:auto;font-size:11px;color:#5F5952;" class="num">14</span></div>
+      <div class="e" style="--i:3;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;background:#221E1A;color:#F2EFE9;box-shadow:inset 2px 0 0 #C9A96A;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span style="font-weight:500;">Panel</span></div>
+      <div class="e" style="--i:4;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg><span>Categorías</span><span style="margin-left:auto;font-size:11px;color:#5F5952;" class="num">4</span></div>
+      <div class="e" style="--i:5;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><span>Paquetes</span><span style="margin-left:auto;font-size:11px;color:#5F5952;" class="num">3</span></div>
+      <div class="e" style="--i:6;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2Z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg><span>Testimonios</span><span style="margin-left:auto;font-size:11px;color:#5F5952;" class="num">7</span></div>
+      <div class="e" style="--i:7;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span>Configuración</span></div>
+    </nav>
+
+    <div class="e" style="--i:7;margin-top:auto;padding:14px 16px;border-top:1px solid #262220;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#8E877E;"><span>Espacio</span><span style="color:#F2EFE9;" class="num">3.2 / 10 GB</span></div>
+      <div style="height:4px;border-radius:2px;background:#262220;overflow:hidden;"><div class="bar" style="--i:6;width:32%;height:100%;background:#C9A96A;"></div></div>
+      <span style="font-size:11px;color:#5F5952;">Quedan unos 29 eventos</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid #262220;">
+      <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#221E1A;border:1px solid #3D362F;font-size:11px;color:#C9A96A;">J</div>
+      <span style="font-size:12px;color:#8E877E;">James</span>
+    </div>
+  </aside>
+
+  <main style="display:flex;flex-direction:column;flex-grow:1;min-width:0;position:relative;">
+
+    <div class="e" style="--i:2;padding:22px 26px 16px;">
+      <h1 class="disp" style="margin:0;font-size:26px;line-height:1.15;">Buenas noches, James.</h1>
+      <p class="sub" style="margin-top:5px;">Domingo 30 de agosto · te quedan 3 cosas por mirar</p>
+    </div>
+
+    <!-- ATENCIÓN primero, aunque §9 ponga el número grande arriba en escritorio:
+         si algo falló, saberlo importa más que el total. -->
+    <div class="e" style="--i:3;padding:0 26px 14px;">
+      <div class="card" style="border-color:#3D362F;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:8px;padding:11px 15px;border-bottom:1px solid #262220;">
+          <span style="width:6px;height:6px;border-radius:50%;background:#C87676;"></span>
+          <span style="font-weight:500;">Requiere tu atención</span>
+          <span style="margin-left:auto;color:#5F5952;font-size:11px;">Se descartan y no vuelven</span>
+        </div>
+
+        <div class="lift" style="display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid #262220;border-left:2px solid #C87676;">
+          <div style="min-width:0;flex:1;">
+            <div>El último intento de publicar falló hace 2 horas</div>
+            <div style="color:#5F5952;font-size:11px;margin-top:2px;">La web sigue mostrando lo de antes. Es el que más caro sale pasar por alto.</div>
+          </div>
+          <button class="btn btn-b" style="height:28px;">Reintentar</button>
+          <button class="btn" style="height:28px;width:28px;padding:0;justify-content:center;color:#5F5952;border-color:#262220;">✕</button>
+        </div>
+
+        <div class="lift" style="display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid #262220;border-left:2px solid #C9A96A;">
+          <div style="width:34px;aspect-ratio:3/4;flex-shrink:0;border-radius:4px;border:1px solid #7A3B3B;background:#1A1211;"></div>
+          <div style="min-width:0;flex:1;">
+            <div>2 reels de «XV de Camila» no llegaron a subirse</div>
+            <div style="color:#5F5952;font-size:11px;margin-top:2px;">Son 4K. Sin esto, un fallo es invisible: crees que subiste ocho y hay seis.</div>
+          </div>
+          <button class="btn" style="height:28px;">Ver la galería</button>
+          <button class="btn" style="height:28px;width:28px;padding:0;justify-content:center;color:#5F5952;border-color:#262220;">✕</button>
+        </div>
+
+        <div class="lift" style="display:flex;align-items:center;gap:12px;padding:12px 15px;border-left:2px solid #3D362F;">
+          <div style="width:34px;aspect-ratio:3/4;flex-shrink:0;border-radius:4px;border:1px solid #262220;background:radial-gradient(110% 80% at 50% 30%,#3F2B2B,#1A1212 60%,#080706);"></div>
+          <div style="min-width:0;flex:1;">
+            <div>«Boda Rojas» lleva 6 días en borrador</div>
+            <div style="color:#5F5952;font-size:11px;margin-top:2px;">Aparece a los 3 días. Antes es trabajo en curso, no un problema.</div>
+          </div>
+          <button class="btn" style="height:28px;">Abrir</button>
+          <button class="btn" style="height:28px;width:28px;padding:0;justify-content:center;color:#5F5952;border-color:#262220;">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;padding:0 26px;">
+
+      <!-- CLICS · la única métrica que le importa: el clic ES el lead. -->
+      <div class="e card" style="--i:4;padding:16px 18px;">
+        <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;">
+          <span class="disp num" style="font-size:44px;line-height:.9;">47</span>
+          <div style="padding-bottom:4px;">
+            <div style="color:#8E877E;">clics a WhatsApp</div>
+            <div style="color:#5F5952;font-size:11px;">últimos 30 días</div>
+          </div>
+          <span style="margin-left:auto;margin-bottom:5px;display:inline-flex;align-items:center;gap:5px;color:#C9A96A;font-size:12px;border:1px solid rgba(201,169,106,.35);background:rgba(201,169,106,.08);border-radius:5px;padding:3px 8px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>
+            12 más que antes
+          </span>
+        </div>
+
+        <div style="display:flex;align-items:flex-end;gap:3px;height:48px;margin:16px 0 6px;"><span class="col" style="--i:0;display:block;width:6px;height:9px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:1;display:block;width:6px;height:3px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:2;display:block;width:6px;height:18px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:3;display:block;width:6px;height:9px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:4;display:block;width:6px;height:26px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:5;display:block;width:6px;height:18px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:6;display:block;width:6px;height:9px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:7;display:block;width:6px;height:35px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:8;display:block;width:6px;height:18px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:9;display:block;width:6px;height:9px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:10;display:block;width:6px;height:3px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:11;display:block;width:6px;height:9px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:12;display:block;width:6px;height:26px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:13;display:block;width:6px;height:44px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:14;display:block;width:6px;height:18px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:15;display:block;width:6px;height:9px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:16;display:block;width:6px;height:18px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:17;display:block;width:6px;height:35px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:18;display:block;width:6px;height:26px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:19;display:block;width:6px;height:9px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:20;display:block;width:6px;height:18px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:21;display:block;width:6px;height:3px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:22;display:block;width:6px;height:9px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:23;display:block;width:6px;height:26px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:24;display:block;width:6px;height:18px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:25;display:block;width:6px;height:35px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:26;display:block;width:6px;height:26px;border-radius:2px;background:#3D362F;"></span><span class="col" style="--i:27;display:block;width:6px;height:18px;border-radius:2px;background:#C9A96A;"></span><span class="col" style="--i:28;display:block;width:6px;height:44px;border-radius:2px;background:#C9A96A;"></span><span class="col" style="--i:29;display:block;width:6px;height:26px;border-radius:2px;background:#C9A96A;"></span></div>
+        <div style="display:flex;justify-content:space-between;color:#5F5952;font-size:10px;">
+          <span>hace 30 días</span><span style="color:#C9A96A;">esta semana</span>
+        </div>
+
+        <div style="height:1px;background:#262220;margin:14px 0;"></div>
+
+        <div style="display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;">
+          <div class="bar" style="--i:0;width:51%;background:#C9A96A;"></div>
+          <div class="bar" style="--i:1;width:23%;background:#9A7F47;"></div>
+          <div class="bar" style="--i:2;width:13%;background:#5F5952;"></div>
+          <div class="bar" style="--i:3;width:13%;background:#262220;"></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:12px;margin-top:11px;">
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:2px;background:#C9A96A;"></span>Pro <b class="num">24</b></span>
+          <span style="display:inline-flex;align-items:center;gap:6px;color:#8E877E;"><span style="width:8px;height:8px;border-radius:2px;background:#9A7F47;"></span>Básico <b class="num" style="color:#F2EFE9;">11</b></span>
+          <span style="display:inline-flex;align-items:center;gap:6px;color:#8E877E;"><span style="width:8px;height:8px;border-radius:2px;background:#5F5952;"></span>Premium <b class="num" style="color:#F2EFE9;">6</b></span>
+          <span style="display:inline-flex;align-items:center;gap:6px;color:#8E877E;"><span style="width:8px;height:8px;border-radius:2px;background:#262220;"></span>Sin paquete <b class="num" style="color:#F2EFE9;">6</b></span>
+        </div>
+        <p style="margin:12px 0 0;color:#5F5952;font-size:11px;line-height:1.5;">
+          El Premium lleva 6 contra 24 del Pro. O no se ve, o el precio asusta.
+        </p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <!-- ALMACENAMIENTO · que vea el límite venir. -->
+        <div class="e card" style="--i:5;padding:16px 18px;">
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <span class="disp num" style="font-size:22px;">3.2 GB</span>
+            <span style="color:#5F5952;font-size:12px;">de 10 GB</span>
+          </div>
+          <div style="height:6px;border-radius:3px;background:#262220;overflow:hidden;margin:10px 0 8px;">
+            <div class="bar" style="--i:4;width:32%;height:100%;background:#C9A96A;"></div>
+          </div>
+          <span style="color:#5F5952;font-size:11px;">Quedan unos 29 eventos antes del tramo de pago</span>
+        </div>
+
+        <!-- Atajos: lo que hace de verdad, a un clic desde donde aterriza. -->
+        <div class="e card" style="--i:6;padding:14px 15px;display:flex;flex-direction:column;gap:8px;">
+          <span class="lab">Lo de siempre</span>
+          <button class="btn btn-b" style="height:38px;justify-content:flex-start;">+ Nueva galería</button>
+          <button class="btn" style="height:38px;justify-content:flex-start;">Subir a «XV de Camila»</button>
+          <button class="btn" style="height:38px;justify-content:flex-start;">Publicar los 3 cambios</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>

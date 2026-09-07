@@ -1,0 +1,62 @@
+---
+/**
+ * La página que Cloudflare Pages sirve cuando no encuentra la ruta.
+ *
+ * Sin este fichero sale la pantalla genérica de Pages: fondo blanco, tipografía
+ * del sistema y ni una salida. Quien llega aquí suele venir de un enlace viejo
+ * que James compartió por WhatsApp —los slugs no se regeneran justo por eso—,
+ * así que lo que necesita no es una disculpa: es el camino de vuelta y el
+ * botón verde.
+ */
+import Layout from '../layouts/Layout.astro';
+import Barra from '../components/Barra.astro';
+import Cta from '../components/Cta.astro';
+import Icono from '../components/Icono.astro';
+import Pie from '../components/Pie.astro';
+import { api } from '../lib/api';
+
+const [ajustes, redes] = await Promise.all([api.ajustes(), api.redes()]);
+const numero = ajustes.whatsappNumber;
+const base = ajustes.whatsappMessage ?? '';
+const display = ajustes.whatsappDisplay ?? numero;
+---
+
+{/* Fuera del índice, y sin canónica: la de antes apuntaba a
+    `https://jamesfilm.pe/404/`, una URL que el build no genera. */}
+<Layout
+  titulo={`Esta página no existe · ${ajustes.brandName}`}
+  descripcion="Página no encontrada"
+  sinIndexar
+>
+  <Barra {numero} {display} {base} anclas={['/trabajos/', '#paquetes', '/fechas-libres/', '/negocios/', '/sobre-mi/']} prefijo="/" />
+
+  <main
+    id="contenido"
+    class="mx-auto flex max-w-[52ch] flex-col items-center gap-5 px-5 py-16 text-center lg:py-24"
+  >
+    <span class="text-brass-600"><Icono nombre="camara" tamano={44} grosor={1.2} /></span>
+    <h1 class="font-display text-[34px] leading-[1.06] font-extrabold lg:text-[46px]">
+      Esta página ya no está aquí
+    </h1>
+    <p class="text-ash">
+      Puede que el enlace sea antiguo. Los trabajos siguen todos publicados, y si buscabas uno en
+      concreto, pregúntame y te lo paso.
+    </p>
+    <div class="flex w-full flex-col gap-3">
+      <Cta {numero} {base} texto="Escríbeme por WhatsApp" fuente="footer" />
+      <a
+        href="/trabajos/"
+        class="flex h-12 items-center justify-center gap-2 rounded-control border border-line text-brass-200"
+      >
+        Ver todos los trabajos
+        <Icono nombre="flecha" tamano={17} />
+      </a>
+      <a href="/" class="flex h-12 items-center justify-center gap-2 text-ash">
+        <Icono nombre="atras" tamano={18} />
+        Volver al inicio
+      </a>
+    </div>
+  </main>
+
+  <Pie {redes} email={ajustes.email} marca={ajustes.brandName} />
+</Layout>

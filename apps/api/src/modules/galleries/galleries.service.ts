@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import type {
   AdminGalleryDto,
   AdminGalleryListItemDto,
@@ -63,12 +65,42 @@ export class GalleriesService {
       this.prisma.gallery.count({ where: VISIBLE }),
     ]);
 
+    const fotos = await this.fotosPorGaleria(
+      filas.map((f) => f.id),
+      MEDIA_VISIBLE,
+    );
+
     return paginar(
-      filas.map((f) => mapGaleriaLista(f, this.storage)),
+      filas.map((f) => mapGaleriaLista(f, this.storage, fotos.get(f.id) ?? 0)),
       total,
       page,
       pageSize,
     );
+  }
+
+  /**
+   * Cuántas FOTOS visibles tiene cada galería de la página.
+   *
+   * Va en su propia consulta porque Prisma solo admite **un `_count` por
+   * relación**: no se puede pedir «todos los medios» y «solo las fotos» en el
+   * mismo `select`. Un `groupBy` es UN viaje más por página —no uno por
+   * galería— y ataca el mismo índice que el recuento.
+   *
+   * La alternativa era traerse los `type` de todos los medios de todas las
+   * galerías, que es exactamente lo que la lista pública no hace: una respuesta
+   * que crece sin techo con cada evento.
+   */
+  private async fotosPorGaleria(
+    ids: string[],
+    where: Record<string, unknown>,
+  ): Promise<Map<string, number>> {
+    if (ids.length === 0) return new Map();
+    const filas = await this.prisma.media.groupBy({
+      by: ['galleryId'],
+      where: { ...where, galleryId: { in: ids }, type: 'PHOTO' },
+      _count: { _all: true },
+    });
+    return new Map(filas.map((f) => [f.galleryId, f._count._all]));
   }
 
   async buscarPorSlug(slug: string): Promise<GalleryDto> {
@@ -122,8 +154,13 @@ export class GalleriesService {
       this.prisma.gallery.count({ where }),
     ]);
 
+    const fotos = await this.fotosPorGaleria(
+      filas.map((f) => f.id),
+      { deletedAt: null, status: 'READY' },
+    );
+
     return paginar(
-      filas.map((f) => mapGaleriaListaAdmin(f, this.storage)),
+      filas.map((f) => mapGaleriaListaAdmin(f, this.storage, fotos.get(f.id) ?? 0)),
       total,
       page,
       pageSize,
@@ -195,7 +232,32 @@ export class GalleriesService {
   }
 
   async actualizar(id: string, dto: UpdateGalleryDto): Promise<AdminGalleryDto> {
-    await this.asegurarQueExiste(id);
+    const actual = await this.asegurarQueExiste(id);
+
+    /**
+     * PUBLICAR EXIGE CONSENTIMIENTO, igual que en los testimonios.
+     *
+     * En una galería salen caras de gente real, y en los XV años salen
+     * **menores**: hasta ahora publicar era un botón sin fricción sobre lo
+     * único que puede traerle un problema de verdad a James (Ley 29733 y art.
+     * 15 del Código Civil). El booleano no acredita nada por sí solo — lo
+     * acredita la hoja firmada de `docs/legal/` —, pero es la puerta que obliga
+     * a pararse a comprobar que existe.
+     *
+     * Se mira el valor que va a QUEDAR, no el que llega: publicar y marcar el
+     * consentimiento en el mismo `PATCH` es válido, y despublicar nunca se
+     * bloquea.
+     */
+    const consentira = dto.hasConsent ?? actual.hasConsent;
+    const publicara = dto.isPublished ?? actual.isPublished;
+    if (publicara && !consentira) {
+      throw new UnprocessableEntityException({
+        code: 'CONSENT_REQUIRED',
+        message:
+          'No se puede publicar una galería sin la autorización de imagen firmada. ' +
+          'Márcala primero.',
+      });
+    }
 
     // El slug NO se regenera al renombrar: James comparte links por WhatsApp
     // veinte veces al día y regenerarlo los rompe todos en silencio.
@@ -210,9 +272,28 @@ export class GalleriesService {
         eventDate: fechaDeCalendario(dto.eventDate),
         location: dto.location,
         isPublished: dto.isPublished,
-        isFeatured: dto.isFeatured,
+        hasConsent: dto.hasConsent,
+        // `isFeatured` NO se escribe aquí cuando se enciende: lo hace
+        // `setOnly` justo debajo, que además apaga las demás.
+        isFeatured: dto.isFeatured === true ? undefined : dto.isFeatured,
       },
     });
+
+    /**
+     * DESTACADA hay UNA, como el paquete destacado y como la portada de una
+     * galería. No estaba forzado y era un booleano suelto por fila.
+     *
+     * Lo único que hace este campo es ganar el `orderBy` de la lista pública
+     * (`isFeatured desc, order asc, id asc`), o sea **poner esa galería la
+     * primera** — y de ahí sale el trabajo que encabeza el hero, la tarjeta
+     * alta del bento y la rejilla. Con varias marcadas, «la primera» la decidía
+     * el `order` y las otras dos marcas no hacían nada: el panel decía que tres
+     * galerías estaban destacadas y en la web solo se notaba una. Un control que
+     * miente sobre su efecto es peor que no tenerlo.
+     */
+    if (dto.isFeatured === true) {
+      await this.exclusiveFlag.setOnly(this.prisma.gallery, 'isFeatured', id);
+    }
 
     return this.buscarPorId(id);
   }
@@ -247,11 +328,21 @@ export class GalleriesService {
     return this.buscarPorId(galleryId);
   }
 
-  private async asegurarQueExiste(id: string): Promise<void> {
+  /**
+   * Devuelve el estado que hace falta para decidir, no solo el id.
+   *
+   * `isPublished` y `hasConsent` porque publicar se decide sobre el valor que
+   * va a QUEDAR: un `PATCH` que solo trae `isPublished` tiene que mirar el
+   * consentimiento que ya estaba, y uno que trae los dos vale.
+   */
+  private async asegurarQueExiste(
+    id: string,
+  ): Promise<{ isPublished: boolean; hasConsent: boolean }> {
     const existe = await this.prisma.gallery.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true },
+      select: { isPublished: true, hasConsent: true },
     });
     if (!existe) throw new NotFoundException();
+    return existe;
   }
 }

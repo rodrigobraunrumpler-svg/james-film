@@ -52,11 +52,25 @@ export async function pasarela(
       cache: 'no-store',
     });
 
-  let res = await enviar(sesion?.accessToken);
+  let res: Response;
+  try {
+    res = await enviar(sesion?.accessToken);
+  } catch (e) {
+    return sinRespuesta(e);
+  }
 
   // Un solo reintento, y solo si hay refresh que usar.
   if (res.status === 401 && sesion?.refreshToken) {
     const nueva = await refrescar(sesion.refreshToken);
+
+    // No pudimos ni preguntar: la sesión NO se toca. Borrarla aquí convertía
+    // una caída de la API en «Tu sesión caducó» con un refresh token bueno de
+    // 30 días, y obligaba a James a volver a escribir la contraseña por un
+    // problema que no era suyo.
+    if (!nueva.ok && nueva.code === 'SIN_RESPUESTA') {
+      return sinRespuesta(new Error('la API no respondió al refrescar'));
+    }
+
     if (!nueva.ok) {
       await borrarSesion();
       // El `code` viaja tal cual: `SESSION_REVOKED` es el reuso del refresh y
@@ -70,12 +84,17 @@ export async function pasarela(
             nueva.code === 'SESSION_REVOKED'
               ? 'Tu sesión se cerró por seguridad'
               : 'Tu sesión ha expirado',
+          timestamp: new Date().toISOString(),
         },
         { status: 401 },
       );
     }
     await guardarSesion(nueva.sesion);
-    res = await enviar(nueva.sesion.accessToken);
+    try {
+      res = await enviar(nueva.sesion.accessToken);
+    } catch (e) {
+      return sinRespuesta(e);
+    }
   }
 
   // El estado se devuelve TAL CUAL: el admin distingue por `code` y necesita el
@@ -84,4 +103,36 @@ export async function pasarela(
     status: res.status,
     headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' },
   });
+}
+
+/**
+ * Cuando la API no contesta —no está levantada, se está reiniciando, o tarda
+ * más que el timeout— el `fetch` LANZA. Sin capturarlo, Next devuelve un **500
+ * con el cuerpo vacío**, y el cliente del admin, que espera el sobre, solo
+ * puede decir «respuesta no válida del servidor»: ni el error dice qué pasa ni
+ * hay forma de saber si es culpa del dato que mandaste.
+ *
+ * Se devuelve el sobre de siempre, con el estado que corresponde —504 si venció
+ * el tiempo, 502 si no hubo nadie al otro lado— y un mensaje que dice qué
+ * hacer. Ambos son ≥500, así que `isRetryable` deja que TanStack Query lo
+ * reintente solo: si la API estaba arrancando, se arregla sin tocar nada.
+ */
+function sinRespuesta(e: unknown): NextResponse {
+  const expiró = e instanceof DOMException && e.name === 'TimeoutError';
+  const statusCode = expiró ? 504 : 502;
+
+  console.error('[pasarela] la API no respondió:', e);
+
+  return NextResponse.json(
+    {
+      success: false,
+      statusCode,
+      code: 'INTERNAL',
+      message: expiró
+        ? 'El servidor tardó demasiado en responder. Vuelve a intentarlo.'
+        : 'No se pudo conectar con el servidor. Puede que esté reiniciándose: espera un momento y vuelve a intentarlo.',
+      timestamp: new Date().toISOString(),
+    },
+    { status: statusCode },
+  );
 }

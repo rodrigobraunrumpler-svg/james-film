@@ -13,6 +13,7 @@ export const SELECT_AJUSTES = {
   tagline: true,
   slogan: true,
   aboutText: true,
+  photoKey: true,
   logoKey: true,
   signatureKey: true,
   whatsappNumber: true,
@@ -53,6 +54,7 @@ type FilaAjustes = { [K in keyof typeof SELECT_AJUSTES]: unknown } & {
   tagline: string | null;
   slogan: string | null;
   aboutText: string | null;
+  photoKey: string | null;
   logoKey: string | null;
   signatureKey: string | null;
   whatsappNumber: string | null;
@@ -95,6 +97,7 @@ export function mapAjustes(a: FilaAjustes, storage: StorageService): SiteSetting
     tagline: a.tagline,
     slogan: a.slogan,
     aboutText: a.aboutText,
+    photoUrl: url(a.photoKey),
     logoUrl: url(a.logoKey),
     signatureUrl: url(a.signatureKey),
     whatsappNumber: a.whatsappNumber,

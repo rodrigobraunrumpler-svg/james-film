@@ -59,6 +59,7 @@ export class SettingsService {
       // parte del texto y `trim()` solo quita los de los extremos, pero una
       // cadena de solo espacios sí debe quedar en null.
       aboutText: textoLimpio(dto.aboutText),
+      photoKey: textoLimpio(dto.photoKey),
       logoKey: textoLimpio(dto.logoKey),
       signatureKey: textoLimpio(dto.signatureKey),
       whatsappNumber: textoLimpio(dto.whatsappNumber),

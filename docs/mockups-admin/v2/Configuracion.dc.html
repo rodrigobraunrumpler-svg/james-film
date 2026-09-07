@@ -1,0 +1,219 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Configuración</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;font-family:Inter,-apple-system,"Segoe UI",sans-serif;font-size:13px;background:#0F0D0C;color:#F2EFE9;-webkit-font-smoothing:antialiased;}
+  *{box-sizing:border-box;}
+  .h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em;}
+  .disp{font-family:'Bricolage Grotesque',Inter,sans-serif;font-weight:800;letter-spacing:-.02em;}
+  .sub{color:#8E877E;font-size:12px;margin:2px 0 0;}
+  .lab{color:#5F5952;font-size:11px;}
+  .card{background:#171412;border:1px solid #262220;border-radius:8px;}
+  .chip{border-radius:4px;background:#221E1A;color:#8E877E;padding:2px 7px;font-size:10px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:6px;background:#171412;border:1px solid #3D362F;color:#F2EFE9;font:inherit;font-size:12px;font-weight:500;transition:border-color .15s,background-color .15s;}
+  .btn:hover{border-color:#4A4038;background:#1C1917;}
+  .btn-b{background:transparent;border-color:#C9A96A;color:#C9A96A;}
+  .btn-b:hover{background:rgba(201,169,106,.1);border-color:#C9A96A;}
+  .campo{display:flex;align-items:center;height:34px;padding:0 10px;border-radius:6px;background:#171412;border:1px solid #262220;}
+  .num{font-variant-numeric:tabular-nums;}
+
+  /* Entrada escalonada: el orden en que aparecen es el orden en que hay que
+     leerlos. Solo transform y opacity, ≤350ms. */
+  @keyframes sube{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes creceX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes creceY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  @keyframes aparece{from{opacity:0}to{opacity:1}}
+  @keyframes deriva{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.05)}}
+  @media (prefers-reduced-motion: no-preference){
+    .e{animation:sube .35s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*60ms)}
+    .bar{transform-origin:left center;animation:creceX .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(220ms + var(--i,0)*60ms)}
+    .col{transform-origin:bottom;animation:creceY .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(260ms + var(--i,0)*22ms)}
+    .luz{animation:aparece .4s ease both, deriva 24s ease-in-out .4s infinite alternate}
+  }
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+
+  /* La fila y la tarjeta se levantan al pasar por encima: dice «esto se puede
+     tocar» sin añadir un botón más. */
+  .lift{transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s,background-color .2s;}
+  .lift:hover{transform:translateY(-2px);border-color:#4A4038;background:#1C1917;}
+</style>
+</helmet>
+
+<div style="display:flex;width:1440px;height:900px;background:#0F0D0C;position:relative;overflow:hidden;">
+  <div class="luz" aria-hidden="true" style="position:absolute;bottom:-30%;right:6%;width:640px;aspect-ratio:1;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(201,169,106,.08) 0%,rgba(201,169,106,.02) 45%,transparent 72%);filter:blur(18px);"></div>
+  <aside style="display:flex;flex-direction:column;width:236px;flex-shrink:0;background:#151311;border-right:1px solid #262220;">
+    <div class="e" style="--i:0;display:flex;align-items:center;gap:10px;padding:18px 16px 14px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 4v16M17 4v16M2 9h5M2 15h5M17 9h5M17 15h5"/></svg>
+      <span style="font-size:11px;letter-spacing:.2em;font-weight:600;">JAMES FILM</span>
+    </div>
+
+    <!-- El buscador vive en el menú y no en cada pantalla: desde cualquier sitio
+         se llega a cualquier sitio sin volver atrás. Es lo que quita el «me pierdo». -->
+    <button class="e" style="--i:1;display:flex;align-items:center;gap:8px;margin:0 10px 14px;height:32px;padding:0 9px;border-radius:6px;background:#0F0D0C;border:1px solid #262220;color:#5F5952;font:inherit;font-size:12px;text-align:left;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <span style="flex:1;">Buscar o ir a…</span>
+      <span style="border:1px solid #3D362F;border-radius:4px;padding:1px 5px;font-size:10px;">⌘K</span>
+    </button>
+
+    <nav style="display:flex;flex-direction:column;gap:2px;padding:0 10px;">
+      <div class="e" style="--i:2;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L3 21"/></svg><span>Galerías</span><span style="margin-left:auto;font-size:11px;color:#5F5952;" class="num">14</span></div>
+      <div class="e" style="--i:3;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>Panel</span></div>
+      <div class="e" style="--i:4;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg><span>Categorías</span><span style="margin-left:auto;font-size:11px;color:#5F5952;" class="num">4</span></div>
+      <div class="e" style="--i:5;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg><span>Paquetes</span><span style="margin-left:auto;font-size:11px;color:#5F5952;" class="num">3</span></div>
+      <div class="e" style="--i:6;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;color:#8E877E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2Z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg><span>Testimonios</span><span style="margin-left:auto;font-size:11px;color:#5F5952;" class="num">7</span></div>
+      <div class="e" style="--i:7;display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:6px;background:#221E1A;color:#F2EFE9;box-shadow:inset 2px 0 0 #C9A96A;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg><span style="font-weight:500;">Configuración</span></div>
+    </nav>
+
+    <div class="e" style="--i:7;margin-top:auto;padding:14px 16px;border-top:1px solid #262220;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#8E877E;"><span>Espacio</span><span style="color:#F2EFE9;" class="num">3.2 / 10 GB</span></div>
+      <div style="height:4px;border-radius:2px;background:#262220;overflow:hidden;"><div class="bar" style="--i:6;width:32%;height:100%;background:#C9A96A;"></div></div>
+      <span style="font-size:11px;color:#5F5952;">Quedan unos 29 eventos</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid #262220;">
+      <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#221E1A;border:1px solid #3D362F;font-size:11px;color:#C9A96A;">J</div>
+      <span style="font-size:12px;color:#8E877E;">James</span>
+    </div>
+  </aside>
+
+  <main style="display:flex;flex-direction:column;flex-grow:1;min-width:0;">
+
+    <div class="e" style="--i:2;padding:22px 26px 0;">
+      <h1 class="disp" style="margin:0;font-size:24px;">Configuración</h1>
+      <p class="sub">Lo que sale en toda la web, no en una galería suelta.</p>
+    </div>
+
+    <!-- Cinco pestañas, un formulario cada una: guardar SEO no puede pisar el
+         número de WhatsApp cambiado desde el móvil. -->
+    <div class="e" style="--i:3;display:flex;gap:2px;margin:16px 26px 0;border-bottom:1px solid #262220;"><button class="btn" style="height:32px;border:0;border-radius:0;background:transparent;padding:0 13px;position:relative;color:#8E877E;">Identidad</button><button class="btn" style="height:32px;border:0;border-radius:0;background:transparent;padding:0 13px;position:relative;color:#F2EFE9;font-weight:500;box-shadow:inset 0 -2px 0 #C9A96A;">Contacto y redes</button><button class="btn" style="height:32px;border:0;border-radius:0;background:transparent;padding:0 13px;position:relative;color:#8E877E;">Diferenciadores</button><button class="btn" style="height:32px;border:0;border-radius:0;background:transparent;padding:0 13px;position:relative;color:#8E877E;">Hero</button><button class="btn" style="height:32px;border:0;border-radius:0;background:transparent;padding:0 13px;position:relative;color:#8E877E;">SEO</button></div>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;padding:18px 26px 0;align-items:start;">
+
+      <div style="display:flex;flex-direction:column;gap:14px;min-width:0;">
+
+        <!-- WhatsApp en su propia tarjeta: es el negocio entero. Si este campo
+             está mal, todo lo demás da igual. -->
+        <div class="e card" style="--i:4;border-color:#3D362F;padding:15px 17px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+            <span style="font-weight:500;">Número de WhatsApp</span>
+          </div>
+          <p style="margin:0 0 11px;color:#5F5952;font-size:11px;">
+            Todos los botones de la web llevan aquí. Sin prefijo de país no funciona ninguno.
+          </p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <div class="campo num" style="flex:1;min-width:180px;border-color:#3D362F;gap:8px;">
+              <span style="color:#5F5952;">+</span><span>51 994 724 944</span>
+            </div>
+            <button class="btn">Probar este número</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:9px;color:#8E877E;font-size:11px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg>
+            Perú · móvil · 9 dígitos tras el 51
+          </div>
+        </div>
+
+        <div class="e card" style="--i:5;padding:15px 17px;display:flex;flex-direction:column;gap:12px;">
+          <span class="lab" style="text-transform:uppercase;letter-spacing:.1em;">Redes</span>
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <div class="lift" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #262220;border-radius:6px;background:#171412;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5F5952" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+              <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:#221E1A;border:1px solid #3D362F;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15V6a4 4 0 0 0 4 4"/><path d="M14 4a4 4 0 0 0 4 4"/><circle cx="7" cy="16" r="3"/></svg>
+              </div>
+              <div style="min-width:0;flex:1;">
+                <div style="font-size:12px;">TikTok</div>
+                <div style="color:#5F5952;font-size:11px;">@james_film</div>
+              </div>
+              <button class="btn" style="height:26px;width:26px;padding:0;justify-content:center;color:#8E877E;border-color:#262220;">✕</button>
+            </div>
+            <div class="lift" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #262220;border-radius:6px;background:#171412;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5F5952" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+              <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:#221E1A;border:1px solid #3D362F;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15V6a4 4 0 0 0 4 4"/><path d="M14 4a4 4 0 0 0 4 4"/><circle cx="7" cy="16" r="3"/></svg>
+              </div>
+              <div style="min-width:0;flex:1;">
+                <div style="font-size:12px;">Instagram</div>
+                <div style="color:#5F5952;font-size:11px;">James_film30</div>
+              </div>
+              <button class="btn" style="height:26px;width:26px;padding:0;justify-content:center;color:#8E877E;border-color:#262220;">✕</button>
+            </div>
+          </div>
+          <button class="btn" style="align-self:flex-start;">+ Añadir red</button>
+          <p style="margin:0;color:#5F5952;font-size:11px;">
+            Salen en el pie, en este orden. Son enlaces de marca, no compiten con WhatsApp.
+          </p>
+        </div>
+
+        <div class="e card" style="--i:6;padding:15px 17px;display:flex;flex-direction:column;gap:12px;">
+          <span class="lab" style="text-transform:uppercase;letter-spacing:.1em;">Dónde trabajas</span>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;">
+            <div style="display:flex;flex-direction:column;gap:5px;">
+              <span class="lab">Ciudad</span><div class="campo">Ayacucho</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;">
+              <span class="lab">Correo (opcional)</span><div class="campo" style="color:#5F5952;">Sin correo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- La vista previa se queda pegada mientras se hace scroll: cambiar un
+           campo y ver el efecto sin moverse es lo que quita el «¿dónde salía
+           esto?». Es el único sitio del admin con verde WhatsApp — dentro del
+           marco ya no es el admin, es la web. -->
+      <div class="e" style="--i:7;position:sticky;top:0;display:flex;flex-direction:column;gap:9px;">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span class="lab" style="text-transform:uppercase;letter-spacing:.1em;">Así se ve</span>
+          <span style="width:5px;height:5px;border-radius:50%;background:#C9A96A;"></span>
+          <span style="color:#5F5952;font-size:11px;">en vivo</span>
+        </div>
+
+        <div style="border-radius:22px;border:1px solid #3D362F;background:#080706;padding:7px;box-shadow:0 18px 44px rgba(0,0,0,.5);">
+          <div style="position:relative;border-radius:16px;overflow:hidden;aspect-ratio:9/16;background:radial-gradient(120% 90% at 50% 15%,#2B2620,#141210 55%,#0A0908);">
+            <div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);width:56px;height:4px;border-radius:2px;background:rgba(242,239,233,.14);"></div>
+
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:9px;padding:16px 14px 18px;background:linear-gradient(to top,rgba(10,9,8,.94) 22%,transparent 62%);">
+              <div style="font-family:'Bricolage Grotesque',Inter,sans-serif;font-weight:800;font-size:19px;line-height:1.1;letter-spacing:-.02em;color:#F2EFE9;">
+                Tu evento,<br>en 60 segundos.
+              </div>
+              <div style="color:#9C958C;font-size:10px;line-height:1.45;">
+                Reels y aftermovies en Ayacucho. Entrego en 48 horas.
+              </div>
+              <div style="display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border-radius:7px;background:#25D366;color:#0A0908;font-size:12px;font-weight:600;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+                Escríbeme por WhatsApp
+              </div>
+              <div style="text-align:center;color:#5F5952;font-size:9px;">+51 994 724 944</div>
+            </div>
+          </div>
+        </div>
+
+        <p style="margin:0;color:#5F5952;font-size:11px;line-height:1.5;">
+          Es la primera pantalla en el móvil, que es por donde entra casi todo el mundo.
+        </p>
+      </div>
+    </div>
+
+    <!-- Guardar pegado abajo: con cinco pestañas de campos, si no, queda a un
+         scroll entero de distancia. -->
+    <div class="e" style="--i:8;margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 26px;border-top:1px solid #262220;background:#151311;">
+      <span style="color:#5F5952;font-size:11px;">Sin cambios sin guardar</span>
+      <button class="btn" style="margin-left:auto;">Descartar</button>
+      <button class="btn btn-b" style="opacity:.45;">Guardar</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>

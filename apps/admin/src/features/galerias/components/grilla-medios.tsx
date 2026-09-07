@@ -1,7 +1,10 @@
 'use client';
 
 import type { AdminGalleryDto } from '@james-film/contracts';
+import { WifiOff } from 'lucide-react';
 import { useState } from 'react';
+import { useEnLinea } from '@/lib/media/cola/conexion';
+import { estaEnCurso } from '@/lib/media/cola/tipos';
 import { useCola } from '@/lib/media/cola/store';
 import { useEditarMedio } from '../hooks/use-editar-medio';
 import { useMarcarPortada, useOrdenMedios } from '../hooks/use-orden-medios';
@@ -55,13 +58,90 @@ export function GrillaMedios({ galeria }: { galeria: AdminGalleryDto }) {
       })),
   ];
 
+  // Lo que hay que mirar DURANTE una subida no es el total, es cuántas van y
+  // cuántas se cayeron. Con un solo número —«32 medios»— James no sabe si
+  // quedan tres subiendo o si una falló hace un minuto.
+  const enLinea = useEnLinea();
+  const subiendo = deLaGaleria.filter(estaEnCurso).length;
+  const fallidos = deLaGaleria.filter((i) => i.estado === 'FALLIDO').length;
+  // Lo que queda por subir cuando se cae la red: lo que está en vuelo más lo
+  // que espera turno. Los fallidos ya no cuentan — ésos piden una decisión.
+  const enEspera = deLaGaleria.filter(
+    (i) => estaEnCurso(i) || i.estado === 'SELECCIONADO',
+  ).length;
+
   return (
     <div className="flex flex-col gap-3">
+      {/* La banda va ARRIBA y EN EL FLUJO, no flotando: un elemento fijo no
+          ocupa sitio y taparía justo la tesela que está subiendo, que es la que
+          hay que mirar. Solo sale si hay algo pendiente — sin nada en cola, un
+          corte de red no cambia nada de esta pantalla y avisar sería ruido. */}
+      {!enLinea && enEspera > 0 && (
+        <p
+          role="status"
+          className="border-danger-line bg-danger-bg rounded-control flex flex-wrap items-center gap-x-2.5 gap-y-1 border px-3 py-2.5 text-sm"
+        >
+          <WifiOff className="text-danger size-4 shrink-0" aria-hidden strokeWidth={2} />
+          <span className="text-bone font-medium">Sin conexión.</span>
+          <span className="text-ash">
+            {enEspera === 1 ? 'La que falta sigue' : `Las ${enEspera} que faltan siguen`} en cola.
+          </span>
+          {/* La frase se repite en la barra de arriba, y es a propósito: la
+              barra solo sale con algo EN VUELO (`hayEnCurso`), así que con la
+              red caída y tres archivos esperando turno esta banda es lo único
+              que hay. Cada una tiene que sostenerse sola; no puede dar por
+              hecha a la otra.
+
+              Y se dice lo que VA A PASAR, no una cuenta atrás: se reanuda con
+              el evento `online`, así que un «reintentando en 8 s» sería mentira
+              en los dos sentidos —ni espera ocho segundos ni es un reintento a
+              ciegas—. */}
+          <span className="text-muted ml-auto text-xs">Se reanuda solo al volver.</span>
+        </p>
+      )}
+
       <div className="flex items-center justify-between gap-3 pb-0.75">
-        <p className="text-ash text-sm">
-          {tarjetas.length === 0
-            ? 'Todavía no hay nada en esta galería.'
-            : `${tarjetas.length} ${tarjetas.length === 1 ? 'medio' : 'medios'} · arrastra para reordenar`}
+        <p className="text-ash flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          {tarjetas.length === 0 ? (
+            'Todavía no hay nada en esta galería.'
+          ) : (
+            <>
+              <span>
+                {tarjetas.length} {tarjetas.length === 1 ? 'medio' : 'medios'}
+              </span>
+              {subiendo > 0 && (
+                <>
+                  <span className="text-line-strong" aria-hidden>
+                    |
+                  </span>
+                  <span className="text-brass flex items-center gap-1.5">
+                    <span className="bg-brass-relleno size-1.5 rounded-full" aria-hidden />
+                    {subiendo} subiendo
+                  </span>
+                </>
+              )}
+              {fallidos > 0 && (
+                <>
+                  <span className="text-line-strong" aria-hidden>
+                    |
+                  </span>
+                  <span className="text-danger flex items-center gap-1.5">
+                    <span className="bg-danger size-1.5 rounded-full" aria-hidden />
+                    {fallidos} {fallidos === 1 ? 'falló' : 'fallaron'}
+                  </span>
+                </>
+              )}
+              <span className="text-line-strong" aria-hidden>
+                |
+              </span>
+              {/* «Ordena con las flechas», no «arrastra»: el arrastre nativo de
+                  HTML5 no existe en iOS, así que en el móvil de James la frase
+                  describía algo que no se puede hacer. La pista se pone en el
+                  camino que SÍ hay en cada sitio. */}
+              <span className="lg:hidden">ordena con las flechas del ⋯</span>
+              <span className="hidden lg:inline">arrastra para reordenar</span>
+            </>
+          )}
         </p>
       </div>
 

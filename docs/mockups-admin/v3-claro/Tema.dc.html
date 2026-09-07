@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>El interruptor</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* PALETA CLARA. El principio del admin oscuro —«el chrome se separa del
+     contenido sin una línea»— se conserva INVIRTIÉNDOLO: aquí el contenido es
+     blanco puro y el chrome un hueso cálido, un punto más oscuro.
+
+     Cálido y no gris azulado a propósito: el latón de la marca sobre un gris
+     frío se ve sucio. Todos los tonos llevan algo de amarillo.
+
+     Contrastes medidos sobre blanco: bone 17.4 · ash 6.8 · muted 4.7 ·
+     brass 4.9 · danger 6.5. Todos pasan AA, incluido `muted` a 11px. */
+  body{margin:0;font-family:Inter,-apple-system,"Segoe UI",sans-serif;font-size:13px;background:#FFFFFF;color:#1C1A17;-webkit-font-smoothing:antialiased;}
+  *{box-sizing:border-box;}
+  .disp{font-family:'Bricolage Grotesque',Inter,sans-serif;font-weight:800;letter-spacing:-.02em;}
+  .sub{color:#5F5A52;font-size:12px;margin:2px 0 0;}
+  .lab{color:#726D64;font-size:11px;}
+  /* Sin sombra en las tarjetas: una sombra en cada caja convierte una pantalla
+     densa en un relieve. La separación la da la línea, que aquí sí se ve. */
+  .card{background:#FFFFFF;border:1px solid #E7E4DE;border-radius:8px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:6px;background:#FFFFFF;border:1px solid #D6D1C8;color:#1C1A17;font:inherit;font-size:12px;font-weight:500;transition:border-color .15s,background-color .15s;}
+  .btn:hover{border-color:#BDB6A9;background:#FAF9F7;}
+  /* El acento en el BORDE y el texto, nunca un relleno sólido: es la misma
+     regla del tema oscuro, y en claro además un botón dorado macizo pelearía
+     con el verde de WhatsApp de la previa. */
+  .btn-b{border-color:#8A6D3B;color:#8A6D3B;background:#FBF7EF;}
+  .btn-b:hover{background:#F5EDDD;border-color:#8A6D3B;}
+  .campo{display:flex;align-items:center;height:36px;padding:0 10px;border-radius:6px;background:#FFFFFF;border:1px solid #D6D1C8;}
+  .num{font-variant-numeric:tabular-nums;}
+
+  @keyframes sube{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes creceX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes creceY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  @keyframes aparece{from{opacity:0}to{opacity:1}}
+  @keyframes deriva{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.05)}}
+  @media (prefers-reduced-motion: no-preference){
+    /* Techo de seis pasos: 360ms de retraso como mucho, 710ms hasta el último.
+       Sin él, con 32 teselas la rejilla se movía casi dos segundos y lo último
+       en llegar era la zona de soltar — justo adonde se va al abrir el editor.
+       Un escalonado explica jerarquía; entre 32 teselas iguales no hay ninguna
+       que explicar, solo retraso. */
+    .e{animation:sube .35s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(min(var(--i,0),6)*60ms)}
+    /* Una rejilla de iguales entra como UN bloque, sin desplazamiento: son 32
+       animaciones compuestas a la vez, y es donde el iPhone lo nota. */
+    .rejilla-entra{animation:aparece .2s ease both;animation-delay:180ms}
+    .bar{transform-origin:left center;animation:creceX .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(220ms + var(--i,0)*60ms)}
+    .col{transform-origin:bottom;animation:creceY .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(260ms + var(--i,0)*22ms)}
+    .luz{animation:aparece .4s ease both, deriva 24s ease-in-out .4s infinite alternate}
+  }
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+
+  .lift{transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s,background-color .2s,box-shadow .2s;}
+  /* En claro, «levantar» se lee mejor con una sombra suave que con el cambio
+     de fondo que usa el tema oscuro: sobre blanco, dos blancos no se
+     distinguen. */
+  .lift:hover{transform:translateY(-2px);border-color:#BDB6A9;box-shadow:0 6px 16px rgba(28,26,23,.06);}
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;gap:26px;width:980px;padding:28px;background:#FFFFFF;">
+
+  <div>
+    <h2 class="disp" style="margin:0;font-size:22px;">El interruptor y dónde vive</h2>
+    <p class="sub" style="margin-top:6px;max-width:70ch;">
+      En el pie del menú, junto al perfil: es donde ya están los ajustes de la sesión, y no
+      compite con el trabajo. Arranca siguiendo el sistema operativo y recuerda la elección.
+    </p>
+  </div>
+
+  <div style="display:flex;gap:26px;flex-wrap:wrap;">
+    <!-- CLARO -->
+    <div style="width:236px;border:1px solid #E7E4DE;border-radius:10px;overflow:hidden;">
+      <div style="background:#F6F5F3;padding:12px 16px;border-bottom:1px solid #E7E4DE;">
+        <span class="lab" style="text-transform:uppercase;letter-spacing:.1em;">Claro</span>
+      </div>
+      <div style="background:#F6F5F3;padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:0 4px;">
+          <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#F0EDE7;border:1px solid #D6D1C8;font-size:11px;color:#8A6D3B;">J</div>
+          <span style="font-size:12px;color:#5F5A52;flex:1;">James</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#726D64" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>
+        </div>
+        <!-- Dos posiciones, no un ciclo de tres: «seguir al sistema» es el
+             valor de arranque, no un botón más que haya que entender. -->
+        <div style="display:flex;background:#FFFFFF;border:1px solid #E7E4DE;border-radius:7px;padding:2px;">
+          <span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:26px;border-radius:5px;background:#F0EDE7;box-shadow:inset 0 0 0 1px #D6D1C8;font-size:11px;color:#1C1A17;font-weight:500;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></svg>
+            Claro
+          </span>
+          <span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:26px;border-radius:5px;font-size:11px;color:#726D64;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            Oscuro
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- OSCURO, el de ahora -->
+    <div style="width:236px;border:1px solid #E7E4DE;border-radius:10px;overflow:hidden;">
+      <div style="background:#151311;padding:12px 16px;border-bottom:1px solid #262220;">
+        <span style="color:#5F5952;font-size:11px;text-transform:uppercase;letter-spacing:.1em;">Oscuro (el de ahora)</span>
+      </div>
+      <div style="background:#151311;padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:0 4px;">
+          <div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#221E1A;border:1px solid #3D362F;font-size:11px;color:#C9A96A;">J</div>
+          <span style="font-size:12px;color:#8E877E;flex:1;">James</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E877E" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>
+        </div>
+        <div style="display:flex;background:#0F0D0C;border:1px solid #262220;border-radius:7px;padding:2px;">
+          <span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:26px;border-radius:5px;font-size:11px;color:#5F5952;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></svg>
+            Claro
+          </span>
+          <span style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:26px;border-radius:5px;background:#221E1A;box-shadow:inset 0 0 0 1px #3D362F;font-size:11px;color:#F2EFE9;font-weight:500;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="2" stroke-linecap="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            Oscuro
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:12px;">
+      <div class="card" style="padding:14px 16px;">
+        <p style="margin:0 0 6px;font-weight:500;font-size:13px;">Lo que NO cambia con el tema</p>
+        <ul style="margin:0;padding-left:18px;color:#5F5A52;font-size:12px;line-height:1.75;">
+          <li><b style="font-weight:500;color:#1C1A17;">La previa del hero.</b> Dentro del marco se enseña la WEB, que es oscura. Aclararla la haría dejar de parecerse a lo que verá el cliente.</li>
+          <li><b style="font-weight:500;color:#1C1A17;">El verde de WhatsApp</b> y el azul de Google en las previas de SEO: son colores ajenos, no de la paleta.</li>
+          <li><b style="font-weight:500;color:#1C1A17;">La landing.</b> El tema es del panel de James, no del sitio que ven sus clientes.</li>
+        </ul>
+      </div>
+      <div class="card" style="padding:14px 16px;background:#FBF7EF;border-color:#E0CFAA;">
+        <p style="margin:0 0 6px;font-weight:500;font-size:13px;">El latón cambia de tono, no de papel</p>
+        <p style="margin:0;color:#5F5A52;font-size:12px;line-height:1.6;">
+          <span style="color:#C9A96A;font-weight:500;">#C9A96A</span> sobre negro contrasta 8:1; sobre blanco, 1.8:1 — ilegible.
+          En claro baja a <span style="color:#8A6D3B;font-weight:500;">#8A6D3B</span>, que da 4.9:1 y sigue siendo el mismo oro.
+          Sigue yendo solo en bordes, iconos y estado activo: <b style="font-weight:500;color:#1C1A17;">ningún botón dorado macizo</b>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h2 class="disp" style="margin:0 0 6px;font-size:18px;">El login se queda en la «sala oscura»</h2>
+    <p class="sub" style="margin:0 0 14px;max-width:70ch;">
+      Es una pantalla, no una herramienta: dura cuatro segundos y es la puerta de la marca.
+      Además, ahí todavía no se sabe qué tema eligió James — la preferencia vive tras la sesión.
+    </p>
+    <div style="display:flex;align-items:stretch;gap:0;height:150px;border:1px solid #E7E4DE;border-radius:10px;overflow:hidden;background:#0A0908;">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 26px;">
+        <span style="color:#C9A96A;font-size:10px;letter-spacing:.2em;">JAMES FILM</span>
+        <span class="disp" style="color:#F2EFE9;font-size:26px;margin-top:8px;">Buenos días, James.</span>
+        <span style="color:#8E877E;font-size:12px;margin-top:4px;">Entra y sigue donde lo dejaste.</span>
+      </div>
+      <div style="width:1px;background:#2E2A26;"></div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:0 26px;">
+        <div>
+          <div style="color:#5F5952;font-size:9px;letter-spacing:.14em;">EMAIL</div>
+          <div style="color:#F2EFE9;font-size:12px;padding:5px 0;border-bottom:1px solid #2E2A26;">james@jamesfilm.pe</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:7px;height:40px;border-radius:6px;border:1px solid #C9A96A;background:rgba(201,169,106,.08);color:#C9A96A;font-size:13px;font-weight:600;">
+          Entrar
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

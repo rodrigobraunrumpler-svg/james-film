@@ -1,17 +1,222 @@
 ---
+import Layout from '../layouts/Layout.astro';
+import Barra from '../components/Barra.astro';
+import BarraPegada from '../components/BarraPegada.astro';
+import Categorias from '../components/Categorias.astro';
+import Cierre from '../components/Cierre.astro';
+import DatosEstructurados from '../components/DatosEstructurados.astro';
+import ComoFunciona from '../components/ComoFunciona.astro';
+import Confianza from '../components/Confianza.astro';
+import Diferenciadores from '../components/Diferenciadores.astro';
+import Galerias from '../components/Galerias.astro';
+import Hero from '../components/Hero.astro';
+import Negocios from '../components/Negocios.astro';
+import Paquetes from '../components/Paquetes.astro';
+import Pie from '../components/Pie.astro';
+import Preguntas from '../components/Preguntas.astro';
+import QueRecibes from '../components/QueRecibes.astro';
+import SobreMi from '../components/SobreMi.astro';
+import { OFERTA } from '../content/copy';
+import { desdeCuanto } from '../lib/paquetes';
+import { piezas, piezasCorto } from '../lib/piezas';
+import { datosDePortada } from '../lib/api';
+import { sabadosLibres } from '../lib/fechas';
 
+const {
+  ajustes,
+  categorias,
+  paquetes,
+  testimonios,
+  diferenciadores,
+  redes,
+  galerias,
+  disponibilidad,
+} = await datosDePortada();
+
+const numero = ajustes.whatsappNumber;
+const base = ajustes.whatsappMessage ?? '';
+const display = ajustes.whatsappDisplay ?? numero;
+
+/**
+ * Cuántas galerías por categoría. Se cuenta aquí: la API no lo devuelve.
+ *
+ * Y decide qué tarjetas se pintan: una categoría sin trabajos **no tiene
+ * página** —`[categoria].astro` no la genera— así que pintarla sería un 404
+ * con forma de tarjeta bonita.
+ */
+const cuantas = galerias.reduce<Record<string, number>>((acc, g) => {
+  acc[g.category.slug] = (acc[g.category.slug] ?? 0) + 1;
+  return acc;
+}, {});
+
+/**
+ * Y cuántos REELS por categoría — vídeos, no medios.
+ *
+ * Sumaba `mediaCount`, así que una categoría con fotos anunciaba «12 reels»
+ * contando fotos. Las fotos no se pierden: se cuentan aparte y la tarjeta las
+ * dice por su nombre.
+ */
+const reelsPorCategoria = galerias.reduce<Record<string, number>>((acc, g) => {
+  acc[g.category.slug] = (acc[g.category.slug] ?? 0) + Math.max(0, g.mediaCount - g.photoCount);
+  return acc;
+}, {});
+
+const fotosPorCategoria = galerias.reduce<Record<string, number>>((acc, g) => {
+  acc[g.category.slug] = (acc[g.category.slug] ?? 0) + g.photoCount;
+  return acc;
+}, {});
+
+/**
+ * Los reels que entran en los paquetes, como RANGO. Sale del dato.
+ *
+ * Antes buscaba un número que fuera igual en los tres (`todos.every(x => x === n)`)
+ * y por eso **la celda no se pintó nunca**: la escalera de cantidad —4 · 6 · 7 en
+ * el flyer— es justo lo que separa un paquete del siguiente, así que la
+ * condición era imposible por diseño, no por falta de datos.
+ *
+ * Se exige que los TRES casen con la expresión antes de pintar nada: si James
+ * reescribe un ítem como «Cuatro reels», con dos números la web diría «4 a 6» y
+ * mentiría en la dirección peor. Sin el tercero, no se dice nada.
+ */
+const reelsDeCadaPaquete = paquetes
+  .map((p) =>
+    p.items
+      // `included: false` son los bullets TACHADOS: lo que ese paquete NO trae.
+      // Contarlos diría «4 a 7» leyendo justo el número que el cliente no se
+      // lleva. Hoy no se nota porque el seed no usa ninguno, y por eso hay que
+      // ponerlo ahora: el día que James liste lo que falta, ya está bien.
+      .filter((i) => i.included)
+      .map((i) => /(\d+)\s*reels/i.exec(i.text)?.[1])
+      .find(Boolean),
+  )
+  .map((n) => (n === undefined ? null : Number(n)));
+
+const reels = ((): string | null => {
+  if (paquetes.length === 0) return null;
+  if (reelsDeCadaPaquete.some((n) => n === null)) return null;
+  const nums = reelsDeCadaPaquete as number[];
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  return min === max ? String(min) : `${min} a ${max}`;
+})();
+
+const destacadas = galerias.slice(0, 4);
+
+/**
+ * «Quedan 3 sábados libres en octubre». Sale del dato REAL y **puede ser
+ * `null`**: sin ningún sábado tomado no hay escasez que anunciar, y decir
+ * «quedan 4 libres» da la urgencia contraria.
+ */
+const escasez = sabadosLibres(disponibilidad.busy, disponibilidad.until)?.texto ?? null;
+
+/** El último trabajo entregado, para el pie de la tarjeta del abanico. */
+/**
+ * Cuántos testimonios enseña la PORTADA. Tres, y no «todos».
+ *
+ * Más testimonios no es mejor: la prueba social satura rapidísimo, una pared de
+ * cincuenta no la lee nadie y cincuenta mediocres convierten peor que tres
+ * buenos porque diluyen a los buenos. Cuáles son esos tres lo decide James con
+ * el orden del panel —la API los sirve por `isFeatured` y luego por `order`— y
+ * el resto viven en `/testimonios`.
+ */
+const TESTIMONIOS_EN_PORTADA = 3;
+
+const ultimo = galerias[0]
+  ? { titulo: galerias[0].title, piezas: piezasCorto(galerias[0]) }
+  : null;
+
+/**
+ * El abanico del hero: la del medio y las DOS de detrás.
+ *
+ * Las de detrás eran degradados escritos a mano, así que de los tres reels que
+ * se ven, dos eran inventados — decoración en el sitio donde el hero tiene que
+ * estar demostrando algo. Ahora salen de las galerías publicadas, y se excluye
+ * la que ya está en el centro para no enseñar la misma foto dos veces.
+ *
+ * Si no hay bastantes, el degradado sigue ahí: es lo mismo que hace la tarjeta
+ * de una galería sin portada, y es mejor que un hueco.
+ */
+const posterHero = ajustes.heroPosterUrl ?? galerias.find((g) => g.coverUrl)?.coverUrl ?? null;
+const lateralesHero = galerias
+  .map((g) => g.coverUrl)
+  .filter((url): url is string => Boolean(url) && url !== posterHero)
+  .slice(0, 2);
+
+/** Lo que el menú puede enlazar: solo las secciones que esta página pinta. */
+const anclas = [
+  galerias.length > 0 && '#trabajos',
+  paquetes.length > 0 && '#paquetes',
+  '/fechas-libres/',
+  '/negocios/',
+  testimonios.length > 0 && '#testimonios',
+  ajustes.aboutText ? '/sobre-mi/' : false,
+].filter((a): a is string => typeof a === 'string');
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout
+  titulo={ajustes.metaTitle ?? `${ajustes.brandName} · ${ajustes.tagline}`}
+  descripcion={ajustes.metaDescription ?? ajustes.tagline}
+  imagen={ajustes.ogImageUrl}
+>
+  <DatosEstructurados slot="head" {ajustes} {redes} url={new URL('/', Astro.site).href} />
+
+  <Barra {numero} {display} {base} {anclas} disponibilidad={escasez} />
+
+  <main id="contenido">
+    <Hero
+      titular={ajustes.tagline}
+      eslogan={ajustes.slogan ?? ''}
+      oferta={OFERTA}
+      cta={ajustes.ctaText ?? 'Escríbeme por WhatsApp'}
+      {numero}
+      {base}
+      poster={posterHero}
+      laterales={lateralesHero}
+      video={ajustes.heroMediaUrl}
+      eventos={galerias.length}
+      desde={desdeCuanto(paquetes)}
+      disponibilidad={escasez}
+      {ultimo}
+    />
+
+    <Confianza eventos={galerias.length} {reels} />
+<Diferenciadores
+      items={diferenciadores}
+      reel={ultimo && galerias[0]
+        ? {
+            titulo: ultimo.titulo,
+            pie: [piezas(galerias[0]), galerias[0].category.name].filter(Boolean).join(' · '),
+            portada: galerias[0].coverUrl,
+            href: `/trabajos/${galerias[0].slug}`,
+          }
+        : null}
+      testimonio={testimonios[0] ?? null}
+    />
+    <ComoFunciona />
+    <Categorias
+      categorias={categorias.filter((c) => cuantas[c.slug])}
+      {cuantas}
+      reels={reelsPorCategoria}
+      fotos={fotosPorCategoria}
+    />
+    <Galerias galerias={destacadas} total={galerias.length} />
+    <QueRecibes />
+    <Paquetes {paquetes} {numero} baseGeneral={base} />
+    <Negocios />
+    <Preguntas />
+    <SobreMi
+      texto={ajustes.aboutText}
+      nombre={ajustes.brandName}
+      rol={ajustes.role}
+      fotoUrl={ajustes.photoUrl}
+      firmaUrl={ajustes.signatureUrl}
+      testimonios={testimonios.slice(0, TESTIMONIOS_EN_PORTADA)}
+      totalTestimonios={testimonios.length}
+      categorias={categorias.filter((c) => cuantas[c.slug])}
+    />
+    <Cierre {numero} {display} {base} />
+  </main>
+
+  <Pie {redes} email={ajustes.email} marca={ajustes.brandName} />
+  <BarraPegada {numero} {base} />
+</Layout>

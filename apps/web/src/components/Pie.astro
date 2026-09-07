@@ -1,0 +1,158 @@
+---
+/**
+ * El pie: redes, la línea del flyer y los legales.
+ *
+ * Los legales NO son opcionales: privacidad, términos y consentimiento de
+ * imagen. Ley 29733, y hay menores en los XV — `CLAUDE.md` lo llama el único
+ * punto que puede traerle un problema real a James.
+ */
+import Icono, { type NombreIcono } from './Icono.astro';
+import Marca from './Marca.astro';
+import { CIERRE_MARCA, LEGALES, MENU } from '../content/copy';
+import type { SocialLinkDto } from '@james-film/contracts';
+
+interface Props {
+  redes: SocialLinkDto[];
+  /**
+   * El correo, para escribir SIN abrir un chat personal.
+   *
+   * No es un adorno de contacto: es el canal por el que se ejercen los derechos
+   * de la Ley 29733 —cancelación y oposición—, y hasta ahora el único sitio
+   * donde existía era **dentro del JSON-LD**, o sea para Google y no para una
+   * persona. Cero `mailto:` en todo el build.
+   *
+   * Obligar a quien quiere que le quiten una foto de su hija a abrir un
+   * WhatsApp con quien la grabó es el peor canal posible, y además no deja
+   * constancia de la fecha desde la que corren los plazos.
+   */
+  email?: string | null;
+  /** Para el aviso de copyright. Sale de `SiteSettings`, no escrito a mano. */
+  marca?: string;
+}
+
+const { redes, email = null, marca = 'James Film' } = Astro.props;
+
+/**
+ * EL AVISO DE COPYRIGHT. No había ninguno: cero «©» en todo el build.
+ *
+ * No es lo mismo que los derechos sobre los VÍDEOS —eso ya lo dicen los
+ * términos, y ahí está bien— sino la propiedad de esta web: sus textos, sus
+ * fotos y su diseño. En Perú, como en todo el Convenio de Berna, la protección
+ * es automática y no depende de escribirlo: **el aviso no otorga el derecho**,
+ * lo AFIRMA. Que es justo lo que sirve cuando alguien copia una landing entera
+ * de la competencia, que es exactamente lo que pasa en este mercado.
+ *
+ * El año sale del BUILD y no de un literal: la web se reconstruye cada vez que
+ * James toca algo en el panel, así que en la práctica se mantiene solo. Un
+ * literal se queda en 2026 para siempre y un «© 2019» dice más de lo que
+ * parece sobre si el negocio sigue vivo.
+ */
+const anio = new Date().getFullYear();
+
+/**
+ * Las páginas propias, en el pie.
+ *
+ * Tres cosas de una vez, y por eso van aquí y no en otro sitio:
+ *
+ *  1. **Sin JavaScript no se llegaba a ellas en móvil.** El menú es un
+ *     `<dialog>` que necesita JS para abrirse y la barra de escritorio va
+ *     `hidden lg:flex`, así que a 390px y con el JS bloqueado —el navegador de
+ *     dentro de Instagram, por ejemplo— no había ni un enlace pulsable a
+ *     `/fechas-libres`. El test lo daba por bueno porque comprobaba que el
+ *     enlace estuviera ADJUNTO, no que se viera.
+ *  2. **`/testimonios` era huérfana**: su único enlace entrante estaba en su
+ *     propia barra.
+ *  3. Un pie con enlaces es enlazado interno de verdad, en las diez páginas.
+ *
+ * Salen de `MENU` para no ser una segunda lista que se contradiga, y sólo las
+ * que son PÁGINA: las anclas dependen de qué pinte la portada ese día.
+ *
+ * **Se enlazan TODAS, también las que hoy están vacías**, y es a propósito. Una
+ * tarjeta de categoría sin trabajos se esconde porque PROMETE vídeos y no los
+ * hay; un enlace de pie no promete nada, es navegación — y `/trabajos` con cero
+ * galerías responde «Todavía no hay trabajos publicados», que es información,
+ * no un callejón. Además llevan `noindex` mientras estén vacías, así que no
+ * ensucian el índice. Filtrarlas sólo en la portada dejaba dos criterios
+ * distintos en el mismo sitio.
+ */
+const paginasDelPie = MENU.filter((m) => !m.href.startsWith('#'));
+
+const ICONOS: Record<string, NombreIcono> = {
+  tiktok: 'tiktok',
+  instagram: 'instagram',
+  facebook: 'enlace',
+  youtube: 'reproducir',
+};
+---
+
+<footer class="border-t border-line marco py-8 lg:py-10">
+  <div class="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:gap-x-10 lg:items-center lg:gap-14">
+    <div class="flex min-h-12 items-center gap-2.5 text-brass-600">
+      <Marca />
+    </div>
+
+    {
+      redes.length > 0 && (
+        /* `rel="me"` declara que ese perfil es del mismo dueño que este sitio.
+           Es gratis; el que cierra el círculo de verdad es el enlace de vuelta
+           desde la bio de Instagram y TikTok — sin él, el `sameAs` del JSON-LD
+           es una afirmación que el sitio hace sobre sí mismo. */
+        <nav class="flex flex-col gap-1 lg:flex-row lg:gap-6" aria-label="Redes sociales">
+          {redes.map((r) => (
+            <a
+              href={r.url}
+              target="_blank"
+              rel="me noopener"
+              class="flex min-h-12 items-center gap-3 text-bone"
+            >
+              <Icono nombre={ICONOS[r.platform] ?? 'enlace'} tamano={20} clase="text-brass-400" />
+              <span class="capitalize">{r.platform}</span>
+              <span class="text-ash">{r.handle}</span>
+            </a>
+          ))}
+        </nav>
+      )
+    }
+
+    {
+      email && (
+        <a
+          href={`mailto:${email}`}
+          class="flex min-h-12 items-center gap-3 text-bone lg:min-h-0"
+        >
+          <Icono nombre="enlace" tamano={20} clase="text-brass-400" />
+          <span class="break-all">{email}</span>
+        </a>
+      )
+    }
+
+    {
+      paginasDelPie.length > 0 && (
+        <nav class="flex flex-wrap gap-x-5 gap-y-1" aria-label="Páginas">
+          {paginasDelPie.map((m) => (
+            <a href={m.href} class="flex min-h-12 items-center text-sm text-bone lg:min-h-0">
+              {m.texto}
+            </a>
+          ))}
+        </nav>
+      )
+    }
+
+    <nav class="flex flex-wrap gap-x-5 gap-y-1" aria-label="Legal">
+      {
+        LEGALES.map((l) => (
+          <a href={l.href} class="flex min-h-12 items-center text-sm text-ash lg:min-h-0">
+            {l.texto}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+
+  <div class="mt-6 flex flex-col gap-2 border-t border-line pt-5 lg:mt-8">
+    <p class="text-center text-xs tracking-[0.1em] text-brass-600">{CIERRE_MARCA}</p>
+    <p class="text-center text-xs text-ash">
+      © {anio} {marca}. Todos los derechos reservados.
+    </p>
+  </div>
+</footer>

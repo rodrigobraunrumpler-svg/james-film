@@ -1,0 +1,731 @@
+---
+/**
+ * El hero. Es el LCP, así que todo lo que se meta aquí se paga en la métrica.
+ *
+ * Lo que NO puede faltar, y es lo que le faltaba al primer diseño: **la línea
+ * que dice QUÉ VENDE**. «Transformo momentos en historias» es la marca, no la
+ * oferta — quien entra frío no sabe si son fotos, vídeo o bodas.
+ *
+ * En MÓVIL el titular se apoya sobre el vídeo con un velo, y el hero mide
+ * `min(85dvh, 680px)`: el botón verde entra ENTERO por encima del pliegue en
+ * cualquier teléfono —no solo en el que se midió— y el 15 % que queda deja
+ * asomar la sección siguiente, que es lo que dice «esto sigue».
+ *
+ * En CLARO cambia de estructura, no de color: sin velo, el reel es una tarjeta
+ * y el titular va debajo. Un velo negro sobre una página blanca es un agujero.
+ */
+import Cta from './Cta.astro';
+import Icono from './Icono.astro';
+import { PISTAS, PRECIO_DESDE } from '../content/copy';
+import { ESCONDER_SI_FALLA, src, srcset } from '../lib/imagen';
+import { partirTitular } from '../lib/titular';
+
+interface Props {
+  titular: string;
+  eslogan: string;
+  oferta: string;
+  cta: string;
+  numero: string;
+  base: string;
+  /** El póster del reel del hero. Es el LCP, NO el vídeo. */
+  poster?: string | null;
+  /**
+   * El reel en bucle. Cuando existe, sustituye al póster **sin cambiar el
+   * LCP**: el póster sigue siendo lo que pinta primero y el vídeo entra encima.
+   * ≤1,5 MB y silenciado (§4): autoplayea en cada visita, y es el único sitio
+   * de la web que autoplayea.
+   */
+  video?: string | null;
+  eventos: number;
+  /**
+   * «S/ 300», ya formateado. La línea de prueba del hero.
+   *
+   * En su sitio había un `{eventos} eventos grabados` sin guarda, o sea que con
+   * la base vacía la primera pantalla certificaba —bajo un visto de latón— que
+   * James no ha grabado nada. El precio es lo único que esa pantalla no dice en
+   * ninguna parte y que sí frena el clic: quien sospecha que no está en su
+   * rango se va sin preguntar, porque preguntar el precio da vergüenza.
+   */
+  desde?: string | null;
+  /** «3 sábados libres». `null` si no hay dato: no se inventa. */
+  disponibilidad?: string | null;
+  /**
+   * El último trabajo entregado, para el pie de la tarjeta del abanico.
+   *
+   * `piezas` ya viene REDACTADO —«2 reels», «8 fotos»— y no como un número: la
+   * palabra depende de lo que haya dentro, y decidirla aquí obligaría a pasar
+   * también el desglose. Lo decide `lib/piezas`, en un solo sitio.
+   */
+  ultimo?: { titulo: string; piezas: string } | null;
+  /**
+   * Las portadas de las DOS de detrás del abanico.
+   *
+   * Eran dos degradados escritos a mano, y eso convertía en decoración lo único
+   * que el hero tiene de prueba: quien mira ve tres reels y dos son inventados.
+   * Con trabajos de verdad, el abanico dice «esto es lo que hago» en vez de
+   * «esto es la forma de un móvil».
+   *
+   * Se quedan detrás y bajo un velo a propósito: la del medio es la que se lee,
+   * y tres tarjetas al mismo peso no serían un abanico, serían un carrusel
+   * parado. Si no hay bastantes galerías, el degradado sigue haciendo su papel.
+   */
+  laterales?: string[];
+}
+
+const {
+  titular,
+  eslogan,
+  oferta,
+  cta,
+  numero,
+  base,
+  poster,
+  video,
+  eventos,
+  desde = null,
+  disponibilidad,
+  ultimo = null,
+  laterales = [],
+} = Astro.props;
+
+/** El titular con la última IDEA en latón. La regla vive en `lib/titular`. */
+const { inicio: titularInicio, final: titularFinal } = partirTitular(titular);
+
+/**
+ * SIN NADA QUE ENSEÑAR, el hero no reserva sitio para una imagen que no existe.
+ *
+ * Con `heroPosterUrl` y `heroMediaUrl` a `null` y cero galerías, la primera
+ * pantalla eran 680 px de degradado gris con un botón de play que no reproduce
+ * nada. Eso no se lee como «web nueva», se lee como «web rota»: el problema no
+ * era que faltaran fotos, era que el código PROMETÍA material inexistente en
+ * vez de callarse.
+ *
+ * Colapsándolo, el hero pasa de 680 a ~446 px a 372×800 y el botón verde sube
+ * unos 250 px. Y no se encoge la caja a la mitad: un rectángulo vacío más
+ * pequeño sigue siendo un rectángulo vacío.
+ */
+const sinMedia = !poster && !video;
+
+/**
+ * Sin nada a la derecha, la rejilla de dos columnas TAMPOCO se pinta.
+ *
+ * Y la condición mira lo que el ABANICO usa —`poster` y `laterales`—, no
+ * `sinMedia`: el `<video>` vive dentro del bloque `lg:hidden` y ahí no se usa
+ * nunca. Con `sinMedia` de guardia, subir el vídeo del hero sin subir el póster
+ * —dos campos independientes en Configuración, ninguno obligatorio— resucitaba
+ * los tres degradados inventados del abanico bajo un rótulo «Lo último».
+ *
+ * Y esto no lo resuelve el `hidden` del abanico: `lg:grid-cols-[minmax(0,1fr)_560px]`
+ * declara dos pistas EXPLÍCITAS, y una pista explícita no se colapsa porque su
+ * único hijo esté en `display: none`. Medido sobre el build: a 1024 las columnas
+ * salían «280px 560px» —el titular partido en CUATRO líneas dentro de 280 px y
+ * 560 en blanco al lado— y a 1440 «696px 560px».
+ *
+ * No lo caza nada de lo que hay: no desborda, no baja el contraste y el DOM es
+ * correcto. Solo se ve mirando la página o midiendo las pistas.
+ */
+const sinAbanico = !poster && laterales.length === 0;
+
+/** El `**negrita**` de la oferta, a `<strong>`. Solo negrita, como el aboutText. */
+const ofertaHtml = oferta.replace(
+  /\*\*(.+?)\*\*/g,
+  '<strong class="font-semibold">$1</strong>',
+);
+---
+
+<section
+  data-hero
+  class:list={[
+    'relative isolate overflow-hidden lg:marco lg:py-24',
+    /*
+     * EL ALTO LO RESERVA LA SECCIÓN, no la caja de la foto, y como MÍNIMO.
+     *
+     * Antes lo fijaba la caja de medios con `h-[min(85dvh,680px)]` y el texto
+     * iba `absolute` dentro: con la sección en `overflow-hidden`, un texto que
+     * no cupiera **se recortaba en silencio**. Medido en la rama con póster: a
+     * 667×375 el `<h1>` sobresalía 19 px y a 320×568 con zoom al 200 %
+     * desaparecía entero, sin que fallara ni un test.
+     *
+     * Ahora la foto va detrás (`absolute inset-0`) y el texto ocupa su sitio en
+     * el flujo, empujado abajo con `mt-auto`. Si no cabe, la sección CRECE.
+     */
+    !sinMedia && 'max-lg:flex max-lg:min-h-[min(85dvh,680px)] max-lg:flex-col',
+    !sinAbanico && 'lg:grid lg:grid-cols-[minmax(0,1fr)_560px] lg:items-center lg:gap-14',
+  ]}
+>
+  <!-- Aura de latón. Dentro de un recortador: un círculo de 720 colocado con
+       `right` mete scroll horizontal en TODA la página si se sale. -->
+  <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div
+      class="aura absolute -top-40 right-24 h-[720px] w-[720px] rounded-full blur-[34px]"
+      style="background: radial-gradient(circle, rgba(201,169,106,.20) 0%, rgba(201,169,106,.05) 46%, transparent 70%)"
+    >
+    </div>
+  </div>
+
+  <!--
+    ── MÓVIL · el reel a sangre con el titular encima, en los DOS temas ─────
+
+    UNA sola maqueta, y cada tema con SUS colores. El velo no es negro siempre:
+    en oscuro baja a `#0a0908` y el texto va claro; en claro sube a `#fbfaf7` y
+    el texto va oscuro. Eso es lo que hace que funcione en los dos.
+
+    El primer intento puso el velo NEGRO también en claro y quedó fatal: sobre
+    un flyer rosa lo ensuciaba y dejaba un bloque turbio al principio de una
+    página blanca. El fallo no era el velo, era usar el del otro tema.
+
+    Duplicar el bloque daría DOS `<h1>` en el DOM, así que es un solo marcado.
+  -->
+  <!--
+    `dvh` y NO `vh`: en el iPhone `100vh` cuenta la barra de direcciones que se
+    esconde al bajar, así que el hero medía más que la pantalla y el botón
+    verde quedaba fuera. `dvh` mide lo que de verdad se ve, ahora mismo.
+
+    Y `min(85dvh, 680px)`: el 85 % deja asomar la tira de cifras por debajo
+    —que es la señal de «esto sigue» más barata que existe, sin un píxel de
+    JS— y el techo de 680 evita que en una tablet vertical el hero se estire
+    hasta dejar el titular flotando en medio de nada.
+  -->
+  <div class="absolute inset-0 -z-10 lg:hidden" hidden={sinMedia}>
+    <div
+      class="hueco-hero absolute inset-0 overflow-hidden"
+    >
+      {
+        poster && !video && (
+          /*
+            `sizes` con una rama de CERO para escritorio, y no `100vw`.
+            
+            Este `<img>` vive en un contenedor `lg:hidden`, y un `<img>` ansioso
+            dentro de `display: none` **se descarga igual**: a 1440 px `100vw`
+            resolvía a la variante de 1600 y se bajaba el archivo más pesado del
+            sitio para no enseñarlo nunca. Con la rama `0px` el navegador elige
+            la MÁS PEQUEÑA del `srcset` —400w—: no se ahorra la petición, se
+            ahorran los bytes, que es lo que costaba dinero.
+
+            Y no se pinta si hay VÍDEO: entonces el `poster` del `<video>` es el
+            LCP, y tener los dos bajaba dos copias de la misma foto por dos URL
+            distintas —sin deduplicación posible, porque son anchos distintos—.
+          */
+          <img
+            src={src(poster)}
+            srcset={srcset(poster)}
+            sizes="(min-width: 1024px) 0px, 100vw"
+            alt=""
+            fetchpriority="high"
+            onerror={ESCONDER_SI_FALLA}
+            class="respira absolute inset-0 h-full w-full object-cover"
+          />
+        )
+      }
+      {
+        video && (
+          /*
+            `muted` + `playsinline` no son opcionales: sin los dos, iOS ignora
+            el `autoplay` y deja un rectángulo negro. Y `preload="none"` con
+            `poster`: el póster ya está pintado, así que el vídeo puede empezar
+            a bajar cuando quiera sin robarle ancho de banda al LCP.
+          */
+          <video
+            src={video}
+            poster={poster ? src(poster) : undefined}
+            data-hero-video
+            loop
+            muted
+            playsinline
+            preload="none"
+            aria-hidden="true"
+            class="absolute inset-0 h-full w-full object-cover"
+          />
+        )
+      }
+      <!--
+        SUELO de contraste bajo el titular. El degradado de abajo no basta: una
+        portada clara deja la primera línea ilegible. En claro sobra —el texto
+        ya no está encima— y se quita: ahí solo lavaría la foto.
+      -->
+      <div class="suelo-hero absolute inset-0" aria-hidden="true"></div>
+
+      {
+        poster && !video && (
+          /*
+            El play dice «esto es un vídeo», que es justo lo que un póster
+            estático no dice. Lleva su disco porque la portada la elige James y
+            sobre un flyer claro un trazo suelto desaparece. Con el vídeo puesto
+            sobra: ya se está moviendo.
+          */
+          <span
+            class="absolute top-[17%] left-1/2 flex size-16 -translate-x-1/2 items-center justify-center rounded-full border backdrop-blur-[2px]"
+            style="background: rgba(8,7,6,0.38); border-color: rgba(242,239,233,0.55); color: #f2efe9"
+            aria-hidden="true"
+          >
+            <Icono nombre="reproducir" tamano={30} grosor={1.4} />
+          </span>
+        )
+      }
+      <div class="grano" aria-hidden="true"></div>
+      <div
+        class="velo-hero absolute inset-0"
+        aria-hidden="true"
+      >
+      </div>
+
+      <span
+        class="absolute top-4 left-5 flex items-center gap-2 rounded-full border border-line bg-void/80 px-3 py-1.5 text-xs text-brass-200 backdrop-blur-sm"
+      >
+        <span class="h-1.5 w-1.5 rounded-full bg-brass-relleno"></span>
+        Grabando en Ayacucho
+      </span>
+
+      {
+        ultimo && (
+          /*
+            Qué se está viendo. Sin esto la foto es anónima: no se sabe si es un
+            trabajo suyo o una imagen de archivo, y el hero deja de ser una
+            prueba para ser una decoración. En escritorio ya lo lleva la tarjeta
+            del abanico; esto es lo mismo para móvil.
+          */
+          <span
+            class="absolute top-4 right-5 rounded-full border border-line bg-void/92 px-3 py-1.5 text-xs text-bone backdrop-blur-sm"
+          >
+            {[ultimo.piezas, ultimo.titulo].filter(Boolean).join(' · ')}
+          </span>
+        )
+      }
+    </div>
+
+  </div>
+
+  <!--
+    ── EL TEXTO, UNO SOLO ───────────────────────────────────────────────────
+    En móvil va absoluto sobre la foto —que es lo único que hay en la sección,
+    640 px de alto—; en escritorio pasa a ser la primera columna de la rejilla.
+
+    Estaba DUPLICADO, y eso dejaba **dos `<h1>` en la página**: uno el de móvil
+    y otro el de escritorio, cada uno oculto en el ancho del otro. Ninguno de
+    los dos se veía a la vez y por eso no se notaba a ojo, pero un rastreador y
+    un lector de pantalla ven el documento entero.
+  -->
+  <div
+    class:list={[
+      'flex flex-col gap-4 lg:relative lg:inset-auto lg:gap-6 lg:px-0 lg:pb-0',
+      /*
+       * SIEMPRE en el flujo, nunca `absolute`.
+       *
+       * Con póster, el texto iba `absolute inset-x-0 bottom-0` dentro de una
+       * caja de ALTO FIJO, y la sección lleva `overflow-hidden`: cuando el
+       * texto no cabía, no empujaba — **se recortaba en silencio**. Medido: en
+       * horizontal a 667×375 el `<h1>` sobresalía 19 px, y a 320×568 con zoom
+       * al 200 % desaparecía ENTERO (544 px cortados) sin que nada fallara.
+       *
+       * Ahora la foto va detrás en `absolute inset-0` y el texto ocupa su
+       * sitio: la caja tiene alto MÍNIMO, así que crece si hace falta. Es la
+       * misma lección que la portada de categoría —una caja con proporción no
+       * gana a un hijo más alto—, aplicada al hero.
+       */
+      'relative px-5',
+      sinMedia ? 'pt-8 pb-10 lg:pt-0 lg:pb-0' : 'max-lg:mt-auto max-lg:pt-24 pb-6 lg:pb-0',
+    ]}
+  >
+    {/*
+      SIN `entra`. Este bloque es lo primero que se ve y el titular es el LCP:
+      esconderlo a `opacity: 0` y esperar a que un `IntersectionObserver` lo
+      revele costaba **646 ms hasta ser legible con red y CPU normales, 787 con
+      la CPU frenada 4× y 1126 con 1,6 Mbps** — medido. Eso no se lee como una
+      animación, se lee como que la web tarda.
+
+      La entrada escalonada se diseñó para lo de DEBAJO del pliegue, que es
+      donde tiene sentido: aparece al llegar. Lo que ya está en pantalla cuando
+      se pinta no tiene que aparecer, tiene que estar.
+    */}
+    <div class="flex flex-col gap-3 lg:gap-5">
+      <span
+        class="hidden w-fit items-center gap-2.5 rounded-full border border-line bg-void/60 px-3.5 py-2 text-[13px] text-brass-200 lg:flex"
+      >
+        <span class="h-1.5 w-1.5 rounded-full bg-brass-relleno"></span>
+        Grabando en Ayacucho
+      </span>
+      {/*
+        El antetítulo solo en ESCRITORIO. En móvil «Ayacucho» ya sale en la tira
+        de contexto y en el chip del reel: tres veces lo mismo en la primera
+        pantalla es ruido, y encima caía sobre la parte más cargada de la foto.
+      */}
+      {/*
+        `clamp()` también en MÓVIL, no un `text-[40px]` a pelo. Con el zoom al
+        200 % —y la sección con `overflow-hidden`— un titular fijo se recorta
+        **en silencio**: nada falla, simplemente deja de leerse el final.
+
+        Calibrado para que a 390 px dé 39,8 px, o sea lo MISMO que el `40px`
+        que había: el titular es el LCP y la frase de marca, y un `clamp` mal
+        elegido lo encogía a 32 px en todos los teléfonos para resolver un
+        problema que solo aparece al hacer zoom. Solo baja por debajo de 390, y
+        con suelo de 30,4 px a 320.
+      */}
+      <h1
+        class="font-display text-[clamp(1.9rem,10.2vw,2.55rem)] leading-[1.04] font-extrabold tracking-[-0.025em] lg:max-w-[13ch] lg:text-[clamp(3.5rem,5.5vw,5.5rem)] lg:leading-[1.02]"
+      >
+        {titularInicio}<span class="text-brass-400">{titularFinal}</span>
+      </h1>
+      <p class="hidden text-[17px] tracking-[0.16em] text-ash lg:block">{eslogan}</p>
+      <p class="text-[17px] leading-snug lg:max-w-[36ch] lg:text-[23px]" set:html={ofertaHtml} />
+    </div>
+
+    <!--
+      UNA sola frase de pista aquí. La segunda —«Preguntar no cuesta nada»—
+      ocupaba otra línea en el sitio más caro de la web, y donde de verdad hace
+      falta es en el cierre, cuando ya se ha leído todo y aún se duda.
+    -->
+    <Cta
+      {numero}
+      {base}
+      texto={cta}
+      fuente="hero"
+      pista={PISTAS.whatsappCorta}
+      clase="lg:order-3 lg:items-start lg:[&_a]:px-9"
+    />
+
+    <!--
+      En columna bajo `sm`. En fila, «3 eventos grabados · quedan 2 sábados
+      libres en setiembre» son 45 caracteres que a 390 px parten las DOS frases
+      por la mitad y dejan el punto separador huérfano entre líneas.
+    -->
+    <div
+      class="flex flex-col items-start gap-x-2.5 gap-y-0.5 sm:flex-row sm:items-center lg:order-4 lg:gap-3.5 lg:pt-1"
+    >
+      {/*
+        El visto y su cifra son UNA cosa y van en su propia fila. Al apilar el
+        bloque bajo `sm` se separaban en dos líneas y el icono quedaba solo,
+        colgando encima del texto.
+      */}
+      {/*
+        LA MISMA GUARDA QUE `Confianza.astro`, que ya la tenía escrita: «un cero
+        en una cifra de confianza consigue lo contrario de lo que busca». Aquí
+        se había olvidado, y por eso la primera pantalla decía «✓ 0 eventos
+        grabados» con la base vacía — un sello de comprobado sobre una nada.
+
+        En su hueco, el PRECIO: es lo único que esta pantalla no dice en ningún
+        sitio y lo que de verdad frena el clic. Una sola línea, nunca dos: cada
+        línea de más empuja el botón verde hacia el pliegue.
+      */}
+      {
+        eventos > 0 ? (
+          <span class="flex items-center gap-2.5 lg:gap-3.5">
+            <Icono nombre="check" tamano={17} grosor={1.9} clase="text-brass-400 lg:hidden" />
+            <Icono nombre="check" tamano={19} grosor={1.9} clase="hidden text-brass-400 lg:block" />
+            <span class="text-sm lg:text-[17px]">{eventos} eventos grabados</span>
+          </span>
+        ) : (
+          desde && (
+            <span class="flex items-center gap-2.5 lg:gap-3.5">
+              <Icono nombre="check" tamano={17} grosor={1.9} clase="text-brass-400 lg:hidden" />
+              <Icono nombre="check" tamano={19} grosor={1.9} clase="hidden text-brass-400 lg:block" />
+              <span class="text-sm lg:text-[17px]">{PRECIO_DESDE(desde)}</span>
+            </span>
+          )
+        )
+      }
+      {
+        disponibilidad && (
+          <>
+            <span class="hidden h-1 w-1 shrink-0 rounded-full bg-brass-600 sm:block" />
+            <a
+              href="/fechas-libres/"
+              class="flex min-h-12 items-center text-sm text-brass-200 underline underline-offset-4 lg:text-[17px]"
+            >
+              {disponibilidad}
+            </a>
+          </>
+        )
+      }
+    </div>
+  </div>
+
+  <!--
+    ── ESCRITORIO: el abanico de tres reels ────────────────────────────────
+
+    SOLO con material de verdad. Sin póster ni portadas eran tres degradados
+    inventados —uno verdoso, otro violáceo, ninguno de la paleta cerrada— bajo
+    un rótulo que dice «Lo último»: la versión de escritorio del play que no
+    reproduce. Sin ellos la columna de texto se lleva los 560 px, que además le
+    sienta bien al titular.
+
+    Y el `aria-hidden` baja a los hijos DECORATIVOS en vez de estar aquí: con él
+    en el contenedor, el pie con el título del trabajo y sus piezas —que es
+    información, no adorno— tampoco llegaba a un lector de pantalla.
+  -->
+  <div class="relative hidden h-[640px] lg:block" hidden={sinMedia && laterales.length === 0}>
+    <div
+      aria-hidden="true"
+      class="flota-3 absolute top-[76px] left-0 aspect-9/16 w-[244px] -rotate-9 overflow-hidden rounded-panel border border-line shadow-[0_24px_60px_rgba(0,0,0,.5)]"
+      style="background: radial-gradient(120% 90% at 45% 60%, #2e3a33 0%, #141a17 55%, #080706 100%)"
+    >
+      {
+        laterales[0] && (
+          /*
+            El velo es un negro LITERAL y no un token: estas tarjetas se quedan
+            oscuras en los dos temas —su fondo es el material, no la página— y
+            un token que se invierta las lavaría en el claro. Misma regla que
+            los reels de la rejilla.
+          */
+          <>
+            <img
+              src={src(laterales[0])}
+              srcset={srcset(laterales[0])}
+              sizes="244px"
+              alt=""
+              loading="lazy"
+              onerror={ESCONDER_SI_FALLA}
+              class="absolute inset-0 h-full w-full object-cover"
+            />
+            <span class="absolute inset-0" style="background: rgba(8,7,6,.6)" />
+          </>
+        )
+      }
+    </div>
+    <div
+      aria-hidden="true"
+      class="flota-2 absolute top-[76px] right-0 aspect-9/16 w-[244px] rotate-9 overflow-hidden rounded-panel border border-line shadow-[0_24px_60px_rgba(0,0,0,.5)]"
+      style="background: radial-gradient(120% 90% at 65% 30%, #3a3140 0%, #191418 55%, #080706 100%)"
+    >
+      {
+        laterales[1] && (
+          <>
+            <img
+              src={src(laterales[1])}
+              srcset={srcset(laterales[1])}
+              sizes="244px"
+              alt=""
+              loading="lazy"
+              onerror={ESCONDER_SI_FALLA}
+              class="absolute inset-0 h-full w-full object-cover"
+            />
+            <span class="absolute inset-0" style="background: rgba(8,7,6,.6)" />
+          </>
+        )
+      }
+    </div>
+    <div
+      class="flota absolute top-0 left-1/2 aspect-9/16 w-[300px] -translate-x-1/2 overflow-hidden rounded-panel border border-line-strong shadow-[0_32px_80px_rgba(0,0,0,.62)]"
+      style="background: radial-gradient(120% 90% at 62% 28%, #4a3a28 0%, #1c1512 55%, #080706 100%); color: #f2efe9"
+    >
+      {
+        poster && (
+          /*
+            300 px es lo que mide esta tarjeta, y la rama de CERO hace que en
+            móvil —donde este bloque es `hidden`— se baje la variante más
+            pequeña en vez de la grande.
+
+            SIN `fetchpriority="high"`: medido con CDP, con póster salían DOS
+            peticiones del mismo archivo y las dos en prioridad `High`, o sea
+            que la copia que no se ve competía por la cola con el LCP. Una
+            tarjeta de 300 px casi nunca es el elemento mayor.
+          */
+          <img
+            src={src(poster)}
+            srcset={srcset(poster)}
+            sizes="(min-width: 1024px) 300px, 0px"
+            alt=""
+                        onerror={ESCONDER_SI_FALLA}
+            class="respira absolute inset-0 h-full w-full object-cover"
+          />
+        )
+      }
+
+      {/*
+        El chip y el play SOLO CON PÓSTER. El argumento de antes —«son lo que
+        dice que esa tarjeta es un reel y no una foto de stock»— es correcto
+        sobre una portada real y falso sobre un degradado inventado: ahí no
+        etiquetan nada, prometen un vídeo que no existe.
+
+        Y sin `vivo`: un punto latiendo junto a «Lo último» es el patrón
+        universal de «esto está pasando ahora», y no hay ninguna columna en la
+        base que sostenga eso.
+      */}
+      {poster && (
+        <span
+          class="absolute top-3.5 left-3.5 flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs"
+          style="background: rgba(8,7,6,0.72); border-color: rgba(201,169,106,.4); color: #e5d3ac"
+        >
+          <span class="h-1.5 w-1.5 rounded-full bg-brass-relleno" />
+          Lo último
+        </span>
+      )}
+
+      {/*
+        El play lleva su propio disco. Sin él, el prototipo funciona porque su
+        tarjeta es un degradado oscuro; sobre una portada REAL —un flyer rosa,
+        un vestido blanco— un trazo al 42 % desaparece, y la portada la elige
+        James. El disco garantiza el suelo pase lo que pase debajo.
+      */}
+      {poster && (
+        <span class="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+          <span
+            class="flex size-16 items-center justify-center rounded-full border backdrop-blur-[2px]"
+            style="background: rgba(8,7,6,0.42); border-color: rgba(242,239,233,0.5); color: #f2efe9"
+          >
+            <Icono nombre="reproducir" tamano={30} grosor={1.4} />
+          </span>
+        </span>
+      )}
+
+      {
+        ultimo && (
+          <div
+            class="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 px-4 pt-10 pb-4"
+            style="background: linear-gradient(to top, rgba(8,7,6,.94) 30%, transparent)"
+          >
+            {/*
+              Fondo oscuro en los DOS temas: declara sus colores. Y el pie dice
+              solo lo que EXISTE en la base —título y `mediaCount`—: el
+              prototipo dibuja además «entregados en 26 h · 12 mil vistas», y
+              ninguno de los dos datos está en el schema. Publicarlos sería
+              inventar una cifra en la portada.
+            */}
+            <p class="text-sm font-medium" style="color: #f2efe9">
+              {ultimo.titulo}
+            </p>
+            <p class="text-xs" style="color: #b5aea4">
+              {[ultimo.piezas, 'entregado para sus redes'].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+        )
+      }
+    </div>
+  </div>
+
+  <!--
+    La señal de que la página SIGUE.
+
+    Solo en escritorio: en móvil ya la da el hero al medir 85dvh —la tira de
+    cifras asoma por debajo del pliegue, y una sección cortada dice «hay más»
+    mejor que cualquier flecha—. Aquí el hero llena la pantalla y no asoma
+    nada, así que hay que decirlo.
+
+    Decorativa de verdad: `aria-hidden` y sin clics. Un enlace tendría que
+    saber cuál es la siguiente sección, y la portada las pinta según haya
+    datos — enlazaría al vacío el día que una no se pinte.
+  -->
+  <span
+    class="pista-scroll pointer-events-none absolute bottom-5 left-1/2 hidden -translate-x-1/2 text-brass-600 lg:block"
+    aria-hidden="true"
+  >
+    <Icono nombre="abajo" tamano={22} grosor={1.6} />
+  </span>
+</section>
+
+<script>
+  /**
+   * El reel del hero arranca DESDE AQUÍ, no con el atributo `autoplay`.
+   *
+   * Dos razones, y las dos se arreglan con el mismo listener:
+   *
+   * 1. **`preload="none"` no hace nada mientras haya `autoplay`.** El atributo
+   *    gana: la petición del `.mp4` salía a la vez que el póster y, con 1,5 MB
+   *    por el 4G de Ayacucho, ocupaba la tubería justo mientras se pinta el
+   *    LCP. Arrancándolo tras `load`, el póster va primero y el vídeo entra
+   *    cuando ya no le quita ancho de banda a nadie.
+   *
+   * 2. **Era la única excepción del sitio a `prefers-reduced-motion`.** Son
+   *    85 dvh moviéndose en bucle sin control de pausa (WCAG 2.2.2), y el resto
+   *    de la web respeta ese ajuste sin excepciones.
+   *
+   * `muted` y `playsinline` se quedan en el marcado: sin los dos, iOS rechaza
+   * el `play()` aunque venga de JS.
+   */
+  const reel = document.querySelector<HTMLVideoElement>('[data-hero-video]');
+  const quieto = matchMedia('(prefers-reduced-motion: reduce)');
+  /**
+   * Y SOLO donde ese bloque existe.
+   *
+   * El `<video>` vive dentro de un contenedor `lg:hidden`, así que en
+   * escritorio mide 0×0 y no se ve nunca — pero el script lo arrancaba igual:
+   * medido a 1440, `preload` quedaba en `auto`, el mp4 se descargaba entero y
+   * `currentTime` avanzaba y rebobinaba en bucle. Hasta 1,5 MB y un decodificador
+   * corriendo para nadie, en la página que más se mide.
+   *
+   * El mismo corte que el `lg:hidden` del marcado, escrito una vez en JS. Con
+   * `change` para que cruzar el umbral —girar el móvil, redimensionar— lo
+   * arranque o lo pare en vez de dejarlo como estaba al cargar.
+   */
+  const enMovil = matchMedia('(max-width: 1023px)');
+
+  if (reel) {
+    const arrancar = () => {
+      if (!enMovil.matches || quieto.matches) return;
+      reel.preload = 'auto';
+      // Puede fallar por política del navegador; el póster se queda y no pasa
+      // nada. `catch` vacío a propósito: no hay nada que reintentar.
+      void reel.play().catch(() => {});
+    };
+    if (document.readyState === 'complete') arrancar();
+    else addEventListener('load', arrancar, { once: true });
+
+    enMovil.addEventListener('change', () => {
+      if (enMovil.matches) arrancar();
+      else reel.pause();
+    });
+    quieto.addEventListener('change', () => {
+      if (quieto.matches) reel.pause();
+      else arrancar();
+    });
+  }
+</script>
+
+<style>
+  /**
+   * EL VELO DEL HERO, con el color de CADA tema.
+   *
+   * En oscuro baja a `void` y el texto de encima va claro; en claro sube al
+   * mismo `void` —que en ese tema es casi blanco— y el texto va oscuro. Así el
+   * titular se apoya sobre la foto en los dos, y en ninguno hay que declarar
+   * colores a mano: los tokens del tema ya son los correctos porque el velo
+   * ACOMPAÑA al tema en vez de contradecirlo.
+   *
+   * Arranca al 48 % y no al 34 %: con el velo tan alto, del reel solo quedaban
+   * 161 px limpios de 640 —el 25 %— y el producto, que es vídeo vertical, se
+   * veía como un fondo lavado. Medido a cuatro anchos.
+   *
+   * Se escribe con `color-mix` sobre `--color-void` y no con dos degradados
+   * escritos a mano: con dos, cambiar la paleta arregla uno y deja el otro.
+   */
+  .velo-hero {
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--color-void) 97%, transparent) 48%,
+      color-mix(in srgb, var(--color-void) 74%, transparent) 66%,
+      color-mix(in srgb, var(--color-void) 26%, transparent) 84%,
+      transparent 100%
+    );
+  }
+
+  /**
+   * El SUELO, que va bajo el velo y garantiza el contraste pase lo que pase en
+   * la foto: la portada la elige James y puede ser un flyer rosa. Oscurece en
+   * el tema oscuro y aclara en el claro — en los dos acerca la foto al color
+   * del texto que lleva encima.
+   */
+  .suelo-hero {
+    background: color-mix(in srgb, var(--color-void) 35%, transparent);
+  }
+
+  /**
+   * EL HUECO que se ve mientras la foto o el vídeo no están.
+   *
+   * Estaba escrito con tres hexadecimales fijos (`#2b2620 → #141210 → #0a0908`)
+   * y por eso NO seguía al tema: en claro dejaba una banda casi negra **a
+   * sangre** al principio de una página blanca, que es justo lo que CLAUDE.md
+   * prohíbe —un bloque oscuro dentro del tema claro va como panel, nunca a
+   * sangre—. Y no es un caso raro: se ve mientras el reel de 1,5 MB baja por el
+   * 4G de Ayacucho, y **permanentemente** con «Reducir movimiento» activado, que
+   * es cuando el vídeo no arranca.
+   *
+   * Con `color-mix` sobre los tokens acompaña al tema, igual que `.velo-hero`.
+   */
+  .hueco-hero {
+    background: radial-gradient(
+      120% 90% at 50% 12%,
+      color-mix(in srgb, var(--color-elevated) 88%, var(--color-bone)),
+      var(--color-surface) 52%,
+      var(--color-void)
+    );
+  }
+</style>

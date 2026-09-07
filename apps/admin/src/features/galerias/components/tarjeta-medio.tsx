@@ -7,14 +7,21 @@ import {
   ArrowRight,
   Check,
   MoreHorizontal,
+  RotateCcw,
+  ShieldX,
   Star,
   Trash2,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { keys } from '@/lib/api/keys';
+import { galerias } from '../services/galerias';
 import { ocultarSiFalla } from '@/lib/imagen';
 import { degradadoMedio } from '@/lib/degradado';
 import { duracion } from '@/lib/format';
+import { useEnLinea } from '@/lib/media/cola/conexion';
 import { cola } from '@/lib/media/cola/store';
 import type { ItemCola } from '@/lib/media/cola/tipos';
 import { Boton } from '@/components/shared/boton';
@@ -53,7 +60,7 @@ export interface AccionesTarjeta {
 
 /** Botón cuadrado del overlay. 44px en táctil (§7), 28 en escritorio. */
 const ICONO =
-  'pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-control border border-line-strong bg-well/80 text-bone transition-colors duration-150 hover:border-line-hover disabled:opacity-35 lg:size-7';
+  'pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-control border border-line-strong [background:var(--color-velo)] text-bone transition-colors duration-150 hover:border-line-hover disabled:opacity-35 lg:size-7';
 
 export function TarjetaMedio({
   datos,
@@ -65,6 +72,25 @@ export function TarjetaMedio({
   const { item, medio } = datos;
   const [editando, setEditando] = useState(false);
   const [enAcciones, setAcciones] = useState(false);
+  const [retirando, setRetirando] = useState(false);
+
+  /**
+   * Retirar NO es optimista y NO tiene deshacer.
+   *
+   * El resto del panel es optimista con reversión porque el objeto sigue en el
+   * bucket; aquí el archivo se va de verdad, así que la tesela solo desaparece
+   * cuando el servidor confirma — y si falla, se dice, porque el visitante que
+   * lo pidió está esperando que ya no esté.
+   */
+  const qc = useQueryClient();
+  const retirar = useMutation({
+    mutationFn: (mediaId: string) => galerias.retirarMedio(mediaId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.galleries.detail(datos.galleryId) });
+      toast.success('Retirado. Ya no se sirve desde la web.');
+    },
+    onError: () => toast.error('No se pudo retirar. Vuelve a intentarlo.'),
+  });
   const subiendo = item && item.estado !== 'LISTO' && item.estado !== 'FALLIDO';
   const fallo = item?.estado === 'FALLIDO' ? item.motivo : (medio?.error ?? null);
   /** Se subió bien; solo hay algo que conviene saber. Nunca en rojo. */
@@ -77,6 +103,10 @@ export function TarjetaMedio({
   const puedeSerPortada = medio?.status === 'READY';
   const tiempo = duracion(medio?.durationSec);
   const puedeVerse = medio?.status === 'READY' && !subiendo && !fallo;
+  const enLinea = useEnLinea();
+  // Lo que está esperando a que vuelva la red. Un fallido ya no espera: pide
+  // una decisión, y taparlo con «En cola» la escondería.
+  const enEspera = Boolean(item) && (subiendo || item?.estado === 'SELECCIONADO');
   const { posicion, total } = acciones;
 
   return (
@@ -106,7 +136,7 @@ export function TarjetaMedio({
         onVer={puedeVerse ? acciones.onVer : undefined}
         nombre={datos.nombre}
         className={cn(
-          'relative aspect-3/4 w-full overflow-hidden rounded-[7px] border',
+          'degradado relative aspect-3/4 w-full overflow-hidden rounded-[7px] border',
           fallo && 'border-danger-line bg-danger-bg',
           procesando && 'bg-card-hover border-line',
           !fallo && !procesando && 'bg-well',
@@ -119,7 +149,7 @@ export function TarjetaMedio({
         // El degradado va DEBAJO de todo: es lo que se ve mientras el póster
         // carga, y lo único que hay cuando el vídeo aún no tiene miniatura.
         // Ocho teselas negras seguidas son indistinguibles entre sí.
-        estilo={fallo || procesando ? undefined : { background: degradadoMedio(datos.clave) }}
+        estilo={fallo || procesando ? undefined : degradadoMedio(datos.clave)}
       >
         {datos.posterUrl && !fallo ? (
           <img
@@ -140,10 +170,10 @@ export function TarjetaMedio({
 
         {/* El objeto que trabaja ES el indicador: el latón sube llenando la
             miniatura. Sin barra aparte que mirar. */}
-        {subiendo && item.estado === 'SUBIENDO' && (
+        {enLinea && subiendo && item.estado === 'SUBIENDO' && (
           <>
             <div
-              className="border-brass absolute inset-x-0 bottom-0 origin-bottom border-t bg-[rgba(201,169,106,.16)] transition-transform duration-300"
+              className="border-brass absolute inset-x-0 bottom-0 origin-bottom border-t bg-[color-mix(in_oklab,var(--color-brass-relleno)_16%,transparent)] transition-transform duration-300 ease-linear"
               style={{ height: '100%', transform: `scaleY(${porcentaje / 100})` }}
               role="progressbar"
               aria-valuenow={porcentaje}
@@ -157,14 +187,25 @@ export function TarjetaMedio({
           </>
         )}
 
-        {(procesando || (subiendo && item.estado !== 'SUBIENDO')) && (
+        {/* SIN RED, la tesela lo dice. Mientras dura el corte el item se queda
+            en el estado que tenía, así que seguía anunciando «Subiendo» con la
+            barra congelada en el 40% — que se lee como «se colgó», no como «no
+            hay cobertura», y las dos cosas piden reacciones distintas. */}
+        {!enLinea && enEspera && (
+          <span className="bg-danger-bg/80 absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+            <RotateCcw className="text-danger size-4" aria-hidden strokeWidth={2} />
+            <span className="text-danger text-[10px] font-medium">En cola</span>
+          </span>
+        )}
+
+        {enLinea && (procesando || (subiendo && item.estado !== 'SUBIENDO')) && (
           <>
             {/* La franja diagonal del prototipo. Estática: un shimmer que
                 recorre repinta en bucle para conseguir exactamente lo mismo. */}
             {procesando && (
               <span
                 aria-hidden
-                className="absolute inset-0 [background:linear-gradient(100deg,#1C1917_20%,#262220_50%,#1C1917_80%)]"
+                className="absolute inset-0 [background:linear-gradient(100deg,var(--color-card-hover)_20%,var(--color-line)_50%,var(--color-card-hover)_80%)]"
               />
             )}
             <span className="text-ash absolute inset-x-0 bottom-0 pb-3 text-center text-xs">
@@ -192,32 +233,59 @@ export function TarjetaMedio({
           </div>
         )}
 
-        {/* El check dice que ese archivo YA está arriba y servible. Sin él, un
-            medio listo y uno a medias se leen igual en cuanto desaparece la
-            barra de progreso. */}
-        {listo && (
+        {/* UNA insignia arriba a la izquierda, y la portada GANA al visto.
+            El check dice que el archivo está arriba y servible —sin él, un medio
+            listo y uno a medias se leen igual en cuanto desaparece la barra—,
+            pero una portada ya es READY por definición (`puedeSerPortada` lo
+            exige), así que enseñar los dos sería decir dos veces lo mismo en la
+            esquina más pequeña de la tesela.
+
+            Y es la MISMA estrella que en las demás teselas abre «Hacer portada»:
+            ver el icono de la acción, relleno y en latón, es lo que dice «esta
+            es la que está puesta» sin gastar una palabra. Aquí no cabe una: a
+            112px —el ancho mínimo de la rejilla— el `⋯` de móvil se come 44 de
+            los 112, y «Portada» escrito no entra. */}
+        {medio?.isFeatured ? (
+          <span
+            aria-label="Es la portada"
+            title="Es la portada de la galería"
+            className="border-brass absolute top-1.75 left-1.75 flex size-[19px] items-center justify-center rounded-full border [background:var(--color-velo)]"
+          >
+            <Star className="text-brass size-[11px] fill-current" aria-hidden />
+          </span>
+        ) : listo ? (
           <span
             aria-label="Subido"
             title="Subido"
-            className="border-brass absolute top-1.75 left-1.75 flex size-[19px] items-center justify-center rounded-full border [background:rgba(8,7,6,.82)]"
+            className="border-brass absolute top-1.75 left-1.75 flex size-[19px] items-center justify-center rounded-full border [background:var(--color-velo)]"
           >
             <Check className="text-brass size-[11px]" strokeWidth={3} aria-hidden />
           </span>
-        )}
+        ) : null}
 
         {/* En `ash` y sin icono de alarma: el archivo está arriba y se ve. Un
             triángulo rojo por algo que no impide nada entrena a ignorarlos. */}
         {aviso && !subiendo && (
           <span
             title={aviso}
-            className="text-ash absolute inset-x-1.75 bottom-1.75 line-clamp-2 rounded px-1.5 py-0.5 text-[10px] [background:rgba(8,7,6,.88)]"
+            className="text-ash absolute inset-x-1.75 bottom-1.75 line-clamp-2 rounded px-1.5 py-0.5 text-[10px] [background:var(--color-velo-fuerte)]"
           >
             {aviso}
           </span>
         )}
 
+        {/* La palabra, abajo a la izquierda — y se APARTA al pasar el ratón.
+            Comparte esquina exacta con la flecha «Mover antes» de la capa de
+            acciones, así que al hacer hover quedaba media palabra asomando por
+            detrás de un botón: se lee como algo roto, y es justo lo que hizo
+            pensar que faltaba un control. Ahora se funde a la vez que la capa
+            entra, y quien mira sigue sabiendo que es la portada por la estrella
+            de arriba, que no la tapa nadie.
+
+            En móvil no se aparta nunca: allí la capa de acciones no existe
+            —`hidden lg:flex`— y nada la tapa. */}
         {medio?.isFeatured && (
-          <span className="text-brass absolute bottom-1.75 left-1.75 rounded px-1.5 py-0.5 text-[10px] [background:rgba(8,7,6,.82)]">
+          <span className="text-brass absolute bottom-1.75 left-1.75 rounded px-1.5 py-0.5 text-[10px] [background:var(--color-velo)] lg:transition-opacity lg:duration-200 lg:group-focus-within:opacity-0 lg:group-hover:opacity-0">
             Portada
           </span>
         )}
@@ -240,13 +308,13 @@ export function TarjetaMedio({
             e.stopPropagation();
             setAcciones(true);
           }}
-          className="border-line-strong text-bone absolute top-1.75 right-1.75 flex size-11 items-center justify-center rounded-full [background:rgba(8,7,6,.82)] lg:hidden"
+          className="border-line-strong text-bone absolute top-1.75 right-1.75 flex size-11 items-center justify-center rounded-full [background:var(--color-velo)] lg:hidden"
         >
           <MoreHorizontal className="size-4" aria-hidden />
         </span>
 
         {tiempo && !subiendo && !fallo && (
-          <span className="absolute right-1.75 bottom-1.75 rounded px-1.5 py-0.5 text-[10px] [background:rgba(8,7,6,.82)]">
+          <span className="absolute right-1.75 bottom-1.75 rounded px-1.5 py-0.5 text-[10px] [background:var(--color-velo)]">
             {tiempo}
           </span>
         )}
@@ -338,7 +406,7 @@ export function TarjetaMedio({
                   ? `Editar la descripción de ${datos.nombre}`
                   : `Añadir descripción a ${datos.nombre}`
               }
-              className="border-line-strong bg-well/80 text-bone hover:border-line-hover rounded-control pointer-events-auto flex min-h-11 min-w-0 flex-1 items-center justify-center truncate border px-1.5 text-[10px] transition-colors duration-150 lg:min-h-7"
+              className="border-line-strong [background:var(--color-velo)] text-bone hover:border-line-hover rounded-control pointer-events-auto flex min-h-11 min-w-0 flex-1 items-center justify-center truncate border px-1.5 text-[10px] transition-colors duration-150 lg:min-h-7"
             >
               {medio.alt ? 'Descripción ✓' : 'Añadir descripción'}
             </button>
@@ -401,8 +469,55 @@ export function TarjetaMedio({
               setAcciones(false);
             }}
           />
+          {/* Separada de «Eliminar» a propósito: eliminar deja el archivo en el
+              bucket 30 días y se deshace; esto lo borra ahora y no. Un
+              `?definitivo=true` en la misma fila se pulsa por error. */}
+          {medio && (
+            <FilaAccion
+              Icono={ShieldX}
+              peligro
+              etiqueta="Retirar por solicitud"
+              onClick={() => {
+                setAcciones(false);
+                setRetirando(true);
+              }}
+            />
+          )}
         </ul>
       </Hoja>
+
+      {medio && (
+        <Hoja
+          abierta={retirando}
+          onCerrar={() => setRetirando(false)}
+          titulo="¿Alguien pidió que se retire?"
+          descripcion="Se borra del servidor ahora mismo. Esto no se puede deshacer."
+        >
+          <div className="flex flex-col gap-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <p className="text-muted text-xs leading-relaxed">
+              Úsalo cuando quien aparece en el material pida que lo quites. A diferencia de
+              «Eliminar», el archivo deja de estar accesible por su enlace inmediatamente, también
+              para quien ya lo tuviera. Lo que otra persona haya descargado antes queda fuera de
+              tu alcance.
+            </p>
+            <div className="flex gap-2">
+              <Boton className="flex-1" onClick={() => setRetirando(false)}>
+                Cancelar
+              </Boton>
+              <Boton
+                variante="peligro"
+                className="flex-1"
+                onClick={() => {
+                  void retirar.mutateAsync(medio.id);
+                  setRetirando(false);
+                }}
+              >
+                Retirar ahora
+              </Boton>
+            </div>
+          </div>
+        </Hoja>
+      )}
 
       {/* En hoja, no en línea: metido bajo una tesela de 130px el formulario
           quedaba ilegible y rompía la grilla. Y es lo que ya hace el resto del

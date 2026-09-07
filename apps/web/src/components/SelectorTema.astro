@@ -1,0 +1,39 @@
+---
+/**
+ * El interruptor de tema. **No estaba, y sin él el tema claro era inalcanzable.**
+ *
+ * La landing tenía los dos temas montados —tokens, contrastes medidos, tests en
+ * los dos— y el script del `<head>` leyendo `localStorage`… que **nadie
+ * escribía nunca**. O sea que el claro solo existía si lo ponías a mano desde
+ * la consola. Y el claro está ahí por una razón concreta: se entra desde un
+ * móvil A PLENO SOL en Ayacucho, donde un negro al 100 % de brillo se lee peor
+ * que un blanco.
+ *
+ * DOS estados y no tres, al revés que el admin: allí «sistema» tiene sentido
+ * porque James usa el panel a diario y quiere que siga a su iPhone. Aquí el
+ * visitante entra una vez, de paso: lo que necesita es un botón que cambie lo
+ * que está viendo, no un ajuste con memoria de tres valores.
+ *
+ * **Solo marcado. El listener vive en el `Layout`, delegado.** Este componente
+ * se pinta DOS veces —la barra de escritorio y la de móvil— y un `<script>`
+ * aquí se emite dos veces: cada copia enganchaba a los dos botones, así que un
+ * clic conmutaba el tema dos veces y no cambiaba nada. Pasó, y solo en
+ * escritorio, que es donde el test lo cazó.
+ */
+import Icono from './Icono.astro';
+---
+
+<button
+  type="button"
+  data-tema-boton
+  class="flex size-12 shrink-0 items-center justify-center rounded-control text-ash transition-colors duration-150 hover:text-brass-200"
+  aria-label="Cambiar entre tema claro y oscuro"
+>
+  <!--
+    Los dos iconos van en el DOM y se enseña uno con CSS. Cambiarlos por JS
+    dejaría el botón vacío hasta que el script corriera, y este botón vive en la
+    barra pegajosa: el hueco se vería en cada carga.
+  -->
+  <span class="hidden [:root[data-tema='claro']_&]:block"><Icono nombre="luna" tamano={20} /></span>
+  <span class="block [:root[data-tema='claro']_&]:hidden"><Icono nombre="sol" tamano={20} /></span>
+</button>

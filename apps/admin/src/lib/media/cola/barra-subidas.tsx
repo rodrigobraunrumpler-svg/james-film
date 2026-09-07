@@ -1,9 +1,11 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
+import { WifiOff } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { keys } from '@/lib/api/keys';
 import { tamano } from '@/lib/format';
+import { useEnLinea } from './conexion';
 import { hayEnCurso } from './motor';
 import { conectarCache, cola, useCola } from './store';
 import { estaEnCurso } from './tipos';
@@ -63,6 +65,7 @@ export function BarraSubidas() {
     document.addEventListener('visibilitychange', alVolver);
     return () => document.removeEventListener('visibilitychange', alVolver);
   }, [activo, qc]);
+  const enLinea = useEnLinea();
   useWakeLock(activo);
   useAvisarAlSalir(activo);
 
@@ -77,10 +80,24 @@ export function BarraSubidas() {
       className="bg-chrome border-line flex flex-col gap-1.75 border-b px-4 pt-2.25 pb-2.5 lg:px-6"
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="min-w-0 truncate">
-          Subiendo {resumen.hechos + 1} de {resumen.totalItems} ·{' '}
-          {restante ?? `${tamano(resumen.subido)} de ${tamano(resumen.total)}`}
-        </p>
+        {/* Sin red, «Subiendo 1 de 8» con el tiempo restante congelado es la
+            misma mentira que la tesela: no está subiendo nada. Se dice el
+            estado real y CUÁNTAS quedan, que es lo que decide si James se mueve
+            a buscar cobertura o se espera. */}
+        {enLinea ? (
+          <p className="min-w-0 truncate">
+            Subiendo {resumen.hechos + 1} de {resumen.totalItems} ·{' '}
+            {restante ?? `${tamano(resumen.subido)} de ${tamano(resumen.total)}`}
+          </p>
+        ) : (
+          <p className="flex min-w-0 items-center gap-2 truncate">
+            <WifiOff className="text-danger size-3.5 shrink-0" aria-hidden strokeWidth={2} />
+            <span className="text-bone">Sin conexión.</span>
+            <span className="text-ash">
+              Quedan {resumen.totalItems - resumen.hechos}. Se reanuda solo al volver.
+            </span>
+          </p>
+        )}
         <button
           type="button"
           // «Cancelar TODO», no «Cancelar»: cada tarjeta tiene el suyo y con el
@@ -105,8 +122,11 @@ export function BarraSubidas() {
         aria-valuemax={100}
       >
         <div
-          className="bg-brass h-full origin-left transition-transform duration-300"
-          // scaleX y no width: solo transform y opacity se animan (§6).
+          className="bg-brass-relleno h-full origin-left transition-transform duration-300 ease-linear"
+          // scaleX y no width: solo transform y opacity se animan (§6). Y la
+          // curva es LINEAL: una aceleración inventaría un cambio de
+          // velocidad que la subida no está teniendo, y la barra es lo
+          // único que le dice a James si el 4G sigue vivo.
           style={{ transform: `scaleX(${porcentaje / 100})` }}
         />
       </div>

@@ -1,1 +1,517 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  FUENTES · autoalojadas
+ *
+ *  Nunca desde `fonts.googleapis.com`: sería una petición a otro dominio en el
+ *  camino del LCP y una fuga de datos de quien visita. Las dos son VARIABLES,
+ *  así que un fichero cubre todo el rango de peso: 124 KB por las dos, solo
+ *  subconjunto latino.
+ * ───────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: url('/fonts/bricolage-var.woff2') format('woff2-variations');
+  font-weight: 400 800;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-var.woff2') format('woff2-variations');
+  font-weight: 400 600;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2074, U+20AC;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  PALETA · §6, la de la LANDING
+ *
+ *  No es la del admin. Allí `chrome` es más claro que `content` para separar
+ *  el sidebar sin una línea; aquí no hay sidebar y el negro es más negro.
+ *  El cian y el magenta del flyer NO se usan: la jerarquía de los paquetes la
+ *  hace el acento único —Básico neutro → Pro latón → Premium hueso—.
+ * ───────────────────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif;
+
+  --color-void: #0a0908; /* el fondo */
+  --color-surface: #141210; /* secciones alternas */
+  --color-elevated: #1e1b18; /* lo que sube un escalón */
+  --color-line: #2e2a26;
+  --color-line-strong: #3d362f;
+  --color-ash: #9c958c; /* texto secundario */
+  --color-bone: #f2efe9; /* texto principal */
+  --color-brass-200: #e5d3ac;
+  --color-brass-400: #c9a96a;
+  --color-brass-600: #9a7f47;
+  --color-whatsapp: #25d366;
+  /**
+   * Verde del check y del punto de «publicado». Solo en el chip de los días
+   * libres del calendario; el botón verde es SIEMPRE el de WhatsApp.
+   */
+  --color-libre: #4fbf7b;
+
+  /**
+   * TRES radios y ninguno más. En los prototipos llegaron a convivir seis y se
+   * notaba que nada casaba: más variedad no se lee como intención, se lee como
+   * descuido. Es la misma regla que rige el admin.
+   */
+  --radius-chip: 6px;
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-panel: 24px;
+
+  /**
+   * El cuerpo son 17px, NO los 13 del admin. Aquello es un panel denso para un
+   * experto que lo usa a diario; esto lo lee la madre de la novia una vez,
+   * deprisa y con el sol de cara.
+   */
+  --text-base: 17px;
+  --text-base--line-height: 1.6;
+  --text-sm: 15px;
+  --text-sm--line-height: 1.5;
+  --text-xs: 13px;
+  --text-xs--line-height: 1.45;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  TEMA CLARO
+ *
+ *  NO es el oscuro invertido. El oscuro sigue siendo la marca —el flyer es
+ *  oscuro y dorado, y el vídeo se ve mejor sobre negro— y manda sin preferencia
+ *  declarada. El claro existe porque se entra desde un móvil A PLENO SOL en
+ *  Ayacucho, y ahí un negro al 100 % de brillo se lee peor que un blanco.
+ *
+ *  CONTRASTES MEDIDOS sobre las TRES superficies donde el texto vive:
+ *                      ground    surface   elevated
+ *    bone   #17150F     17.6      16.9      18.1
+ *    ash    #6B655C      5.9       5.6       6.1
+ *    brass  #806436      5.3       4.9       5.5   ← el #c9a96a da 1.8, no vale
+ *
+ *  El latón bajó de `#8a6d3b` a `#806436` y no es un capricho: aquel daba
+ *  **4.30 sobre `surface`** —por debajo de AA— y lo llevan todos los
+ *  antetítulos, que viven justo en las secciones de fondo `surface`. Los 4.9
+ *  que decía esta nota estaban medidos solo contra `ground`. Lo caza
+ *  `e2e/contraste.spec.ts`, que compone el fondo real capa a capa.
+ *  El latón de la MARCA se conserva para rellenos, donde no hay que leer nada.
+ * ───────────────────────────────────────────────────────────────────────── */
+:root[data-tema='claro'] {
+  color-scheme: light;
+
+  --color-void: #fbfaf7;
+  --color-surface: #f4f1eb;
+  --color-elevated: #ffffff;
+  --color-line: #e6e1d8;
+  --color-line-strong: #d8d2c6;
+  --color-ash: #6b655c;
+  --color-bone: #17150f;
+  --color-brass-200: #66502d;
+  --color-brass-400: #806436; /* el de LEER */
+  --color-brass-600: #806436;
+  --color-libre: #2c6b42;
+}
+
+/**
+ * El latón de RELLENO no cambia con el tema: barras, puntos y áreas donde no
+ * hay que leer nada conservan el brillo de la marca. Es el mismo par de
+ * latones que el admin, por la misma razón.
+ */
+@theme {
+  --color-brass-relleno: #c9a96a;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    /*
+     * El salto con ancla lo tapa la barra pegajosa si no se reserva sitio, y
+     * 88px no llegaban: la cabecera son TRES filas —contexto, menú y la tira
+     * de atajos— y mide 177px en móvil y 116px en escritorio, medidos sobre
+     * la página real. Con el valor corto, cada clic del menú dejaba el
+     * antetítulo de la sección debajo de la barra.
+     *
+     * ponytail: dos números a mano en vez de medirlos con JS. Si la cabecera
+     * cambia de alto hay que tocarlos; medir en `resize` sería más código y
+     * un reflow por cada arrastre de ventana.
+     *
+     * Bajó de 190 a 128 al quitar la tira de píldoras: eran 62 px de cabecera
+     * que ahora vive dentro del menú.
+     */
+    scroll-padding-top: 128px;
+  }
+
+  body {
+    background: var(--color-void);
+    color: var(--color-bone);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    margin: 0;
+    /* Datos que no controlamos —un título largo, un nombre sin espacios— no
+       pueden ensanchar la página. §7. */
+    overflow-wrap: anywhere;
+  }
+
+  /* El foco de teclado en un solo sitio. Quitarlo —la salida fácil— deja a
+     ciegas a quien navega sin ratón. */
+  :where(a, button, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-brass-400);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  @media (width >= 64rem) {
+    html {
+      scroll-padding-top: 128px;
+    }
+  }
+
+  /*
+   * `hidden` tiene que GANAR. La hoja del navegador trae `[hidden] { display:
+   * none }`, pero es del user-agent: cualquier `display: flex` de Tailwind en
+   * el mismo elemento le gana, y `el.hidden = true` deja la tarjeta a la vista
+   * sin que nada falle. Pasa en el filtro de trabajos y en la fecha elegida
+   * del calendario, que son los dos sitios donde se usa.
+   */
+  [hidden] {
+    display: none !important;
+  }
+
+  img,
+  video {
+    max-width: 100%;
+    display: block;
+  }
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ *  MOVIMIENTO
+ *
+ *  SOLO `transform` y `opacity`: cualquier otra propiedad obliga al navegador a
+ *  recalcular la maqueta en cada fotograma, y en un móvil normal eso se ve a
+ *  tirones. Estas dos las resuelve el compositor.
+ *
+ *  Y TODO va dentro de `prefers-reduced-motion`. Con el ajuste puesto la web
+ *  funciona igual, solo que quieta.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+@keyframes sube {
+  from {
+    opacity: 0;
+    transform: translateY(var(--sube, 18px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes desliza {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes latido {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+@keyframes brilla {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+@keyframes flota {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /**
+   * Entrada escalonada, AL ENTRAR EN PANTALLA y no al cargar.
+   *
+   * Antes arrancaban las 35 a la vez: 27 estaban debajo del pliegue y
+   * terminaban su entrada antes de que nadie llegara a verlas —animación
+   * gastada en vano y, peor, toda la página de abajo apareciendo quieta—.
+   * Lo marca un `IntersectionObserver` de diez líneas en el `Layout`; GSAP y
+   * ScrollTrigger harían lo mismo por 50 KB y con el trabajo en el hilo
+   * principal, que es justo lo que el presupuesto de INP protege.
+   *
+   * El orden se pasa con `--i`, con TECHO DE SEIS PASOS: con veinte tarjetas,
+   * la última llegaría casi dos segundos tarde y lo último en aparecer sería
+   * justo lo que hay que pulsar.
+   *
+   * Se esconde SOLO si hay JS que lo vaya a enseñar (`:root.js`, que pone el
+   * mismo script bloqueante del tema). Sin JS nunca se esconde: la entrada es
+   * un adorno, no la condición para poder leer la página.
+   */
+  :root.js .entra {
+    opacity: 0;
+  }
+  /* Ya estaba a la vista al cargar: se enseña sin animación ni escalón. */
+  :root.js .entra[data-ya] {
+    opacity: 1;
+  }
+  /*
+   * Y NO todas igual: cuanto más atrás va una en la cascada, más corta y más
+   * rápida entra. El primer bloque hace la entrada entera —620 ms y 18 px, que
+   * es lo que se lee como «esto aparece»— y el sexto la hace en 440 y 11.
+   *
+   * Con las seis a 620 ms la cola de la cascada se arrastra: la última empieza
+   * 540 ms tarde y aún tarda otros 620 en asentarse, o sea que la fila de
+   * tarjetas sigue moviéndose más de un segundo después de asomar. Acelerando
+   * hacia el final, la cascada TERMINA sola en vez de apagarse.
+   *
+   * Va en un `calc` sobre `--i` y no en clases por tipo de bloque: la variable
+   * ya existe en los 35 sitios, y una clase nueva habría que acordarse de
+   * ponerla —y el que se olvide no vería ningún fallo.
+   */
+  :root.js .entra[data-ver] {
+    --sube: calc(18px - min(var(--i, 0), 6) * 1.2px);
+    animation: sube calc(0.62s - min(var(--i, 0), 6) * 0.03s)
+      cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(min(var(--i, 0), 6) * 90ms);
+  }
+  .tira {
+    animation: desliza 26s linear infinite;
+  }
+  .vivo {
+    animation: latido 2.1s ease-in-out infinite;
+  }
+  .aura {
+    animation: brilla 7s ease-in-out infinite;
+  }
+  .flota {
+    animation: flota 6s ease-in-out infinite;
+  }
+  .flota-2 {
+    animation: flota 6s ease-in-out infinite;
+    animation-delay: -2s;
+  }
+  .flota-3 {
+    animation: flota 6s ease-in-out infinite;
+    animation-delay: -4s;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/**
+ * Grano. Textura, no un degradado de relleno: da profundidad al hero sin
+ * añadir una petición ni un color nuevo.
+ */
+@utility grano {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.32'/></svg>");
+}
+
+/**
+ * Una tira que se desliza con el dedo, sin barra a la vista. `overflow-x: auto`
+ * obliga a `overflow-y` a no ser `visible` (CSS Overflow §3), así que una fila
+ * de 48px en una caja de 48px saca una barra vertical de dos píxeles que no
+ * scrollea nada. Se quita la BARRA, nunca el scroll.
+ */
+@utility sin-barra {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/**
+ * El tema CLARO como variante de Tailwind.
+ *
+ * La landing no escribe `dark:`: el oscuro es el defecto y la marca, así que
+ * lo que se anota es la EXCEPCIÓN clara. Y hay una de verdad —el hero móvil,
+ * donde el reel pasa de sangre a tarjeta—, no solo colores.
+ */
+@custom-variant claro (&:where(:root[data-tema='claro'] *));
+
+/**
+ * El verde de WhatsApp y su texto, juntos y en un solo sitio.
+ *
+ * El texto es NEGRO en los dos temas, y por eso no puede ser `text-void`: ese
+ * token se invierte con el tema y en claro dejaba el botón con letra casi
+ * blanca sobre verde —3,1:1—, justo el único botón que tiene que funcionar.
+ * Sobre `#25d366` el negro da 6,3:1. El verde tampoco cambia: es la marca de
+ * WhatsApp, no nuestra paleta.
+ */
+@utility boton-wa {
+  background: var(--color-whatsapp);
+  color: #0a0908;
+}
+
+/**
+ * El MARCO de la página: el padding lateral y el tope de ancho, juntos.
+ *
+ * El prototipo es un artboard de 1440 con 64 px de margen, o sea **1312 px de
+ * contenido**. Sin tope, en un monitor de 2560 la línea de texto se estira
+ * hasta hacerse ilegible y el hero se separa tanto de su abanico que dejan de
+ * leerse como una sola cosa.
+ *
+ * Va con `padding-inline` y no con `max-width` + `margin: auto` a propósito:
+ * así el FONDO sigue siendo a sangre —las secciones alternan `surface` y
+ * `void`, y una franja de color que no llega al borde se lee como un fallo— y
+ * lo único que se centra y se limita es el contenido.
+ */
+@utility marco {
+  padding-inline: max(1.25rem, calc((100% - 82rem) / 2));
+}
+
+@media (width >= 64rem) {
+  .marco,
+  .lg\:marco {
+    padding-inline: max(4rem, calc((100% - 82rem) / 2));
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  FLUIDEZ
+ *
+ *  Todo lo de aquí es `transform` y `opacity` —que resuelve el compositor—
+ *  salvo la transición del cambio de tema, que es la única excepción y dura
+ *  lo que dura el cambio. Y todo dentro de `prefers-reduced-motion`.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+@keyframes entra-pagina {
+  from {
+    opacity: 0.55;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes acerca {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.07);
+  }
+}
+
+@keyframes baja-pista {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(5px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /**
+   * La página entra. Arranca en 0.55 y NO en 0 a propósito: el navegador
+   * descarta del LCP lo que está a opacidad cero, así que un fundido desde
+   * cero retrasaría la métrica que este proyecto mide en CrUX. Desde 0.55 la
+   * sensación es la misma y el LCP no se mueve.
+   */
+  main {
+    animation: entra-pagina 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  /**
+   * El reel del hero respira. Dieciocho segundos y un 7 %: a esa velocidad no
+   * se ve moverse, se ve VIVO — que es justo lo que un póster estático no
+   * transmite mientras James no suba el vídeo. Solo `transform`, así que va
+   * en el compositor y no toca el hilo principal.
+   */
+  .respira {
+    animation: acerca 18s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+
+  .pista-scroll {
+    animation: baja-pista 2.4s ease-in-out infinite;
+  }
+
+  /*
+   * La barra se COMPACTA al bajar: la tira de contexto —dónde está y cuándo
+   * contesta— se lee una vez, y a partir de ahí son 35 px de los 844 de un
+   * iPhone pegados a la pantalla para siempre. Al volver arriba, vuelve.
+   *
+   * Es un `translateY` de la barra ENTERA, no un alto que se encoge: mover la
+   * caja de una barra pegajosa mientras se hace scroll es justo el trabajo que
+   * hay que dejarle al compositor. `--tira` la mide el propio componente.
+   */
+  [data-barra] {
+    transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+}
+
+/**
+ * El fundido del cambio de tema. Lo dispara `startViewTransition` desde el
+ * `Layout`, que explica por qué esto NO es una transición de `background-color`
+ * sobre `*` — esa costaba 248 ms de INP sobre un techo de 200.
+ *
+ * Solo se ajusta la duración: 220 ms en vez de los 250 que trae el navegador,
+ * para quedarse dentro del techo de 350 del proyecto con margen. El resto del
+ * fundido lo hace el compositor y no hay nada que declarar.
+ *
+ * Fuera de `prefers-reduced-motion` a propósito: la transición ni se inicia con
+ * movimiento reducido —el `Layout` la salta—, así que una regla que solo cambia
+ * su duración no tiene a qué aplicarse ahí.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+}
+
+/**
+ * El estado compacto de la barra. FUERA de `prefers-reduced-motion`: con
+ * movimiento reducido la barra sigue compactándose —eso es sitio en pantalla,
+ * no un adorno—, solo que llega de golpe en vez de deslizarse.
+ */
+[data-barra][data-compacta] {
+  transform: translateY(calc(-1 * var(--tira, 0px)));
+}
+
+/**
+ * Lo que se toca RESPONDE. En un móvil no hay `:hover`, así que sin un
+ * `:active` una tarjeta no da ninguna señal de haberse pulsado y se pulsa dos
+ * veces. `@media (hover: none)` lo limita a lo táctil: en escritorio ya lo
+ * dice el hover.
+ */
+@media (hover: none) and (prefers-reduced-motion: no-preference) {
+  a:active,
+  button:active {
+    transform: scale(0.985);
+  }
+  a,
+  button {
+    transition: transform 120ms ease;
+  }
+}

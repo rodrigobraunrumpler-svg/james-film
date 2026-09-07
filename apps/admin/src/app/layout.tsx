@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Inter } from 'next/font/google';
-import { Toaster } from 'sonner';
+import { SCRIPT_TEMA } from '@/lib/tema';
+import { ToasterDelTema } from '@/components/shared/toaster-del-tema';
 import './globals.css';
 
 // Autoalojada por next/font: sin petición a Google Fonts y sin CLS.
@@ -33,14 +34,39 @@ export const viewport: Viewport = {
   // indicador de inicio.
   viewportFit: 'cover',
   // Sin maximumScale ni userScalable: §7 exige que el zoom al 200% funcione.
-  // El color de la barra de estado en standalone: el `content` del admin, no
-  // el `void` de la landing — si no, se ve una franja más oscura arriba.
-  themeColor: '#0F0D0C',
+  // El color de la barra de estado en standalone. DOS, uno por tema: con uno
+  // solo, en claro el iPhone pinta una franja casi negra sobre un panel blanco.
+  // Es el `content` del admin, no el `void` de la landing.
+  // Respaldo por si el script no llega a correr. El que manda es el `<meta>`
+  // SIN media que escribe `SCRIPT_TEMA`: aquí el tema lo elige `data-tema`, no
+  // `prefers-color-scheme`, y con el iPhone en oscuro y el panel en claro este
+  // par dejaría la barra de estado negra sobre una pantalla blanca.
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#0f0d0c' },
+    { media: '(prefers-color-scheme: light)', color: '#f7f6f3' },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${inter.variable} ${bricolage.variable}`}>
+    // `suppressHydrationWarning`: el script de abajo escribe `data-tema` en el
+    // <html> antes de que React hidrate, así que el atributo del servidor y el
+    // del cliente no coinciden **a propósito**. Sin esto React avisa por
+    // consola en cada carga. Solo afecta a este elemento, no al árbol.
+    <html
+      lang="es"
+      suppressHydrationWarning
+      className={`${inter.variable} ${bricolage.variable}`}
+    >
+      <head>
+        {/*
+          Bloqueante y en el <head>: pone el tema ANTES del primer pintado. En
+          un efecto, la pantalla se pintaría oscura y saltaría a clara — un
+          parpadeo en cada carga, y en el móvil de James medio segundo de negro.
+          Es la única razón por la que aquí hay un script en línea.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+      </head>
       {/* `text-base` = 13px. Sin él, TODO lo que no declara tamaño hereda los 16px
           de Preflight: botones, campos y avisos salían un 23% más grandes de lo
           diseñado y la pantalla se leía espaciada en vez de densa. */}
@@ -48,30 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         {/* Arriba a propósito: abajo chocaría con la barra de subidas, que es
             `sticky` y está justo donde caería el toast. */}
-        <Toaster
-          position="top-center"
-          theme="dark"
-          closeButton
-          // El toast por defecto de sonner en oscuro es casi negro sobre un
-          // panel casi negro: se lee como un agujero. Con `card` y el borde de
-          // `line-strong` se separa del fondo, que es lo que tiene que hacer
-          // algo que aparece encima de todo.
-          toastOptions={{
-            classNames: {
-              toast:
-                'bg-card! border-line-strong! text-bone! rounded-card! gap-3! shadow-2xl shadow-black/50',
-              title: 'font-medium',
-              description: 'text-ash!',
-              icon: 'text-brass',
-              actionButton: 'bg-transparent! border border-brass text-brass! font-medium',
-              cancelButton: 'bg-transparent! text-ash!',
-              closeButton:
-                'bg-card! border-line-strong! text-ash! hover:text-bone! hover:bg-card-hover!',
-              error: 'border-danger-line! [&_[data-icon]]:text-danger',
-              success: '[&_[data-icon]]:text-brass',
-            },
-          }}
-        />
+        <ToasterDelTema />
       </body>
     </html>
   );

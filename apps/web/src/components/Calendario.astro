@@ -1,0 +1,704 @@
+---
+/**
+ * El calendario: la TARJETA con su rejilla, su selección y su salida.
+ *
+ * Ya no es una sección: vive en `/fechas-libres`, que es quien la compone con
+ * la cabecera, los sábados rápidos, los tres pasos y los estados del día.
+ * Aquí queda solo la pieza que hace algo, para que la página no tenga que
+ * saber cómo funciona por dentro.
+ *
+ * **La rejilla se escribe a mano y no entra `vanilla-calendar-pro`.** El plan
+ * la eligió comparándola con `react-day-picker` —que obligaría a meter React
+ * en una web estática—, pero la comparación de verdad hoy es otra: la rejilla
+ * del mes YA existe en `lib/fechas.ts`, con sus tests, su arranque en lunes
+ * sacado de `Intl` y sus 48 px medidos. Lo que faltaba era la interacción, que
+ * son cien líneas. Meter la librería sería sustituir código probado por una
+ * dependencia y, encima, pelearse con su DOM para pintar los seis estados.
+ *
+ * El día ocupado lleva TRAMA DIAGONAL, no un rojo: no es un error, es una
+ * agenda. Y **se sigue pudiendo pulsar** — quien mira un día tomado es justo
+ * quien hay que llevar a preguntar por otro.
+ */
+import Icono from './Icono.astro';
+import { INICIALES_SEMANA, hoy, mesYAno, rejillaDelMes } from '../lib/fechas';
+import { PISTAS } from '../content/copy';
+import { enlace } from '../lib/whatsapp';
+
+interface Props {
+  numero: string;
+  base: string;
+  /** Los días tomados, en `YYYY-MM-DD`. Vacío = todo libre, y es verdad. */
+  ocupados?: string[];
+  /**
+   * Hasta dónde llega el dato. Un día más allá **no se pinta**: no es libre,
+   * es que no se sabe, y pintarlo como libre sería la promesa rota que este
+   * módulo existe para evitar.
+   */
+  hasta?: string | null;
+  /**
+   * DÓNDE están los paquetes desde esta página.
+   *
+   * Lo declara quien monta el calendario, no el componente: en la portada son
+   * `/#paquetes` y en `/fechas-libres` son `#paquetes`, porque ahí la sección
+   * está en la misma página. Es «quien enlaza comprueba que hay adónde ir»
+   * aplicada en la frontera — el calendario no puede saber en qué página vive.
+   *
+   * Antes había aquí una fila de chips BÁSICO/PRO/PREMIUM y un enlace a
+   * `/#paquetes`. Los chips preguntaban «¿cuál quieres?» sin enseñar ni el
+   * precio ni lo que incluye, así que la única forma de decidir era irse a otra
+   * página —y volver—. La comparación ahora se hace donde se pregunta.
+   */
+  hrefPaquetes?: string | null;
+}
+
+const { numero, base, ocupados = [], hasta = null, hrefPaquetes = '/#paquetes' } = Astro.props;
+
+const inicio = hoy();
+const tomados = new Set(ocupados);
+const rejilla = rejillaDelMes(inicio);
+
+/** El CTA sin fecha. El script lo reescribe en cuanto se elige una. */
+const hrefBase = enlace({ numero, base });
+---
+
+<div
+  id="calendario"
+  class="flex flex-col gap-3"
+  data-calendario
+  data-numero={numero}
+  data-base={base}
+  data-ocupados={JSON.stringify(ocupados)}
+  data-hasta={hasta}
+  data-hoy={inicio}
+>
+    <!--
+      `p-2` por debajo de 360px, no `p-3`.
+
+      La rejilla de siete columnas reparte lo que queda tras el padding y el
+      gap, así que a 320px el día medía **34,6px de ancho** — por debajo del
+      mínimo de 44 y con el alto en 48, que es lo que despista: el test de
+      objetivos mide los dos y sólo corría a 390. Doce píxeles de padding menos
+      y el gap a cero devuelven el día a 44.
+    -->
+    <!--
+      POR DEBAJO DE 360px LA TARJETA LLEGA AL BORDE.
+
+      La rejilla de siete columnas reparte lo que queda tras el marco, el borde
+      y el gap: a 320px el día medía **34,6px de ancho**, por debajo del mínimo
+      de 44. Con el alto en 48 el test no lo veía —mide los dos, pero sólo
+      corría a 390— y un objetivo de 34px se falla con el pulgar.
+
+      Apretando el padding sólo se llegaba a 37,4. Los 44 sólo salen si la
+      tarjeta deja de estar dentro del `marco`: `-mx-5` compensa exactamente su
+      padding, y el borde lateral y el radio se quitan porque un borde pegado al
+      canto de la pantalla se lee como un fallo de render.
+
+      **Sólo `max-[389px]`**: ahí la página es una columna. Por encima, esta
+      tarjeta vive dentro de una columna de rejilla y un margen negativo la
+      haría 40px más ancha que su columna — el fallo del `-mx-4` que este
+      proyecto ya documenta.
+    -->
+    <div class="flex flex-col gap-3 rounded-card border border-line bg-void p-3 max-[389px]:-mx-5 max-[389px]:rounded-none max-[389px]:border-x-0 max-[389px]:px-0 lg:p-5">
+      <div class="flex items-center justify-between">
+        <button
+          type="button"
+          data-mes="-1"
+          disabled
+          class="flex size-12 items-center justify-center rounded-control border border-line text-ash transition-[transform,color,border-color] duration-150 not-disabled:hover:-translate-x-0.5 not-disabled:hover:text-bone disabled:opacity-30"
+          aria-label="Mes anterior"
+        >
+          <Icono nombre="atras" tamano={18} />
+        </button>
+        <span class="font-display text-[19px] font-extrabold capitalize" data-mes-actual>
+          {mesYAno(inicio)}
+        </span>
+        <button
+          type="button"
+          data-mes="1"
+          class="flex size-12 items-center justify-center rounded-control border border-line text-bone transition-[transform,color,border-color] duration-150 not-disabled:hover:translate-x-0.5 not-disabled:hover:border-brass-400 disabled:opacity-30"
+          aria-label="Mes siguiente"
+        >
+          <Icono nombre="flecha" tamano={18} />
+        </button>
+      </div>
+
+      <div class="grid grid-cols-7 gap-0.5 text-center text-xs text-ash lg:gap-1">
+        {INICIALES_SEMANA.map((i) => <span>{i}</span>)}
+      </div>
+
+      <!--
+        Sin `role="grid"`: un rol que se declara y no se implementa entero
+        —celdas, filas, navegación por flechas— es peor que ninguno. Son
+        botones en una rejilla visual, y como botones se anuncian.
+      -->
+      <div class="grid grid-cols-7 gap-0 min-[360px]:gap-0.5 lg:gap-1" data-dias>
+        {
+          rejilla.map(({ dia, delMes }) => {
+            const numeroDia = Number(dia.slice(8));
+            const fuera = !delMes || (hasta !== null && dia > hasta) || dia < inicio;
+            if (fuera) {
+              return (
+                <span
+                  class="flex h-12 items-center justify-center rounded-control text-base text-line-strong"
+                  aria-hidden="true"
+                >
+                  {numeroDia}
+                </span>
+              );
+            }
+            const ocupado = tomados.has(dia);
+            return (
+              <button
+                type="button"
+                data-dia={dia}
+                data-ocupado={ocupado ? '' : undefined}
+                aria-pressed="false"
+                class="dia"
+              >
+                {numeroDia}
+                {dia === inicio && <span class="punto-hoy"></span>}
+              </button>
+            );
+          })
+        }
+      </div>
+    </div>
+
+    <!--
+      Lo elegido, con su salida. Empieza oculto y lo enseña el script: una
+      fecha pegada a los botones sin forma de quitarla es una trampa.
+    -->
+    <div
+      class="flex items-center gap-3 rounded-card border border-brass-400 bg-brass-relleno/8 px-4 py-3.5"
+      data-elegido
+      hidden
+    >
+      <div class="min-w-0 flex-1">
+        <p class="text-xs text-ash">Has elegido</p>
+        <p class="mt-0.5 font-medium text-brass-200" data-elegido-texto></p>
+      </div>
+      <button
+        type="button"
+        data-quitar
+        class="flex size-12 shrink-0 items-center justify-center rounded-control border border-line text-ash transition-[transform,color] duration-150 hover:scale-95 hover:text-bone"
+        aria-label="Quitar la fecha elegida"
+      >
+        <Icono nombre="cerrar" tamano={17} />
+      </button>
+    </div>
+
+    <!--
+      Un día OCUPADO no es un callejón sin salida: se le ofrecen las fechas
+      cercanas y sigue abriendo WhatsApp. Quien quería el 10 muchas veces coge
+      el 17, y perder a ése sí es perder.
+    -->
+    <div
+      class="flex flex-col gap-2.5 rounded-card border border-line bg-elevated px-4 py-3.5"
+      data-ocupado-aviso
+      hidden
+    >
+      <p class="font-medium" data-ocupado-titulo></p>
+      <p class="text-sm text-ash" data-ocupado-cercanos></p>
+    </div>
+
+    <a
+      href={hrefBase}
+      data-wa
+      data-cta-calendario
+      data-fuente="calendario-libre"
+      target="_blank"
+      rel="noopener"
+      class="group flex h-14 items-center justify-center gap-2.5 rounded-control boton-wa px-6 text-[17px] font-semibold transition-transform duration-150 hover:scale-[1.015] active:scale-[0.985]"
+    >
+      <Icono
+        nombre="chat"
+        tamano={20}
+        grosor={2.1}
+        clase="transition-transform duration-200 group-hover:-rotate-6"
+      />
+      <span data-cta-texto>Preguntar por mi fecha</span>
+    </a>
+    <p class="text-center text-sm text-ash" data-cta-pista>{PISTAS.whatsappCorta}</p>
+
+    {/*
+      Una sola salida, y anunciada. La flecha apunta ABAJO porque el destino
+      está debajo en la misma página: una flecha a la derecha para un scroll
+      vertical miente sobre lo que va a pasar al tocarla.
+    */}
+    {hrefPaquetes && (
+    <>
+    {/*
+      El separador va en el CONTENEDOR, no en el enlace. Estaba en el `<a>`, que
+      es `w-fit`: la línea medía lo que el texto —224 px dentro de una tarjeta de
+      350— y se leía como una raya suelta en vez de como lo que separa el CTA de
+      la salida.
+    */}
+    <div class="border-t border-line pt-3.5">
+    <a
+      href={hrefPaquetes}
+      class="flex min-h-12 w-fit items-center gap-2 text-sm text-brass-200"
+    >
+      {hrefPaquetes.startsWith('#') ? 'Compara los tres, aquí abajo' : 'Compara los tres'}
+      <Icono
+        nombre="flecha"
+        tamano={15}
+        clase={`transition-transform duration-200 hover:translate-x-1 ${hrefPaquetes.startsWith('#') ? 'rotate-90' : ''}`}
+      />
+    </a>
+    </div>
+    </>
+    )}
+  </div>
+
+<style>
+  /**
+   * Los seis estados de un día, en CSS y no en clases de Tailwind sueltas: el
+   * script solo pone y quita atributos, así que el estado vive en un sitio y
+   * no en una cadena de clases que hay que mantener sincronizada con el JS.
+   */
+  .dia {
+    position: relative;
+    display: flex;
+    height: 48px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--color-line);
+    font-size: 1rem;
+    color: var(--color-bone);
+    /* Solo `transform`, `opacity`, `background` y `border`: nada que obligue a
+       recalcular la maqueta en cada fotograma. */
+    transition:
+      transform 140ms ease,
+      background-color 140ms ease,
+      border-color 140ms ease,
+      color 140ms ease;
+  }
+
+  @media (hover: hover) {
+    .dia:hover {
+      border-color: var(--color-brass-400);
+      transform: scale(1.06);
+    }
+  }
+
+  .dia:active {
+    transform: scale(0.94);
+  }
+
+  /* Ocupado: trama diagonal, NUNCA un rojo. No es un error, es una agenda. */
+  .dia[data-ocupado] {
+    border-color: transparent;
+    color: var(--color-ash);
+    background: repeating-linear-gradient(
+      135deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--color-ash) 26%, transparent) 5px 10px
+    );
+  }
+
+  /* Tu fecha: latón sólido. Solo puede haber una selección. */
+  .dia[aria-pressed='true'] {
+    background: var(--color-brass-relleno);
+    border-color: var(--color-brass-relleno);
+    color: #0a0908;
+    font-weight: 600;
+  }
+
+  /**
+   * Un día OCUPADO elegido conserva su trama y solo gana un aro.
+   *
+   * Con el relleno sólido decía «tu fecha», que es justo lo que NO es:
+   * contradecía al aviso de debajo —«ya tomado»— en la misma pantalla. Lo que
+   * se está eligiendo ahí no es la fecha, es la pregunta por otra.
+   */
+  .dia[data-ocupado][aria-pressed='true'] {
+    background: repeating-linear-gradient(
+      135deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--color-ash) 26%, transparent) 5px 10px
+    );
+    border-color: var(--color-brass-relleno);
+    box-shadow: 0 0 0 1px var(--color-brass-relleno);
+    color: var(--color-bone);
+    font-weight: 500;
+  }
+
+  /* El segundo día del rango: el mismo latón, más flojo. */
+  .dia[data-rango] {
+    background: color-mix(in srgb, var(--color-brass-relleno) 22%, transparent);
+    border-color: color-mix(in srgb, var(--color-brass-relleno) 55%, transparent);
+    color: var(--color-brass-200);
+  }
+
+  /* Hoy: un PUNTO, no un relleno. Un relleno querría decir «elegido». */
+  .punto-hoy {
+    position: absolute;
+    bottom: 6px;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--color-brass-relleno);
+  }
+  .dia[aria-pressed='true'] .punto-hoy {
+    background: #0a0908;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dia,
+    .dia:hover,
+    .dia:active {
+      transition: none;
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  /**
+   * El calendario, vivo.
+   *
+   * Importa `enlace` y los formateadores del proyecto en vez de recomponer el
+   * mensaje aquí: **el texto base sale de la BASE**, y con dos constructores el
+   * botón de «Probar este número» del admin pasaría a mentir. El número y el
+   * base viajan en `data-` porque un `<script>` que importa módulos no puede
+   * usar `define:vars`.
+   */
+  import { largo, mesYAno, rango, rejillaDelMes } from '../lib/fechas';
+  import { enlace } from '../lib/whatsapp';
+
+  const seccion = document.querySelector<HTMLElement>('[data-calendario]');
+
+  if (seccion) {
+    const numero = seccion.dataset.numero ?? '';
+    const base = seccion.dataset.base ?? '';
+    const ocupados = new Set<string>(JSON.parse(seccion.dataset.ocupados ?? '[]'));
+    const hasta = seccion.dataset.hasta || null;
+    const hoy = seccion.dataset.hoy ?? '';
+
+    const rejilla = seccion.querySelector<HTMLElement>('[data-dias]')!;
+    const etiquetaMes = seccion.querySelector<HTMLElement>('[data-mes-actual]')!;
+    const atras = seccion.querySelector<HTMLButtonElement>('[data-mes="-1"]')!;
+    const adelante = seccion.querySelector<HTMLButtonElement>('[data-mes="1"]')!;
+    const panelElegido = seccion.querySelector<HTMLElement>('[data-elegido]')!;
+    const textoElegido = seccion.querySelector<HTMLElement>('[data-elegido-texto]')!;
+    const aviso = seccion.querySelector<HTMLElement>('[data-ocupado-aviso]')!;
+    const avisoTitulo = seccion.querySelector<HTMLElement>('[data-ocupado-titulo]')!;
+    const avisoCercanos = seccion.querySelector<HTMLElement>('[data-ocupado-cercanos]')!;
+    const cta = seccion.querySelector<HTMLAnchorElement>('[data-cta-calendario]')!;
+    /**
+     * TODO lo de esta página que cuenta como calendario: las tarjetas de
+     * paquete de abajo, la barra de arriba, el menú y la barra pegada.
+     *
+     * Se filtra por fuente `calendario*` y no por un selector de cada uno: así
+     * en la portada —donde el calendario no existe— este script no toca nada, y
+     * aquí basta con que la página declare su fuente para que el día ocupado se
+     * propague. Su propio CTA queda fuera porque lo lleva `refrescar()` aparte,
+     * con el mensaje y el texto del botón.
+     *
+     * Es lo que impide que preguntar por un día COGIDO se cuente como
+     * `calendario-libre`: ese número mide la demanda que se está rechazando.
+     *
+     * Se consultan UNA vez: la selección se repinta en cada toque y volver a
+     * buscarlos ahí sería un `querySelectorAll` por pulsación.
+     */
+    const otrosDeLaPagina = [
+      ...document.querySelectorAll<HTMLElement>('[data-wa][data-fuente^="calendario"]'),
+    ].filter((a) => !a.hasAttribute('data-cta-calendario'));
+    const ctaTexto = seccion.querySelector<HTMLElement>('[data-cta-texto]')!;
+
+    let mes = hoy.slice(0, 7);
+    let desde: string | null = null;
+    let hastaSel: string | null = null;
+
+    /** Solo lo que se puede elegir. Fuera del mes, pasado o sin dato: no. */
+    const elegible = (d: string, delMes: boolean) =>
+      delMes && d >= hoy && (hasta === null || d <= hasta);
+
+    /**
+     * El mes ENTRA por el lado del que viene: hacia adelante entra por la
+     * derecha, hacia atrás por la izquierda.
+     *
+     * Sin esto la rejilla se sustituye de golpe y no se distingue avanzar de
+     * retroceder — que es justo lo que hay que saber al buscar una fecha, y por
+     * eso se cuela pulsar «siguiente» dos veces. Doscientos milisegundos, solo
+     * `transform` y `opacity`.
+     *
+     * Con la API de animaciones del navegador y no con una clase: la rejilla no
+     * se sustituye a sí misma, así que volver a poner una clase no reiniciaría
+     * nada — habría que quitarla, forzar un reflujo y volver a ponerla. Cuatro
+     * líneas nativas contra un truco.
+     */
+    const quieto = matchMedia('(prefers-reduced-motion: reduce)');
+
+    function deslizar(delta: number) {
+      if (quieto.matches || !('animate' in rejilla)) return;
+      for (const el of [etiquetaMes, rejilla]) {
+        el.animate(
+          [
+            { opacity: 0, transform: `translateX(${delta > 0 ? 16 : -16}px)` },
+            { opacity: 1, transform: 'none' },
+          ],
+          { duration: 200, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
+        );
+      }
+    }
+
+    /** El mes de `hoy` no tiene anterior, y el de `until` no tiene siguiente. */
+    function moverMes(delta: number) {
+      const [a, m] = mes.split('-').map(Number);
+      const d = new Date(Date.UTC(a!, m! - 1 + delta, 1));
+      mes = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      pintarMes();
+      deslizar(delta);
+    }
+
+    function pintarMes() {
+      etiquetaMes.textContent = mesYAno(`${mes}-01`);
+      atras.disabled = mes <= hoy.slice(0, 7);
+      adelante.disabled = hasta !== null && mes >= hasta.slice(0, 7);
+
+      rejilla.replaceChildren(
+        ...rejillaDelMes(`${mes}-01`).map(({ dia, delMes }) => {
+          const n = String(Number(dia.slice(8)));
+          if (!elegible(dia, delMes)) {
+            const hueco = document.createElement('span');
+            hueco.className =
+              'flex h-12 items-center justify-center rounded-control text-base text-line-strong';
+            hueco.setAttribute('aria-hidden', 'true');
+            hueco.textContent = n;
+            return hueco;
+          }
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'dia';
+          b.dataset.dia = dia;
+          if (ocupados.has(dia)) b.dataset.ocupado = '';
+          b.textContent = n;
+          if (dia === hoy) {
+            const punto = document.createElement('span');
+            punto.className = 'punto-hoy';
+            b.append(punto);
+          }
+          return b;
+        }),
+      );
+      pintarSeleccion();
+    }
+
+    function pintarSeleccion() {
+      for (const b of rejilla.querySelectorAll<HTMLElement>('[data-dia]')) {
+        const d = b.dataset.dia!;
+        b.setAttribute('aria-pressed', String(d === desde));
+        b.toggleAttribute('data-rango', Boolean(hastaSel && d > desde! && d <= hastaSel));
+        const ocupado = b.hasAttribute('data-ocupado');
+        b.setAttribute(
+          'aria-label',
+          `${largo(d)}${ocupado ? ', ocupado' : ', libre'}${d === desde ? ', elegido' : ''}`,
+        );
+      }
+    }
+
+    /** Los tres sábados libres más cercanos a un día tomado. */
+    function sabadosCercanos(d: string): string[] {
+      const salida: string[] = [];
+      const cursor = new Date(`${d}T00:00:00.000Z`);
+      for (let i = 0; i < 120 && salida.length < 3; i++) {
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+        const iso = cursor.toISOString().slice(0, 10);
+        if (hasta !== null && iso > hasta) break;
+        if (cursor.getUTCDay() === 6 && !ocupados.has(iso)) salida.push(iso);
+      }
+      return salida;
+    }
+
+    function refrescar() {
+      const hayFecha = desde !== null;
+      const ocupado = hayFecha && ocupados.has(desde!);
+
+      panelElegido.hidden = !hayFecha;
+      if (hayFecha) {
+        textoElegido.textContent =
+          hastaSel && hastaSel !== desde
+            ? rango(desde!, hastaSel).replace(/^del /, 'Del ')
+            : largo(desde!).replace(/^./, (c) => c.toUpperCase());
+      }
+
+      aviso.hidden = !ocupado;
+      if (ocupado) {
+        avisoTitulo.textContent = `${largo(desde!).replace(/^./, (c) => c.toUpperCase())} · ya tomado`;
+        const cercanos = sabadosCercanos(desde!);
+        /**
+         * Se escribe el MES en cuanto cambia. «19, 26, 3» se lee como el 3 del
+         * mismo mes, que es un día que ya pasó: la lista quedaba diciendo lo
+         * contrario de lo que quiere decir.
+         */
+        avisoCercanos.textContent = cercanos.length
+          ? `Los sábados libres más cercanos: ${cercanos
+              .map((c, i) =>
+                i > 0 && c.slice(0, 7) === cercanos[i - 1]!.slice(0, 7)
+                  ? String(Number(c.slice(8)))
+                  : largo(c).replace(/^\S+\s+/, ''),
+              )
+              .join(', ')}.`
+          : 'Escríbeme y buscamos la fecha que mejor te venga.';
+      }
+
+      // El mensaje lo construye el ÚNICO constructor del proyecto.
+      cta.href = enlace({ numero, base, desde, hasta: hastaSel, ocupado });
+      const fuente = ocupado ? 'calendario-ocupado' : 'calendario-libre';
+      cta.dataset.fuente = fuente;
+      /**
+       * Y los atajos de paquete van con él. Su `href` lo reescribe el
+       * enriquecedor del `Layout` —son `[data-wa]` normales— pero la FUENTE es
+       * de esta sección: sin esto, preguntar por un paquete en un día cogido se
+       * contaría como `calendario-libre` y el número que mide la demanda
+       * rechazada saldría corto.
+       */
+      for (const otro of otrosDeLaPagina) otro.dataset.fuente = fuente;
+      ctaTexto.textContent = !hayFecha
+        ? 'Preguntar por mi fecha'
+        : ocupado
+          ? 'Preguntar por otra fecha'
+          : hastaSel && hastaSel !== desde
+            ? 'Preguntar por esos días'
+            : 'Preguntar por ese día';
+
+      /**
+       * La fecha elegida ENRIQUECE todos los CTA que ya hay, sin meter un paso
+       * entre «está interesado» y «pulsa WhatsApp». Va por evento y no por una
+       * dependencia de estado compartido: quince líneas, cero paquetes.
+       */
+      document.dispatchEvent(
+        new CustomEvent('jf:fecha', { detail: { desde, hasta: hastaSel, ocupado } }),
+      );
+
+      /**
+       * Se GUARDA para la vuelta. El calendario vive en su propia página, así
+       * que sin esto elegir el 24 y volver a los paquetes perdía la fecha y la
+       * página quedaba en un desvío que no aporta nada al resto del sitio.
+       *
+       * `sessionStorage` y no `localStorage`: es la fecha de ESTA visita. Con
+       * `localStorage`, quien vuelva la semana que viene se encontraría los
+       * botones hablando de un sábado que ya pasó.
+       */
+      try {
+        if (desde) {
+          sessionStorage.setItem('jamesfilm:fecha', JSON.stringify({ desde, hasta: hastaSel, ocupado }));
+        } else {
+          sessionStorage.removeItem('jamesfilm:fecha');
+        }
+      } catch {
+        // Modo privado: la fecha funciona en esta página y no sobrevive al
+        // salto. Mejor eso que no poder elegirla.
+      }
+    }
+
+    rejilla.addEventListener('click', (e) => {
+      const b = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-dia]') : null;
+      if (!b) return;
+      const d = b.dataset.dia!;
+
+      // Primer toque elige; el segundo hace el rango; el tercero reinicia.
+      if (desde === null || (hastaSel !== null && hastaSel !== desde) || d < desde) {
+        desde = d;
+        hastaSel = null;
+      } else if (d === desde) {
+        desde = null;
+        hastaSel = null;
+      } else {
+        hastaSel = d;
+      }
+      pintarSeleccion();
+      refrescar();
+    });
+
+    seccion.querySelector('[data-quitar]')?.addEventListener('click', () => {
+      desde = null;
+      hastaSel = null;
+      pintarSeleccion();
+      refrescar();
+    });
+
+    atras.addEventListener('click', () => moverMes(-1));
+    adelante.addEventListener('click', () => moverMes(1));
+
+    /**
+     * Elegir una fecha DESDE FUERA — los sábados rápidos de la página.
+     *
+     * Vive aquí y no en quien la pide porque el día puede estar en otro mes:
+     * los chips buscaban `[data-dia="2026-10-03"]` en el DOM y, con setiembre
+     * a la vista, ese botón **no existe**. No encontraban nada y se callaban.
+     * Ahora se navega primero al mes y se selecciona después, con la misma
+     * lógica que un toque en la rejilla — no hay dos verdades.
+     */
+    document.addEventListener('jf:elegir', (e) => {
+      const dia = (e as CustomEvent).detail?.dia as string | undefined;
+      if (!dia || dia < hoy || (hasta !== null && dia > hasta)) return;
+
+      const suMes = dia.slice(0, 7);
+      if (suMes !== mes) {
+        const delta = suMes > mes ? 1 : -1;
+        mes = suMes;
+        pintarMes();
+        deslizar(delta);
+      }
+      const boton = rejilla.querySelector<HTMLElement>(`[data-dia="${dia}"]`);
+      if (boton) boton.click();
+    });
+
+    // El mes de arranque ya viene pintado del servidor; esto solo ajusta las
+    // flechas y las etiquetas accesibles sin volver a construir el DOM.
+    atras.disabled = true;
+    adelante.disabled = hasta !== null && mes >= hasta.slice(0, 7);
+
+    /**
+     * SE RECUPERA LA FECHA ELEGIDA al volver a esta página.
+     *
+     * La guardaba y no la leía nunca: quien elegía el 24, se iba a comparar
+     * paquetes y volvía, se encontraba la rejilla **en blanco** y tenía que
+     * elegir otra vez. Y peor que eso — el CTA del calendario es el único
+     * `[data-wa]` que el enriquecedor del `Layout` NO reescribe (lo lleva este
+     * script), así que al volver perdía la fecha del mensaje; y si el día
+     * guardado estaba OCUPADO, la fuente se quedaba en `calendario-libre` y el
+     * panel contaba como demanda satisfecha justo lo que se está rechazando.
+     *
+     * Se valida contra los MISMOS límites que un toque en la rejilla —ni
+     * pasado, ni más allá de donde llega el dato— porque el día pudo guardarse
+     * ayer o antes de que James marcara ese día como ocupado.
+     */
+    try {
+      const guardado = sessionStorage.getItem('jamesfilm:fecha');
+      if (guardado) {
+        const { desde: d, hasta: h } = JSON.parse(guardado) as {
+          desde?: string;
+          hasta?: string | null;
+        };
+        const valido = (x: string | null | undefined): x is string =>
+          typeof x === 'string' && x >= hoy && (hasta === null || x <= hasta);
+
+        if (valido(d)) {
+          desde = d;
+          hastaSel = valido(h) && h >= d ? h : null;
+          const suMes = d.slice(0, 7);
+          if (suMes !== mes) {
+            mes = suMes;
+            pintarMes();
+            atras.disabled = mes <= hoy.slice(0, 7);
+            adelante.disabled = hasta !== null && mes >= hasta.slice(0, 7);
+          }
+        } else {
+          // Una fecha que ya no vale no se arrastra: sería peor que no tenerla.
+          sessionStorage.removeItem('jamesfilm:fecha');
+        }
+      }
+    } catch {
+      // Modo privado o JSON roto: se arranca sin selección, que es lo de antes.
+    }
+
+    pintarSeleccion();
+    // `refrescar()` es lo que pone el mensaje, el texto del botón y la FUENTE
+    // según el día recuperado. Sin esto la selección se vería y no valdría.
+    if (desde) refrescar();
+  }
+</script>

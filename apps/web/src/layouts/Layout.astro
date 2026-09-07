@@ -1,0 +1,419 @@
+---
+/**
+ * El esqueleto de todas las páginas.
+ *
+ * Lleva el script bloqueante del tema, el SEO y las fuentes precargadas. Nada
+ * más: la barra y el pie son componentes, porque la página de una galería no
+ * lleva la misma barra que la portada.
+ */
+import { CLAVE_TEMA, COLOR_BARRA, SCRIPT_TEMA } from '../lib/tema';
+import '../styles/global.css';
+
+interface Props {
+  titulo: string;
+  descripcion: string;
+  /** Imagen al compartir, 1200×630. Sin ella, WhatsApp pinta un enlace pelado. */
+  imagen?: string | null;
+  /**
+   * Fuera del índice, y SIN canónica.
+   *
+   * Para las páginas que existen pero hoy no tienen nada que enseñar —
+   * `/trabajos` y `/testimonios` con la base vacía— y para la 404. El sitemap
+   * las estaba declarando y nadie las enlaza: le señalábamos a Google dos URL
+   * sin contenido.
+   *
+   * `follow`, nunca `nofollow`: el enlace de vuelta a la portada tiene que
+   * seguir contando. Y se quita la canónica porque en la 404 apuntaba a
+   * `https://jamesfilm.pe/404/`, una URL que el build no genera.
+   *
+   * Se cura solo: en cuanto haya una galería publicada, la página deja de
+   * pedirlo y vuelve al índice sin tocar código.
+   */
+  sinIndexar?: boolean;
+}
+
+const { titulo, descripcion, imagen, sinIndexar = false } = Astro.props;
+const canonica = new URL(Astro.url.pathname, Astro.site).href;
+/**
+ * SIEMPRE hay imagen de compartir, y ése es el punto.
+ *
+ * `ogImageKey` está vacío en la base y `imagen` llegaba `null` en las diez
+ * páginas: el enlace que James pega en un chat —que es por donde entra el 100 %
+ * de este negocio— llegaba **sin foto**, un rectángulo de texto entre enlaces
+ * que sí la traen, y con `twitter:card=summary`. El hero, por bueno que sea, ni
+ * se llegaba a ver.
+ *
+ * El respaldo es un JPEG 1200×630 commiteado en `public/og.jpg`, hecho con la
+ * tipografía y la paleta de la marca y **sin una sola cifra**: no puede
+ * caducar. En cuanto James suba la suya desde Configuración, la sustituye sin
+ * tocar código. Se genera a mano con `scripts/og.mjs`, no en el build: meter
+ * un navegador headless en Cloudflare Pages para una imagen que cambia una vez
+ * al año es pagar en cada deploy por algo que no se mueve.
+ */
+const OG_DE_RESPALDO = '/og.jpg';
+const og = new URL(imagen || OG_DE_RESPALDO, Astro.site).href;
+---
+
+<!doctype html>
+<html lang="es-PE" data-tema="oscuro">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!--
+      ANTES que nada. Leer el tema en un efecto pintaría la pantalla oscura y
+      saltaría a clara: el parpadeo se ve, y en una landing es lo primero que
+      ve un cliente. `is:inline` para que Astro no lo mueva ni lo empaquete.
+    -->
+    <script is:inline set:html={SCRIPT_TEMA} />
+
+    <title>{titulo}</title>
+    <meta name="description" content={descripcion} />
+    {sinIndexar ? <meta name="robots" content="noindex,follow" /> : <link rel="canonical" href={canonica} />}
+
+    <!--
+      Solo la fuente del TITULAR se precarga: es la que entra en el LCP.
+      Precargarlo todo compite consigo mismo y retrasa justo lo que se quería
+      adelantar. `crossorigin` es obligatorio en fuentes aunque sean del mismo
+      origen, o el navegador descarga el fichero DOS veces.
+    -->
+    <link
+      rel="preload"
+      href="/fonts/bricolage-var.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={titulo} />
+    <meta property="og:description" content={descripcion} />
+    <meta property="og:url" content={canonica} />
+    <meta property="og:locale" content="es_PE" />
+    <meta property="og:image" content={og} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <slot name="head" />
+  </head>
+
+  <body>
+    <!--
+      Saltar al contenido. Sin esto, quien navega con teclado recorre la barra
+      y las cuatro entradas del menú en CADA página antes de llegar a nada.
+    -->
+    <a
+      href="#contenido"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-control focus:bg-brass-400 focus:px-4 focus:py-3 focus:text-void focus:font-medium"
+    >
+      Saltar al contenido
+    </a>
+    <slot />
+
+    <script>
+      /**
+       * La entrada de cada bloque, cuando entra en pantalla.
+       *
+       * Sin librería: `IntersectionObserver` es nativo y la observación no
+       * corre en el hilo principal. GSAP + ScrollTrigger harían exactamente
+       * esto por 50 KB y moviendo el trabajo a JS, que es lo que el
+       * presupuesto de INP existe para evitar.
+       *
+       * `unobserve` en cuanto entra: cada bloque anima UNA vez. Sin eso,
+       * subir y bajar repite la entrada y la página parece nerviosa.
+       */
+      const bloques = document.querySelectorAll('.entra');
+      const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (bloques.length && !quieto && 'IntersectionObserver' in window) {
+        const ojo = new IntersectionObserver(
+          (entradas) => {
+            for (const e of entradas) {
+              if (!e.isIntersecting) continue;
+              e.target.setAttribute('data-ver', '');
+              ojo.unobserve(e.target);
+            }
+          },
+          // Un poco antes de que asome del todo: al llegar justo al borde, la
+          // entrada empieza cuando el bloque ya se está leyendo.
+          { rootMargin: '0px 0px -8% 0px' },
+        );
+        /**
+         * Lo que YA está en pantalla no se anima: se enseña.
+         *
+         * El observador dispara igual para un bloque que ya interseca, pero
+         * entonces la animación —0,62 s más su escalón— se gasta en algo que
+         * el visitante está mirando desde el primer fotograma, y hasta que
+         * termina el bloque está a medio opacar. Con el hero eso costaba más
+         * de medio segundo de titular ilegible.
+         *
+         * Una sola lectura de layout para todos, antes de observar: el hero y
+         * las cifras ya no llevan `entra`, pero en una pantalla alta puede
+         * asomar una sección más y esto la cubre sin números a mano.
+         */
+        for (const b of bloques) {
+          if (b.getBoundingClientRect().top < window.innerHeight) b.setAttribute('data-ya', '');
+          else ojo.observe(b);
+        }
+      } else {
+        // Sin observador o con movimiento reducido, todo visible y quieto.
+        bloques.forEach((b) => b.setAttribute('data-ver', ''));
+      }
+    </script>
+
+    <script define:vars={{ CLAVE: CLAVE_TEMA, COLORES: COLOR_BARRA }}>
+      /**
+       * El interruptor de tema, delegado y en UN solo sitio.
+       *
+       * `SelectorTema` se pinta dos veces —barra de escritorio y de móvil— así
+       * que su propio `<script define:vars>` se emitía dos veces y cada copia
+       * enganchaba a los dos botones: un clic conmutaba dos veces y el tema no
+       * cambiaba. Aquí solo hay un documento, así que solo hay un listener.
+       */
+      document.addEventListener('click', (e) => {
+        const b = e.target instanceof Element ? e.target.closest('[data-tema-boton]') : null;
+        if (!b) return;
+
+        const raiz = document.documentElement;
+        const nuevo = raiz.getAttribute('data-tema') === 'claro' ? 'oscuro' : 'claro';
+
+        /**
+         * EL CAMBIO DE TEMA SE FUNDE, y lo hace el navegador.
+         *
+         * Primero se intentó a mano: una clase en el `<html>` que ponía
+         * `transition: background-color, border-color, color` sobre `*` durante
+         * 240 ms. Funcionaba y **costaba el doble del presupuesto entero**:
+         * medido con la CPU frenada 4×, el INP pasaba de 80 ms a **248 en móvil
+         * y 328 en escritorio**, sobre un techo de 200. El culpable es `color`:
+         * transicionarlo obliga a repintar TODO el texto de la página durante
+         * 200 ms. Solo con `background-color` bajaba a 88/208 — pero entonces el
+         * texto salta mientras el fondo aún se está moviendo, y en el paso a
+         * claro eso son 150 ms de letra oscura sobre fondo oscuro.
+         *
+         * `startViewTransition` hace lo que ninguna de las dos: el navegador
+         * fotografía la pantalla, aplica el cambio y funde las dos imágenes **en
+         * el compositor**. Medido igual: **40 ms en móvil y 96 en escritorio**,
+         * o sea MENOS que cambiar el tema a pelo sin ninguna transición (80 y
+         * 128) — porque el recálculo de estilos ya no ocurre dentro del evento,
+         * sino dentro del callback, después del primer pintado.
+         *
+         * ⚠ CLAUDE.md dice «View Transitions: NO», y esa regla sigue en pie:
+         * habla de las de **entre documentos** en Next, que van tras un flag
+         * `experimental`. Esto es la API del navegador para un cambio en la
+         * MISMA página —estable en Chrome 111+, Safari 18 y Firefox 144—, no es
+         * el `<ClientRouter />` de Astro, y va con detección de soporte: donde
+         * no exista, el tema cambia de golpe, que es lo que hacía antes.
+         */
+        const conFundido =
+          typeof document.startViewTransition === 'function' &&
+          !matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (conFundido) document.startViewTransition(() => raiz.setAttribute('data-tema', nuevo));
+        else raiz.setAttribute('data-tema', nuevo);
+
+        // Se GUARDA: quien elige claro lo eligió para toda la visita, y volver
+        // al oscuro en la página siguiente parecería un fallo.
+        try {
+          localStorage.setItem(CLAVE, nuevo);
+        } catch {
+          // Modo privado o cookies bloqueadas: el tema cambia igual, solo que
+          // no sobrevive a la navegación. Mejor eso que no poder cambiarlo.
+        }
+
+        // La barra del navegador en móvil. Sin esto, la franja de arriba del
+        // iPhone se queda del color del tema anterior y se ve el desajuste.
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', nuevo === 'claro' ? COLORES.claro : COLORES.oscuro);
+      });
+    </script>
+
+    <script>
+      /**
+       * Los saltos LARGOS no se recorren enteros.
+       *
+       * `scroll-behavior: smooth` es nativo y no tiene duración: la calcula el
+       * navegador según la distancia, así que ir del hero a «Preguntas» —seis
+       * pantallas— es más de un segundo de página pasando en borroso. Eso no se
+       * lee como suave, se lee como lento, y en un móvil marea.
+       *
+       * Se corta en dos: **teleporte** hasta quedar a una pantalla del destino
+       * y el último tramo suave. Lo que se siente es la llegada, que es la
+       * parte que informa —ver dónde aterrizas—; el viaje por en medio no
+       * aportaba nada porque no da tiempo a leer ni un titular.
+       *
+       * Por debajo de 2,2 pantallas no se toca nada: ahí el nativo ya dura poco
+       * y el recorrido SÍ dice dónde estabas.
+       *
+       * `scrollIntoView` para el último tramo y no un `scrollTo` con el número
+       * a mano: respeta `scroll-padding-top`, que es quien sabe cuánto mide la
+       * barra pegajosa. Un 128 escrito aquí sería el mismo número en dos sitios.
+       */
+      document.addEventListener('click', (e) => {
+        // Un modificador o el botón central abren en otra pestaña: ahí no hay
+        // scroll que suavizar, y robarle el clic al navegador rompe el atajo.
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (e.button !== 0) return;
+
+        const a = e.target instanceof Element ? e.target.closest('a[href^="#"]') : null;
+        if (!(a instanceof HTMLAnchorElement) || a.hash.length < 2) return;
+
+        const destino = document.getElementById(decodeURIComponent(a.hash.slice(1)));
+        if (!destino) return;
+
+        const y = destino.getBoundingClientRect().top + window.scrollY;
+        const salto = Math.abs(y - window.scrollY);
+        if (salto < window.innerHeight * 2.2) return;
+
+        e.preventDefault();
+        // Se cae AL LADO del destino, en la dirección de la que se venía, para
+        // que el último tramo vaya hacia el mismo sitio que iba el gesto.
+        const hacia = y > window.scrollY ? -1 : 1;
+        window.scrollTo({ top: y + hacia * window.innerHeight * 0.8, behavior: 'instant' });
+
+        requestAnimationFrame(() => {
+          destino.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // El hash se escribe a mano porque se ha cancelado la navegación.
+          // `pushState` y no `replaceState`: el botón atrás tiene que deshacer
+          // el salto, igual que con un ancla normal.
+          history.pushState(null, '', a.hash);
+        });
+      });
+    </script>
+
+    <script>
+      /**
+       * La fecha elegida, en TODOS los CTA de TODAS las páginas.
+       *
+       * Vive aquí y no en el calendario porque el calendario está en
+       * `/fechas-libres` y los paquetes en la portada: si el listener viajara
+       * con él, elegir una fecha y volver no cambiaría nada, y la página
+       * separada sería un desvío que no aporta al resto del sitio.
+       *
+       * Reescribe el `href` de cada `[data-wa]` que no sea el del propio
+       * calendario —ése lo lleva su script, con su fuente—, así que quien mira
+       * los paquetes con una fecha ya elegida sale con **los dos datos que
+       * James pregunta primero**, sin un paso extra y sin formulario.
+       */
+      import { enlace } from '../lib/whatsapp';
+
+      function aplicar(desde: string | null, hasta: string | null, ocupado: boolean) {
+        for (const a of document.querySelectorAll<HTMLAnchorElement>('[data-wa]')) {
+          if (a.hasAttribute('data-cta-calendario')) continue;
+          // La primera vez se guarda el enlace original: sin él, quitar la
+          // fecha no sabría a qué volver y el CTA se quedaría con la última.
+          a.dataset.hrefBase ??= a.href;
+          if (!desde) {
+            a.href = a.dataset.hrefBase!;
+            continue;
+          }
+          const url = new URL(a.dataset.hrefBase!);
+          a.href = enlace({
+            numero: url.pathname.replace('/', ''),
+            // El `text` del original ya trae el base resuelto y SIN contexto
+            // —lo generó el servidor sin fecha—, así que se reusa tal cual:
+            // aquí no se reescribe nada del texto que James edita.
+            base: url.searchParams.get('text') ?? '',
+            desde,
+            hasta,
+            ocupado,
+          });
+        }
+      }
+
+      document.addEventListener('jf:fecha', (e) => {
+        const { desde, hasta, ocupado } = (e as CustomEvent).detail as {
+          desde: string | null;
+          hasta: string | null;
+          ocupado: boolean;
+        };
+        aplicar(desde, hasta, ocupado);
+      });
+
+      // Y al ENTRAR: si vienes de elegir fecha en `/fechas-libres`, los botones
+      // de esta página ya la llevan sin que toques nada.
+      try {
+        const guardado = sessionStorage.getItem('jamesfilm:fecha');
+        if (guardado) {
+          const { desde, hasta, ocupado } = JSON.parse(guardado);
+          // Una fecha que ya pasó no se arrastra: sería peor que no tener nada.
+          const hoyLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(
+            new Date(),
+          );
+          if (typeof desde === 'string' && desde >= hoyLima) aplicar(desde, hasta ?? null, Boolean(ocupado));
+          else sessionStorage.removeItem('jamesfilm:fecha');
+        }
+      } catch {
+        // Modo privado o dato corrupto: los CTA se quedan como estaban, que es
+        // exactamente el comportamiento de siempre.
+      }
+    </script>
+
+    <script define:vars={{ API: import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000' }}>
+      /**
+       * El clic a WhatsApp. Es el ÚNICO número que mide este proyecto.
+       *
+       * Delegado en `document` y no un listener por botón: los seis CTA de la
+       * portada, los de cada paquete y los del calendario son el mismo evento,
+       * y con uno por botón habría que acordarse en cada componente nuevo.
+       */
+      /**
+       * La fecha elegida, leída de donde ya vive: el `sessionStorage` que
+       * escribe el calendario y que también alimenta los CTA de las demás
+       * páginas. Una sola fuente; guardarla otra vez en un `data-` sería la
+       * segunda, y se desincronizarían.
+       */
+      function fechaPedida(a) {
+        if (!String(a.dataset.fuente ?? '').startsWith('calendario')) return undefined;
+        try {
+          const guardado = sessionStorage.getItem('jamesfilm:fecha');
+          if (!guardado) return undefined;
+          const { desde } = JSON.parse(guardado);
+          return typeof desde === 'string' ? desde : undefined;
+        } catch {
+          // Modo privado o dato corrupto: se pierde el detalle, no el clic.
+          return undefined;
+        }
+      }
+
+      document.addEventListener('click', (e) => {
+        const a = e.target instanceof Element ? e.target.closest('[data-wa]') : null;
+        if (!a) return;
+
+        /**
+         * `keepalive: true` es lo que hace que esto funcione. El clic que hay
+         * que contar es JUSTO el que abandona la página: al pulsar, el
+         * navegador salta a `wa.me` y un `fetch` normal muere en esa
+         * navegación. Sin esta bandera se pierde el 100 % de lo que mide.
+         */
+        fetch(`${API}/track/whatsapp`, {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            source: a.dataset.fuente,
+            packageId: a.dataset.paquete || undefined,
+            /**
+             * QUÉ DÍA preguntaba, y solo desde el calendario.
+             *
+             * La fecha ya estaba aquí —va dentro del mensaje de WhatsApp— y se
+             * tiraba, así que el panel podía contar cuánta gente pregunta por
+             * un día ya cogido pero no CUÁL. Con esto, «el 24 de octubre te lo
+             * han pedido tres veces» deja de ser una métrica y pasa a ser una
+             * decisión.
+             *
+             * Solo en `calendario-*`: un clic del hero no pregunta por ninguna
+             * fecha, y mandarla ahí porque quedó guardada de antes ensuciaría
+             * el recuento con días que nadie estaba mirando.
+             */
+            requestedDate: fechaPedida(a),
+          }),
+          // Un fallo del registro NUNCA rompe el enlace: no se llama a
+          // `preventDefault()` en ninguna rama, así que el `<a>` navega pase lo
+          // que pase. Perder una métrica es barato; perder el lead no lo es.
+        }).catch(() => {});
+      });
+    </script>
+  </body>
+</html>

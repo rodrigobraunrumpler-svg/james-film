@@ -1,0 +1,54 @@
+---
+/**
+ * El cierre. Es un PANEL con margen y esquinas, nunca un bloque a sangre: en el
+ * tema claro, un rectángulo oscuro de borde a borde se lee como un fallo de
+ * render. Y **declara su color de texto**, no lo hereda — heredarlo funciona en
+ * oscuro por accidente y en claro deja texto negro sobre negro.
+ */
+import Cta from './Cta.astro';
+import { PISTAS, SECCIONES } from '../content/copy';
+
+interface Props {
+  numero: string;
+  display: string;
+  base: string;
+}
+
+const { numero, display, base } = Astro.props;
+---
+
+<!--
+  El `marco` va FUERA. Este bloque es un PANEL con margen y esquinas, nunca una
+  sección a sangre: en el tema claro un rectángulo oscuro de borde a borde se
+  lee como un fallo de render. Poniéndole `marco` al propio panel, el panel
+  pasaba a ocupar todo el ancho y perdía justo eso.
+-->
+<div class="marco mb-6 lg:mb-16">
+  <section
+      class="relative isolate flex flex-col items-center gap-4 overflow-hidden rounded-panel border border-line px-6 py-9 text-bone lg:gap-5 lg:px-16 lg:py-19"
+      style="background: linear-gradient(160deg, #1e1b18, #0f0d0b); color: #f2efe9"
+    >
+    <div
+      class="aura pointer-events-none absolute -top-44 left-1/2 h-[460px] w-[760px] -translate-x-1/2 rounded-full blur-[30px]"
+      style="background: radial-gradient(circle, rgba(37,211,102,.14) 0%, transparent 68%)"
+      aria-hidden="true"
+    >
+    </div>
+    <h2
+      class="relative text-center font-display text-[32px] leading-[1.04] font-extrabold tracking-[-0.025em] lg:text-[58px]"
+    >
+      {SECCIONES.cierre.titulo}
+    </h2>
+    <p class="relative max-w-[46ch] text-center text-[#9c958c] lg:text-lg">
+      Dime la fecha y te confirmo al momento si estoy libre.
+    </p>
+    <Cta
+      {numero}
+      {base}
+      texto={display}
+      fuente="footer"
+      pista={PISTAS.whatsappCorta}
+      clase="relative w-full max-w-sm [&_p]:text-[#9c958c]"
+    />
+  </section>
+</div>

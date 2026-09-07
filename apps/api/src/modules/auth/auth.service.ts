@@ -77,12 +77,34 @@ export class AuthService {
           message: 'Cerramos tu sesión por seguridad. Vuelve a entrar.',
         });
       }
-      // Dentro de la ventana se rota igual: solo guardamos hashes, así que no
-      // podemos devolverle el token vigente al que llegó tarde. Ambos acaban
-      // con un par válido y la cadena sigue.
+      /**
+       * DENTRO DE LA VENTANA NO SE ROTA, y aquí estaba el fallo que echaba a
+       * James del panel cada quince minutos.
+       *
+       * Antes se rotaba igual, con el comentario «ambos acaban con un par
+       * válido». No es cierto en cuanto hay MÁS DE DOS peticiones a la vez, que
+       * es el caso normal: el panel dispara varias consultas al abrirse, el
+       * access token acaba de caducar y salen cuatro 401 simultáneos. Los
+       * cuatro llegan con el mismo token, los cuatro rotan escribiendo
+       * `prevHash` desde SU lectura —ya obsoleta—, y solo sobreviven los dos
+       * últimos eslabones. Reproducido: cuatro refrescos concurrentes emiten
+       * cuatro tokens y **dos nacen muertos**.
+       *
+       * La pasarela guarda en la cookie el de la respuesta que llegue última.
+       * Si le toca uno de los muertos, el siguiente 401 refresca con él, la API
+       * responde `SESSION_EXPIRED` y la pasarela borra la cookie: «Tu sesión
+       * caducó» con un refresh token de 30 días perfectamente bueno.
+       *
+       * Devolviendo el MISMO token que trajo el que llegó tarde, la ráfaga
+       * entera emite como mucho dos tokens distintos —el rotado por el que
+       * ganó y el que ya tenían los demás— y **los dos son válidos**: uno es
+       * `tokenHash` y el otro `prevHash`. Caiga el que caiga en la cookie,
+       * funciona.
+       */
+      return { accessToken: await this.firmar(sesion.user), refreshToken };
     }
 
-    return this.rotar(sesion);
+    return this.rotar(sesion, refreshToken);
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -109,15 +131,42 @@ export class AuthService {
     return { accessToken: await this.firmar(usuario), refreshToken };
   }
 
-  private async rotar(sesion: Session & { user: User }): Promise<Tokens> {
+  /**
+   * Rota con LOCK OPTIMISTA, y **una sola vez por ráfaga**.
+   *
+   * Dos fallos encadenados vivían aquí, y los dos echaban a James del panel:
+   *
+   * 1. `update` a secas escribía `prevHash` desde el `tokenHash` leído al
+   *    principio. Con cuatro peticiones simultáneas —el panel abriendo y
+   *    disparando varias consultas con el access token recién caducado— las
+   *    cuatro encadenaban desde el MISMO eslabón y dos tokens quedaban
+   *    huérfanos: ni `tokenHash` ni `prevHash`, o sea muertos sin que nadie se
+   *    entere. Reproducido: de cuatro tokens emitidos, dos daban 401.
+   *
+   * 2. Con el lock puesto pero reintentando, el que perdía **volvía a rotar**,
+   *    así que la cadena avanzaba un eslabón por petición y el token de partida
+   *    se salía de la ventana de dos. Reproducido también: tres tokens
+   *    distintos y el primero muerto.
+   *
+   * Lo que lo cierra es no reintentar: si otro ya rotó desde nuestro token,
+   * **el nuestro es ahora `prevHash` y sigue siendo válido**, así que se
+   * devuelve tal cual —igual que en la ventana de gracia—. La ráfaga entera
+   * emite como mucho dos tokens y los dos valen, caiga el que caiga en la
+   * cookie de la pasarela.
+   */
+  private async rotar(sesion: Session & { user: User }, presentado: string): Promise<Tokens> {
     const refreshToken = randomBytes(32).toString('hex');
+    const actual = sha256(presentado);
 
-    await this.prisma.session.update({
-      where: { id: sesion.id },
-      data: { prevHash: sesion.tokenHash, tokenHash: sha256(refreshToken) },
+    const { count } = await this.prisma.session.updateMany({
+      where: { id: sesion.id, tokenHash: actual, revokedAt: null },
+      data: { prevHash: actual, tokenHash: sha256(refreshToken) },
     });
 
-    return { accessToken: await this.firmar(sesion.user), refreshToken };
+    return {
+      accessToken: await this.firmar(sesion.user),
+      refreshToken: count === 1 ? refreshToken : presentado,
+    };
   }
 
   private firmar(usuario: User): Promise<string> {

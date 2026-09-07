@@ -52,7 +52,7 @@ export function BuscadorGalerias({
   }, []);
 
   return (
-    <div className="relative flex min-w-0 items-center">
+    <div className="relative flex min-w-0 flex-1 items-center lg:flex-none">
       <Search className="text-muted pointer-events-none absolute left-2.5 size-3.5" aria-hidden />
       <input
         ref={input}

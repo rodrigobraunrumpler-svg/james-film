@@ -1,0 +1,6 @@
+# Todo abierto: es una landing, y lo que no queremos indexado no está publicado.
+User-agent: *
+Allow: /
+
+# El sitemap lo genera @astrojs/sitemap en cada build.
+Sitemap: https://jamesfilm.pe/sitemap-index.xml

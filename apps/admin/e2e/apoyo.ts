@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export const CREDENCIALES = {
   email: process.env.SEED_ADMIN_EMAIL ?? '',
@@ -18,6 +18,84 @@ export const REEL_HEVC = path.join(__dirname, 'fixtures', 'reel-hevc.mp4');
 export const REEL_SIN_FASTSTART = path.join(__dirname, 'fixtures', 'reel-sin-faststart.mp4');
 
 export const ESTADO_SESION = path.join(__dirname, '.auth', 'sesion.json');
+
+/**
+ * Espera a que terminen las animaciones de entrada de `el` (o de la página).
+ *
+ * **Se saltan las INFINITAS**: la luz ambiente del panel es
+ * `deriva 24s infinite alternate`, y `animation.finished` de una animación que
+ * no acaba nunca no resuelve nunca. Sin este filtro la espera agota el timeout
+ * de 60 s y el fallo parece del test, no de la animación.
+ *
+ * Y hace falta: medir con una animación de entrada en curso da números falsos
+ * —un botón de 44px bajo `scale(0.97)` mide 43,65— y capturar da una foto a
+ * medias. Un `waitForTimeout` a ojo se queda corto en una máquina lenta.
+ */
+export async function esperarAnimaciones(objetivo: Page | Locator): Promise<void> {
+  // `page.evaluate(fn)` llama a `fn(undefined)` y `locator.evaluate(fn)` llama a
+  // `fn(elemento)`: la misma función no vale para los dos, así que hay dos
+  // ramas. El filtro es el mismo y se escribe donde se lee.
+  if ('goto' in objetivo) {
+    await objetivo.evaluate(() =>
+      Promise.all(
+        // `document.getAnimations()` NO acepta opciones: ya devuelve las del
+        // documento entero. El `subtree` es solo de `Element`.
+        document
+          .getAnimations()
+          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+          .map((a) => a.finished.catch(() => undefined)),
+      ).then(() => undefined),
+    );
+    return;
+  }
+  await objetivo.evaluate((el: Element) =>
+    Promise.all(
+      el
+        .getAnimations({ subtree: true })
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ).then(() => undefined),
+  );
+}
+
+/**
+ * El recuento cuando la lista ya está QUIETA: dos lecturas seguidas iguales.
+ *
+ * Contar nada más abrir una galería da un número que todavía se mueve —los
+ * tests anteriores del fichero suben reels de verdad a la misma galería y su
+ * `confirm` puede seguir en vuelo—, y comparar contra él después de recargar
+ * fallaba una vez de cada tres. No era un timeout corto: era medir mientras
+ * el dato cambiaba.
+ */
+export async function recuentoEstable(locator: Locator, intentos = 12): Promise<number> {
+  let previo = -1;
+  for (let i = 0; i < intentos; i++) {
+    const actual = await locator.count();
+    if (actual === previo) return actual;
+    previo = actual;
+    await locator.page().waitForTimeout(500);
+  }
+  return previo;
+}
+
+/**
+ * Baja del todo y se asegura de que de verdad es el final: la página CRECE
+ * mientras se scrollea —las portadas van llegando— así que un solo
+ * `scrollTo(scrollHeight)` deja el final más abajo de donde estaba al medir.
+ * Se repite hasta que la altura no cambia entre dos pasadas.
+ */
+export async function bajarDelTodo(page: Page, intentos = 10): Promise<void> {
+  let previa = -1;
+  for (let i = 0; i < intentos; i++) {
+    const altura = await page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      return document.documentElement.scrollHeight;
+    });
+    if (altura === previa) return;
+    previa = altura;
+    await page.waitForTimeout(300);
+  }
+}
 
 /** Login de verdad. Lo usan el setup y el propio spec de login, nadie más. */
 export async function entrar(page: Page): Promise<void> {
@@ -39,6 +117,29 @@ export async function irAlPanel(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Galerías' })).toBeVisible();
 }
+
+/**
+ * Borra los testimonios que dejó una corrida del E2E, pase lo que pase.
+ *
+ * El test que los crea ya limpia al final, y aun así apareció uno **publicado
+ * en la web de James**: la limpieza del final solo corre si el test LLEGA al
+ * final, y una corrida que falla a mitad deja la fila viva para siempre. Aquí
+ * va en un `afterAll`, que corre también cuando el test revienta.
+ *
+ * Por la pasarela y no por Prisma: el E2E no tiene acceso a la base, y la
+ * pasarela ya lleva la sesión en la cookie del contexto.
+ */
+export async function limpiarTestimoniosDePrueba(page: Page): Promise<void> {
+  const res = await page.request.get('/api/admin/testimonials');
+  if (!res.ok()) return;
+  const { data } = (await res.json()) as { data: { id: string; authorName: string }[] };
+  for (const t of data.filter((x) => x.authorName.startsWith(PREFIJO_TESTIMONIO))) {
+    await page.request.delete(`/api/admin/testimonials/${t.id}`);
+  }
+}
+
+/** El prefijo por el que se reconocen. Lo comparten el test y la limpieza. */
+export const PREFIJO_TESTIMONIO = 'Clienta E2E';
 
 /** Abre la primera galería de la lista. El seed deja al menos una. */
 export async function abrirPrimeraGaleria(page: Page): Promise<void> {

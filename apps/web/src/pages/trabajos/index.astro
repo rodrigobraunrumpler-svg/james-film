@@ -1,0 +1,128 @@
+---
+/**
+ * El índice de trabajos.
+ *
+ * `GET /galleries` NO trae los medios, solo portada y recuento: si los
+ * trajera, el build se descargaría todos los reels de todos los eventos en una
+ * respuesta que crece sin techo con cada boda.
+ */
+import Layout from '../../layouts/Layout.astro';
+import Barra from '../../components/Barra.astro';
+import BarraPegada from '../../components/BarraPegada.astro';
+import Icono from '../../components/Icono.astro';
+import Pie from '../../components/Pie.astro';
+import RejillaTrabajos from '../../components/RejillaTrabajos.astro';
+import { PISTAS } from '../../content/copy';
+import { api } from '../../lib/api';
+import { og } from '../../lib/imagen';
+
+const [ajustes, redes, galerias] = await Promise.all([
+  api.ajustes(),
+  api.redes(),
+  api.galerias(),
+]);
+
+const numero = ajustes.whatsappNumber;
+const base = ajustes.whatsappMessage ?? '';
+const display = ajustes.whatsappDisplay ?? numero;
+
+/**
+ * Los filtros salen de las galerías que HAY, no del catálogo de categorías:
+ * una pestaña que no filtra nada es una promesa rota, y con cuatro categorías
+ * y dos usadas, dos de los cuatro chips darían la rejilla vacía.
+ */
+const categorias = [...new Map(galerias.map((g) => [g.category.slug, g.category])).values()].sort(
+  (a, b) => a.name.localeCompare(b.name, 'es-PE'),
+);
+---
+
+{/* `sinIndexar`: sin nada publicado esta página no tiene qué enseñar y nadie
+    la enlaza, así que declararla en el sitemap era señalarle a Google una URL
+    vacía. Vuelve al índice sola en cuanto haya una galería. */}
+<Layout
+  sinIndexar={galerias.length === 0}
+  titulo={`Trabajos · ${ajustes.brandName}`}
+  descripcion={`Reels y aftermovies grabados en Ayacucho. ${ajustes.tagline}`}
+  imagen={(() => {
+    const portada = galerias.find((g) => g.coverUrl)?.coverUrl;
+    return portada ? og(portada) : ajustes.ogImageUrl;
+  })()}
+>
+  <Barra {numero} {display} {base} anclas={['/trabajos/', '#paquetes', '/fechas-libres/', '/negocios/', '/sobre-mi/']} prefijo="/" />
+
+  <main id="contenido" class="flex flex-col gap-5 marco py-6 lg:gap-8 lg:py-10">
+    <div class="flex flex-col gap-1.5">
+      <h1
+        class="font-display text-[34px] leading-[1.06] font-extrabold tracking-[-0.025em] lg:text-[52px]"
+      >
+        Todos los trabajos
+      </h1>
+      <p class="text-ash">{PISTAS.galerias}</p>
+    </div>
+
+    {
+      categorias.length > 1 && (
+        <div class="sin-barra -mx-5 flex gap-2 overflow-x-auto px-5 lg:mx-0 lg:flex-wrap lg:px-0">
+          {/*
+            Filtra en el cliente y no por URL: son decenas de tarjetas ya
+            pintadas, y una página por categoría multiplicaría el build sin
+            añadir nada que Google no encuentre ya desde aquí. SIN JS salen
+            todas, que es la respuesta correcta.
+          */}
+          <button
+            type="button"
+            data-filtro=""
+            aria-pressed="true"
+            class="flex h-12 shrink-0 items-center rounded-control border border-line px-4 text-sm aria-pressed:border-brass-400 aria-pressed:text-brass-200"
+          >
+            Todos
+          </button>
+          {categorias.map((c) => (
+            <button
+              type="button"
+              data-filtro={c.slug}
+              aria-pressed="false"
+              class="flex h-12 shrink-0 items-center rounded-control border border-line px-4 text-sm aria-pressed:border-brass-400 aria-pressed:text-brass-200"
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )
+    }
+
+    <RejillaTrabajos {galerias} vacio="Todavía no hay trabajos publicados." />
+
+    <p data-vacio hidden class="text-ash">No hay trabajos de esa categoría todavía.</p>
+
+    <a href="/" class="flex h-12 items-center gap-2 text-brass-200">
+      <Icono nombre="atras" tamano={18} />
+      Volver al inicio
+    </a>
+  </main>
+
+  <Pie {redes} email={ajustes.email} marca={ajustes.brandName} />
+  <BarraPegada {numero} {base} />
+</Layout>
+
+<script>
+  const chips = document.querySelectorAll<HTMLButtonElement>('[data-filtro]');
+  const tarjetas = document.querySelectorAll<HTMLElement>('[data-rejilla] > [data-cat]');
+  const vacio = document.querySelector<HTMLElement>('[data-vacio]');
+
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const cat = chip.dataset.filtro ?? '';
+      chips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+      let visibles = 0;
+      tarjetas.forEach((t) => {
+        const cabe = !cat || t.dataset.cat === cat;
+        // `hidden` y no `style.display`: `global.css` lo fuerza a `display:
+        // none !important` justo para que gane al `flex` de la tarjeta.
+        t.hidden = !cabe;
+        if (cabe) visibles++;
+      });
+      if (vacio) vacio.hidden = visibles > 0;
+    });
+  });
+</script>

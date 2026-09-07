@@ -1,0 +1,51 @@
+---
+/**
+ * Lo intangible, hecho concreto.
+ *
+ * Se está pagando por un archivo que todavía no existe. Enseñar el ENTREGABLE
+ * —cuántos, de qué duración, en qué formato y POR DÓNDE LLEGA— convierte una
+ * promesa en una cosa. Es la duda que nadie pregunta y todo el mundo tiene.
+ */
+import Icono, { type NombreIcono } from './Icono.astro';
+import Seccion from './Seccion.astro';
+import { ENTREGABLES, SECCIONES } from '../content/copy';
+---
+
+<section class="flex flex-col gap-4 marco py-9 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-18 lg:py-18">
+  <Seccion
+    {...SECCIONES.recibes}
+    pista="Se paga por un archivo que todavía no existe. Esto es exactamente lo que aparece."
+  />
+  <ul class="grid list-none gap-2.5 p-0 lg:grid-cols-2 lg:gap-4">
+    {
+      ENTREGABLES.map((e, i) => (
+        <li
+          class:list={[
+            'entra flex items-start gap-3.5 rounded-card border p-4 lg:p-5',
+            // El último va marcado: «por un enlace, en 24 horas» es lo que de
+            // verdad sorprende, no los siete reels.
+            'destacado' in e && e.destacado
+              ? 'border-brass-400 bg-brass-400/6'
+              : 'border-line',
+          ]}
+          style={`--i: ${i}`}
+        >
+          <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-brass-400/10 text-brass-400">
+            <Icono nombre={e.icono as NombreIcono} tamano={21} />
+          </span>
+          <div class="min-w-0">
+            <p
+              class:list={[
+                'font-medium lg:text-lg',
+                'destacado' in e && e.destacado && 'text-brass-200',
+              ]}
+            >
+              {e.titulo}
+            </p>
+            <p class="mt-0.5 text-sm text-ash lg:text-base">{e.texto}</p>
+          </div>
+        </li>
+      ))
+    }
+  </ul>
+</section>

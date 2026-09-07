@@ -19,8 +19,15 @@ export default function LayoutPanel({ children }: { children: React.ReactNode })
               tarjeta el botón de Cancelar. En el layout y no en el editor,
               para que navegar no libere el Wake Lock ni oculte el progreso. */}
           <BarraSubidas />
-          {/* El padding inferior respeta el área segura del iPhone. */}
-          <main className="flex-1 px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:px-6">
+          {/*
+            El respiro de abajo es GENEROSO en móvil (56px + área segura) y
+            normal en escritorio. Con los 20px de antes, el último botón de la
+            pantalla quedaba pegado al borde: en el iPhone la barra de Safari
+            aparece y desaparece al scrollear, `dvh` cambia con ella, y ese
+            último control se metía debajo justo cuando ibas a pulsarlo.
+            Sobra espacio en blanco; falta un botón que no se puede tocar.
+          */}
+          <main className="flex-1 px-4 py-5 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:px-6 lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             {children}
           </main>
         </div>

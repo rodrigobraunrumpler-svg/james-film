@@ -1,0 +1,229 @@
+---
+/**
+ * La página de un trabajo. Una por galería publicada, en `getStaticPaths`.
+ *
+ * Aquí el detalle SÍ trae los medios: es una petición por página, no una que
+ * crece sin techo con cada evento como haría la lista.
+ */
+import Layout from '../../layouts/Layout.astro';
+import Barra from '../../components/Barra.astro';
+import BarraPegada from '../../components/BarraPegada.astro';
+import Cta from '../../components/Cta.astro';
+import Icono from '../../components/Icono.astro';
+import Migas from '../../components/Migas.astro';
+import Pie from '../../components/Pie.astro';
+import Visor from '../../components/Visor.astro';
+import { PISTAS } from '../../content/copy';
+import { api } from '../../lib/api';
+import { degradado } from '../../lib/degradado';
+import { duracion, largo } from '../../lib/fechas';
+import { ESCONDER_SI_FALLA, og, SIZES, src, srcset } from '../../lib/imagen';
+import type { GalleryDto, GalleryListItemDto } from '@james-film/contracts';
+
+export async function getStaticPaths() {
+  const [ajustes, redes, lista] = await Promise.all([
+    api.ajustes(),
+    api.redes(),
+    api.galerias(),
+  ]);
+  // En serie serían tantos viajes encadenados como eventos tenga James. En
+  // paralelo es uno, y el throttler ya está desactivado en los públicos.
+  const detalles = await Promise.all(lista.map((g) => api.galeria(g.slug)));
+
+  return detalles.map((galeria) => ({
+    params: { slug: galeria.slug },
+    props: {
+      galeria,
+      ajustes,
+      redes,
+      // Las otras, para «Sigue viendo». Sin esto la galería es un callejón:
+      // se llega, se mira y solo queda el botón de atrás del navegador.
+      otras: lista.filter((g) => g.slug !== galeria.slug),
+    },
+  }));
+}
+
+const { galeria, ajustes, redes, otras } = Astro.props as {
+  galeria: GalleryDto;
+  ajustes: Awaited<ReturnType<typeof api.ajustes>>;
+  redes: Awaited<ReturnType<typeof api.redes>>;
+  otras: GalleryListItemDto[];
+};
+
+const numero = ajustes.whatsappNumber;
+const base = ajustes.whatsappMessage ?? '';
+const display = ajustes.whatsappDisplay ?? numero;
+
+/**
+ * Los medios vienen ya filtrados a `READY` por el controller público, y el
+ * DTO público NI SIQUIERA lleva `status`: aquí no hay nada que filtrar, y
+ * fingir que sí lo hay con una línea de adorno solo despista al que venga.
+ */
+const medios = galeria.media;
+
+/** La línea de contexto. Se compone con lo que HAY, sin separadores huérfanos. */
+const contexto = [
+  galeria.category.name,
+  galeria.eventDate && largo(galeria.eventDate),
+  galeria.location,
+]
+  .filter(Boolean)
+  .join(' · ');
+
+const sugeridas = otras.slice(0, 2);
+---
+
+<Layout
+  titulo={`${galeria.title} · ${ajustes.brandName}`}
+  descripcion={galeria.description ?? `${contexto}. ${ajustes.tagline}`}
+  imagen={galeria.coverUrl ? og(galeria.coverUrl) : null}
+>
+  <Migas
+    slot="head"
+    ruta={[
+      { nombre: 'Inicio', href: '/' },
+      { nombre: 'Trabajos', href: '/trabajos/' },
+      { nombre: galeria.category.name, href: `/${galeria.category.slug}/` },
+      { nombre: galeria.title },
+    ]}
+  />
+  <Barra {numero} {display} {base} anclas={['/trabajos/', '#paquetes', '/fechas-libres/', '/negocios/', '/sobre-mi/']} prefijo="/" />
+
+  <main id="contenido">
+    <div class="flex flex-col gap-3.5 marco pt-4 pb-6 lg:pt-6 lg:pb-9">
+      <a href="/trabajos/" class="flex min-h-12 items-center gap-2 text-ash">
+        <Icono nombre="atras" tamano={18} />
+        Todos los trabajos
+      </a>
+      <div class="flex flex-col gap-1.5">
+        <h1
+          class="font-display text-[34px] leading-[1.06] font-extrabold tracking-[-0.025em] lg:text-[52px]"
+        >
+          {galeria.title}
+        </h1>
+        {contexto && <p class="text-ash">{contexto}</p>}
+      </div>
+      {galeria.description && <p class="max-w-[62ch]">{galeria.description}</p>}
+      {medios.length > 0 && <p class="text-sm text-ash">{PISTAS.galeria}</p>}
+    </div>
+
+    {
+      medios.length > 0 ? (
+        <div class="grid grid-cols-2 gap-3 marco pb-7 lg:grid-cols-4 lg:gap-4 lg:pb-12">
+          {medios.map((m, i) => {
+            const dura = duracion(m.durationSec);
+            const esFoto = m.type === 'PHOTO';
+            return (
+              <button
+                type="button"
+                data-medio
+                data-tipo={m.type}
+                data-url={m.url}
+                data-poster={m.posterUrl ?? undefined}
+                data-alt={m.alt ?? undefined}
+                data-pie={m.caption ?? undefined}
+                class="entra relative aspect-9/16 overflow-hidden rounded-card border border-line"
+                style={`background: ${degradado(m.id)}; --i: ${i}`}
+                aria-label={m.alt ?? `Ver ${galeria.title}, ${i + 1} de ${medios.length}`}
+              >
+                {/*
+                  SIN autoplay y sin `<video>`: solo el póster. Seis vídeos en
+                  el DOM se precargan solos en Safari y se comen el plan de
+                  datos de quien mira esto en el 4G. El vídeo lo crea el visor.
+                */}
+                {(m.posterUrl ?? (esFoto ? m.url : null)) && (
+                  <img
+                    src={src(m.posterUrl ?? m.url)}
+                    srcset={srcset(m.posterUrl ?? m.url)}
+                    sizes={SIZES.tesela}
+                    alt={m.alt ?? ''}
+                    loading={i < 4 ? 'eager' : 'lazy'}
+                    onerror={ESCONDER_SI_FALLA}
+                    class="absolute inset-0 h-full w-full object-cover"
+                  />
+                )}
+                {!esFoto && (
+                  <span
+                    class="absolute inset-0 flex items-center justify-center"
+                    style="color: rgba(242,239,233,0.42)"
+                  >
+                    <Icono nombre="reproducir" tamano={32} grosor={1.2} />
+                  </span>
+                )}
+                {dura && (
+                  <span
+                    class="absolute right-2 bottom-2 rounded-chip px-1.75 py-0.75 text-xs"
+                    style="background: rgba(8,7,6,0.82); color: #f2efe9"
+                  >
+                    {dura}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <p class="marco pb-7 text-ash">Todavía no hay nada subido de este evento.</p>
+      )
+    }
+
+    <!-- El CTA vuelve aquí: quien llega al final de una galería es quien más
+         cerca está de escribir. -->
+    <section
+      class="marco flex flex-col gap-3 border-y border-line bg-surface py-7 lg:items-center lg:py-12"
+    >
+      <h2 class="font-display text-[26px] leading-tight font-extrabold lg:text-[34px]">
+        ¿Quieres algo así para el tuyo?
+      </h2>
+      <Cta
+        {numero}
+        {base}
+        texto={ajustes.ctaText ?? 'Escríbeme por WhatsApp'}
+        fuente="galeria"
+        clase="lg:w-[420px]"
+      />
+    </section>
+
+    {
+      sugeridas.length > 0 && (
+        <section class="flex flex-col gap-3 marco py-7 lg:gap-5 lg:py-12">
+          <p class="text-xs font-medium tracking-[0.18em] text-brass-600 uppercase">Sigue viendo</p>
+          <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+            {sugeridas.map((g) => (
+              <a href={`/trabajos/${g.slug}`} class="flex flex-col gap-2">
+                <div
+                  class="aspect-9/16 overflow-hidden rounded-card border border-line"
+                  style={`background: ${degradado(g.id)}`}
+                >
+                  {g.coverUrl && (
+                    <img
+                      src={src(g.coverUrl)}
+                      srcset={srcset(g.coverUrl)}
+                      sizes={SIZES.tesela}
+                      alt=""
+                      loading="lazy"
+                      onerror={ESCONDER_SI_FALLA}
+                      class="h-full w-full object-cover"
+                    />
+                  )}
+                </div>
+                <span class="text-sm font-medium">{g.title}</span>
+              </a>
+            ))}
+          </div>
+          <a
+            href="/trabajos/"
+            class="flex h-12 items-center justify-center gap-2 rounded-control border border-line text-brass-200 lg:w-[300px]"
+          >
+            Ver los {otras.length + 1} trabajos
+            <Icono nombre="flecha" tamano={17} />
+          </a>
+        </section>
+      )
+    }
+  </main>
+
+  <Pie {redes} email={ajustes.email} marca={ajustes.brandName} />
+  <BarraPegada {numero} {base} />
+  <Visor />
+</Layout>

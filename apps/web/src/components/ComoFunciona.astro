@@ -1,0 +1,41 @@
+---
+/**
+ * Los tres pasos. Es la sección que quita el miedo: dice qué pasa DESPUÉS de
+ * escribir, que es la incertidumbre real de quien paga por adelantado a alguien
+ * que conoció por internet, para un evento que no se puede repetir.
+ */
+import Seccion from './Seccion.astro';
+import { PASOS, SECCIONES } from '../content/copy';
+---
+
+<!--
+  En escritorio el titular va en su propia columna de 340 px y los tres pasos
+  a la derecha, como el prototipo. A ancho completo, el titular deja los pasos
+  colgando muy abajo y la sección pierde su lectura de izquierda a derecha —
+  que es justo lo que un «en tres pasos» tiene que sugerir.
+-->
+<section class="flex flex-col gap-5 border-y border-line marco py-9 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-18 lg:py-18">
+  <Seccion {...SECCIONES.como} />
+  <ol class="grid list-none gap-5 p-0 lg:grid-cols-3 lg:gap-7">
+    {
+      PASOS.map((p, i) => (
+        <li class="entra flex gap-3.5 lg:flex-col lg:gap-2.5" style={`--i: ${i}`}>
+          <span
+            class:list={[
+              'w-9 shrink-0 font-display text-[26px] font-extrabold lg:w-auto lg:text-[34px]',
+              // El último en latón claro: es el que cierra la promesa.
+              i === PASOS.length - 1 ? 'text-brass-400' : 'text-brass-600',
+            ]}
+            aria-hidden="true"
+          >
+            {i + 1}
+          </span>
+          <div>
+            <p class="font-medium lg:text-lg">{p.titulo}</p>
+            <p class="mt-0.5 text-sm text-ash lg:text-base">{p.texto}</p>
+          </div>
+        </li>
+      ))
+    }
+  </ol>
+</section>

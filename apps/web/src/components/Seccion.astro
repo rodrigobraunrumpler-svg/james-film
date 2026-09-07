@@ -1,0 +1,44 @@
+---
+/**
+ * La cabecera de sección: antetítulo, titular y su pista.
+ *
+ * Es un componente y no tres líneas copiadas porque el RITMO de la página
+ * depende de que todas midan igual. Con quince secciones escritas a mano, en
+ * dos iteraciones hay quince espaciados distintos y la página se siente hecha
+ * por varias personas.
+ */
+interface Props {
+  eyebrow: string;
+  titulo: string;
+  pista?: string | null;
+  /** El escritorio pone la pista a la derecha del titular, no debajo. */
+  ancho?: boolean;
+  clase?: string;
+  id?: string;
+}
+
+const { eyebrow, titulo, pista = null, ancho = false, clase = '', id } = Astro.props;
+---
+
+<div
+  {id}
+  class:list={[
+    'flex flex-col gap-1.5',
+    ancho && 'lg:flex-row lg:items-end lg:justify-between lg:gap-10',
+    clase,
+  ]}
+>
+  <div class="flex flex-col gap-1.5">
+    <p class="text-xs font-medium tracking-[0.18em] text-brass-600 uppercase">{eyebrow}</p>
+    <h2
+      class="font-display text-[28px] leading-[1.04] font-extrabold tracking-[-0.025em] lg:text-[46px]"
+    >
+      {titulo}
+    </h2>
+  </div>
+  {
+    pista && (
+      <p class:list={['text-sm text-ash', ancho && 'lg:max-w-[380px] lg:text-right']}>{pista}</p>
+    )
+  }
+</div>

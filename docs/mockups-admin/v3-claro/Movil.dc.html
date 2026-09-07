@@ -1,0 +1,371 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>En el móvil</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── PALETA CLARA ────────────────────────────────────────────────────────
+     El principio del tema oscuro, invertido: allí el chrome es más CLARO que
+     el contenido; aquí el contenido es blanco y el chrome un hueso cálido.
+     En los dos casos el sidebar se separa sin necesitar una línea.
+
+     Cálido, nunca gris azulado: el latón sobre un gris frío se ve sucio.
+
+     Contrastes medidos sobre los TRES fondos donde vive el texto —blanco,
+     chrome #F7F6F3 y card #FAF9F6—, porque medir solo sobre blanco engaña:
+       bone   #1C1A17  17.4 / 16.1 / 16.5
+       ash    #5F5A52   6.8 /  6.3 /  6.5
+       muted  #726D64   5.1 /  4.8 /  4.9   ← era #78736A y daba 4.36 en chrome
+       brass  #8A6D3B   4.9 /  4.5 /  4.6
+       danger #C4362E   6.5 /  6.0 /  6.2
+     Los tres pasan AA en los tres fondos, incluido `muted` a 11px.
+
+     Y hay un gris que NO lleva texto nunca: #8E887E (3.5) vale para iconos y
+     bordes —WCAG 1.4.11 pide 3:1 a los gráficos, no 4.5— y nada por debajo de
+     eso toca una letra.
+
+     DOS latones, y la diferencia importa:
+       #8A6D3B  texto e iconos — el único que cumple contraste sobre blanco
+       #C9A96A  RELLENOS (barras, puntos, áreas) — ahí no hace de texto, así
+                que puede conservar el brillo de la marca sin ser ilegible. */
+
+  body{margin:0;font-family:Inter,-apple-system,"Segoe UI",sans-serif;font-size:13px;background:#FFFFFF;color:#1C1A17;-webkit-font-smoothing:antialiased;}
+  *{box-sizing:border-box;}
+  .disp{font-family:'Bricolage Grotesque',Inter,sans-serif;font-weight:800;letter-spacing:-.02em;}
+  .sub{color:#5F5A52;font-size:12.5px;margin:3px 0 0;}
+  .lab{color:#726D64;font-size:11px;}
+
+  /* La profundidad la da la SOMBRA, no un borde duro en cada caja. Dos capas
+     —una de contacto y otra de difusión— y la luz siempre desde arriba: es lo
+     que separa un panel claro moderno de una hoja de cálculo. El borde queda
+     casi invisible y solo define el filo. Radio 12: a 8 se lee a rejilla. */
+  .card{background:#FFFFFF;border:1px solid #EDEAE4;border-radius:12px;
+        box-shadow:0 1px 2px rgba(28,26,23,.04), 0 4px 14px rgba(28,26,23,.035);}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:8px;background:#FFFFFF;border:1px solid #DDD8CF;color:#1C1A17;font:inherit;font-size:12px;font-weight:500;
+       box-shadow:0 1px 1.5px rgba(28,26,23,.05);transition:border-color .15s,background-color .15s,box-shadow .15s,transform .12s;}
+  .btn:hover{border-color:#726D64;background:#FCFBF9;box-shadow:0 2px 6px rgba(28,26,23,.07);}
+  .btn:active{transform:translateY(1px);}
+  /* El acento en borde y texto, nunca un relleno macizo: la misma regla que en
+     oscuro, y en claro además un botón dorado pelearía con el verde de la previa. */
+  .btn-b{border-color:#D8C193;color:#8A6D3B;background:linear-gradient(180deg,#FDFAF4,#FBF6EC);}
+  .btn-b:hover{border-color:#8A6D3B;background:linear-gradient(180deg,#FBF6EC,#F7EFDF);}
+
+  .campo{display:flex;align-items:center;height:38px;padding:0 12px;border-radius:8px;background:#FFFFFF;border:1px solid #DDD8CF;box-shadow:inset 0 1px 2px rgba(28,26,23,.03);}
+  .num{font-variant-numeric:tabular-nums;}
+
+  /* Chip de estado: punto de color + texto. El punto hace el trabajo que en
+     oscuro hacía el fondo — sobre blanco, un fondo tintado se pierde. */
+  .chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:500;border:1px solid;}
+  .chip i{width:5px;height:5px;border-radius:50%;display:block;}
+
+  @keyframes sube{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes creceX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes creceY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  @keyframes dibuja{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+  @keyframes aparece{from{opacity:0}to{opacity:1}}
+  @keyframes deriva{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.05)}}
+  @media (prefers-reduced-motion: no-preference){
+    /* Techo de seis pasos: 360ms de retraso como mucho, 710ms hasta el último.
+       Sin él, con 32 teselas la rejilla se movía casi dos segundos y lo último
+       en llegar era la zona de soltar — justo adonde se va al abrir el editor.
+       Un escalonado explica jerarquía; entre 32 teselas iguales no hay ninguna
+       que explicar, solo retraso. */
+    .e{animation:sube .35s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(min(var(--i,0),6)*60ms)}
+    /* Una rejilla de iguales entra como UN bloque, sin desplazamiento: son 32
+       animaciones compuestas a la vez, y es donde el iPhone lo nota. */
+    .rejilla-entra{animation:aparece .2s ease both;animation-delay:180ms}
+    .bar{transform-origin:left center;animation:creceX .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(220ms + var(--i,0)*60ms)}
+    .col{transform-origin:bottom;animation:creceY .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(260ms + var(--i,0)*22ms)}
+    /* La curva se DIBUJA de izquierda a derecha con `clip-path`: sigue siendo
+       una sola propiedad compuesta, sin reflow. */
+    .traza{animation:dibuja .9s cubic-bezier(.2,.8,.2,1) .25s both}
+    .luz{animation:aparece .4s ease both, deriva 24s ease-in-out .4s infinite alternate}
+  }
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+
+  /* En claro, «levantar» se lee con la sombra: sobre blanco, dos blancos no se
+     distinguen, y el cambio de fondo del tema oscuro aquí no dice nada. */
+  .lift{transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s,border-color .2s;}
+  .lift:hover{transform:translateY(-3px);border-color:#DDD8CF;
+              box-shadow:0 2px 4px rgba(28,26,23,.05), 0 12px 28px rgba(28,26,23,.09);}
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;gap:24px;width:1780px;padding:30px;background:#FFFFFF;">
+  <div>
+    <h2 class="disp" style="margin:0;font-size:22px;">En el iPhone de James</h2>
+    <p class="sub" style="max-width:80ch;">
+      Es donde de verdad se usa: subiendo reels desde la boda, con 4G. 390&nbsp;px, que es su pantalla.
+      Los objetivos táctiles suben a 44&nbsp;px y el sidebar pasa a ser un cajón.
+    </p>
+  </div>
+  <div style="display:flex;gap:26px;flex-wrap:wrap;">
+    
+  <div style="display:flex;flex-direction:column;gap:11px;">
+    <p class="lab" style="text-transform:uppercase;letter-spacing:.09em;font-weight:500;margin:0;">Galerías</p>
+    <div style="width:390px;border-radius:30px;padding:9px;background:linear-gradient(160deg,#F4F2EE,#E4E0D8);box-shadow:0 20px 46px rgba(28,26,23,.16),inset 0 0 0 1px rgba(255,255,255,.7);">
+      <div style="position:relative;height:720px;border-radius:22px;overflow:hidden;background:#FFFFFF;">
+        <!-- Cabecera móvil: hamburguesa, marca y lupa. El sidebar es un drawer
+             bajo lg; aquí no hay sitio para una columna fija. -->
+        <div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;height:54px;padding:0 14px;background:#F7F6F3;box-shadow:inset 0 -1px 0 rgba(28,26,23,.06);">
+          <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:-11px;border-radius:11px;flex-shrink:0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C1A17" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </span>
+          <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:linear-gradient(150deg,#FBF3E3,#F0E2C4);box-shadow:inset 0 0 0 1px rgba(138,109,59,.18);flex-shrink:0;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 4v16M17 4v16M2 9h5M2 15h5M17 9h5M17 15h5"/></svg>
+          </span>
+          <span style="font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Galerías</span>
+          <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:auto;margin-right:-11px;border-radius:11px;flex-shrink:0;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5F5A52" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          </span>
+        </div>
+        
+        <div style="padding:18px 16px 0;">
+          <h1 class="disp" style="margin:0;font-size:22px;">Galerías</h1>
+          <p class="sub" style="font-size:12px;">Cada evento que has cubierto.</p>
+          <button class="btn btn-b" style="margin-top:13px;height:40px;width:100%;justify-content:center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Nueva galería
+          </button>
+        </div>
+        <div style="display:flex;gap:2px;margin:16px 16px 14px;box-shadow:inset 0 -1px 0 #EDEAE4;">
+          <span style="height:38px;display:flex;align-items:center;padding:0 12px;font-size:12.5px;font-weight:600;box-shadow:inset 0 -2px 0 #8A6D3B;">Todas <span class="num" style="color:#8A6D3B;margin-left:4px;">12</span></span>
+          <span style="height:38px;display:flex;align-items:center;padding:0 12px;font-size:12.5px;color:#726D64;">Publicadas <span class="num" style="color:#726D64;margin-left:4px;">3</span></span>
+          <span style="height:38px;display:flex;align-items:center;padding:0 12px;font-size:12.5px;color:#726D64;">Borr. <span class="num" style="color:#726D64;margin-left:4px;">9</span></span>
+        </div>
+        <div style="padding:0 16px;display:flex;flex-direction:column;gap:14px;">
+          <div class="card" style="overflow:hidden;">
+            <div style="position:relative;aspect-ratio:16/10;background:radial-gradient(at 24% 20%,#F8EADF 0,transparent 55%),radial-gradient(at 76% 28%,#F0DCE3 0,transparent 52%),#F2E9E2;">
+              <span class="chip" style="position:absolute;top:10px;left:10px;border-color:#CFE6D6;background:#F1F9F3;color:#2C6B42;"><i style="background:#3E9C5F;"></i>Publicada</span>
+              <span style="position:absolute;top:10px;right:10px;height:22px;padding:0 8px;border-radius:6px;background:rgba(255,255,255,.9);font-size:11px;font-weight:500;display:flex;align-items:center;">22 medios</span>
+            </div>
+            <div style="padding:13px 15px 14px;">
+              <div style="font-size:13.5px;font-weight:600;">BODAS</div>
+              <div class="lab">Boda · hace 14 h</div>
+            </div>
+          </div>
+          <div class="card" style="overflow:hidden;">
+            <div style="position:relative;aspect-ratio:16/10;background:radial-gradient(at 26% 22%,#E5EAF6 0,transparent 55%),radial-gradient(at 78% 26%,#EFE5F4 0,transparent 50%),#E8ECF4;">
+              <span class="chip" style="position:absolute;top:10px;left:10px;border-color:#CFE6D6;background:#F1F9F3;color:#2C6B42;"><i style="background:#3E9C5F;"></i>Publicada</span>
+              <span style="position:absolute;top:10px;right:10px;height:22px;padding:0 8px;border-radius:6px;background:rgba(255,255,255,.9);font-size:11px;font-weight:500;display:flex;align-items:center;">32 medios</span>
+            </div>
+            <div style="padding:13px 15px 14px;">
+              <div style="font-size:13.5px;font-weight:600;">XV de Camila</div>
+              <div class="lab">XV Años · hace 15 h</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="lab" style="max-width:390px;line-height:1.6;margin:0;">Una tarjeta por fila: a 390 px, dos columnas dejan la portada demasiado pequeña para reconocer el evento de un vistazo.</p>
+  </div>
+    
+  <div style="display:flex;flex-direction:column;gap:11px;">
+    <p class="lab" style="text-transform:uppercase;letter-spacing:.09em;font-weight:500;margin:0;">Panel</p>
+    <div style="width:390px;border-radius:30px;padding:9px;background:linear-gradient(160deg,#F4F2EE,#E4E0D8);box-shadow:0 20px 46px rgba(28,26,23,.16),inset 0 0 0 1px rgba(255,255,255,.7);">
+      <div style="position:relative;height:720px;border-radius:22px;overflow:hidden;background:#FFFFFF;">
+        <!-- Cabecera móvil: hamburguesa, marca y lupa. El sidebar es un drawer
+             bajo lg; aquí no hay sitio para una columna fija. -->
+        <div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;height:54px;padding:0 14px;background:#F7F6F3;box-shadow:inset 0 -1px 0 rgba(28,26,23,.06);">
+          <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:-11px;border-radius:11px;flex-shrink:0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C1A17" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </span>
+          <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:linear-gradient(150deg,#FBF3E3,#F0E2C4);box-shadow:inset 0 0 0 1px rgba(138,109,59,.18);flex-shrink:0;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 4v16M17 4v16M2 9h5M2 15h5M17 9h5M17 15h5"/></svg>
+          </span>
+          <span style="font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Panel</span>
+          <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:auto;margin-right:-11px;border-radius:11px;flex-shrink:0;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5F5A52" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          </span>
+        </div>
+        
+        <div style="padding:18px 16px 0;">
+          <h1 class="disp" style="margin:0;font-size:21px;line-height:1.15;">Buenas tardes,<br>James.</h1>
+          <p class="sub" style="font-size:12px;">Domingo 30 de agosto · 3 cosas por mirar</p>
+        </div>
+        <div style="padding:16px 16px 0;">
+          <div class="card" style="overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:12px 14px;box-shadow:inset 0 -1px 0 #EDEAE4;">
+              <span style="width:7px;height:7px;border-radius:50%;background:#C4362E;"></span>
+              <span style="font-weight:600;font-size:12.5px;">Requiere tu atención</span>
+            </div>
+            <div style="padding:13px 14px;box-shadow:inset 3px 0 0 #C4362E;">
+              <div style="font-size:12.5px;">Falló al publicar <span style="color:#726D64;">hace 2 h</span></div>
+              <div class="lab" style="margin-top:2px;">La web muestra lo de antes.</div>
+              <!-- Los dos botones en su propio grupo: con `flex-wrap` en la fila,
+                   la ✕ se descolgaba sola a una segunda línea. -->
+              <div style="display:flex;gap:8px;margin-top:11px;">
+                <button class="btn btn-b" style="height:44px;flex:1;justify-content:center;">Reintentar</button>
+                <button class="btn" style="height:44px;width:44px;padding:0;justify-content:center;color:#8E887E;">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 16px 0;">
+          <div class="card" style="padding:16px 17px;">
+            <div style="display:flex;align-items:baseline;gap:9px;">
+              <span class="disp num" style="font-size:40px;line-height:.9;">63</span>
+              <span class="chip" style="border-color:#E0CFAA;background:#FBF6EC;color:#8A6D3B;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>12 más
+              </span>
+            </div>
+            <p style="margin:6px 0 0;color:#5F5A52;font-size:12.5px;">clics a WhatsApp <span class="lab">· 30 días</span></p>
+            <svg viewBox="0 0 320 74" preserveAspectRatio="none" style="display:block;width:100%;height:74px;margin-top:10px;">
+              <defs><linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#C9A96A" stop-opacity=".3"/><stop offset="100%" stop-color="#C9A96A" stop-opacity="0"/></linearGradient></defs>
+              <g class="traza">
+                <path d="M0 56 C 20 56 20 44 40 44 C 60 44 60 60 80 60 C 100 60 100 30 120 30 C 140 30 140 48 160 48 C 180 48 180 22 200 22 C 220 22 220 40 240 40 C 260 40 260 16 280 16 C 300 16 300 26 320 26 L 320 74 L 0 74 Z" fill="url(#gm)"/>
+                <path d="M0 56 C 20 56 20 44 40 44 C 60 44 60 60 80 60 C 100 60 100 30 120 30 C 140 30 140 48 160 48 C 180 48 180 22 200 22 C 220 22 220 40 240 40 C 260 40 260 16 280 16 C 300 16 300 26 320 26" fill="none" stroke="#A8873F" stroke-width="2" stroke-linecap="round"/>
+              </g>
+              <circle cx="320" cy="26" r="4" fill="#FFF" stroke="#8A6D3B" stroke-width="2.5"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="lab" style="max-width:390px;line-height:1.6;margin:0;">Los avisos primero, y sus dos botones en un grupo propio — con `flex-wrap` suelto, la ✕ se descolgaba sola a otra línea.</p>
+  </div>
+    
+  <div style="display:flex;flex-direction:column;gap:11px;">
+    <p class="lab" style="text-transform:uppercase;letter-spacing:.09em;font-weight:500;margin:0;">Paquetes</p>
+    <div style="width:390px;border-radius:30px;padding:9px;background:linear-gradient(160deg,#F4F2EE,#E4E0D8);box-shadow:0 20px 46px rgba(28,26,23,.16),inset 0 0 0 1px rgba(255,255,255,.7);">
+      <div style="position:relative;height:720px;border-radius:22px;overflow:hidden;background:#FFFFFF;">
+        <!-- Cabecera móvil: hamburguesa, marca y lupa. El sidebar es un drawer
+             bajo lg; aquí no hay sitio para una columna fija. -->
+        <div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;height:54px;padding:0 14px;background:#F7F6F3;box-shadow:inset 0 -1px 0 rgba(28,26,23,.06);">
+          <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:-11px;border-radius:11px;flex-shrink:0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C1A17" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </span>
+          <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:linear-gradient(150deg,#FBF3E3,#F0E2C4);box-shadow:inset 0 0 0 1px rgba(138,109,59,.18);flex-shrink:0;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 4v16M17 4v16M2 9h5M2 15h5M17 9h5M17 15h5"/></svg>
+          </span>
+          <span style="font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Paquetes</span>
+          <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:auto;margin-right:-11px;border-radius:11px;flex-shrink:0;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5F5A52" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          </span>
+        </div>
+        
+        <div style="padding:18px 16px 0;">
+          <h1 class="disp" style="margin:0;font-size:22px;">Paquetes</h1>
+          <p class="sub" style="font-size:12px;">Lo que el cliente compara.</p>
+        </div>
+        <div style="padding:20px 16px 0;display:flex;flex-direction:column;gap:16px;">
+          <div class="card" style="position:relative;padding:20px 17px 16px;box-shadow:0 2px 6px rgba(28,26,23,.07),0 16px 34px rgba(138,109,59,.14),inset 0 0 0 1.5px #D8C193;">
+            <span class="chip" style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);border-color:#D8C193;background:linear-gradient(180deg,#FDFAF4,#F7EFDF);color:#8A6D3B;font-weight:600;white-space:nowrap;">NUESTRO MÁS VENDIDO</span>
+            <div style="display:flex;align-items:center;gap:9px;">
+              <span style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(150deg,#FBF3E3,#F0E2C4);box-shadow:inset 0 0 0 1px rgba(138,109,59,.2);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>
+              </span>
+              <div><div style="font-size:13px;font-weight:700;letter-spacing:.06em;">PRO</div><div class="lab">El que más piden</div></div>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin:14px 0 0;">
+              <span class="lab">desde</span>
+              <span class="disp num" style="font-size:34px;line-height:1;">S/ 550</span>
+              <span class="num" style="color:#726D64;font-size:13px;">.00</span>
+            </div>
+            <ul style="list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;">
+              <li style="display:flex;gap:9px;font-size:12.5px;color:#3A3630;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><path d="m4 12 5 5L20 6"/></svg>6 reels + aftermovie</li>
+              <li style="display:flex;gap:9px;font-size:12.5px;color:#3A3630;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><path d="m4 12 5 5L20 6"/></svg>Entrega en 48 horas</li>
+              <li style="display:flex;gap:9px;font-size:12.5px;color:#3A3630;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><path d="m4 12 5 5L20 6"/></svg>Drone incluido</li>
+            </ul>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:13px;box-shadow:inset 0 1px 0 #EDEAE4;">
+              <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5F5A52;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+                <b class="num" style="color:#1C1A17;font-weight:600;">31</b> clics
+              </span>
+              <button class="btn" style="margin-left:auto;height:44px;">Editar</button>
+              <button class="btn" style="height:44px;width:44px;padding:0;justify-content:center;color:#8E887E;">⋯</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="lab" style="max-width:390px;line-height:1.6;margin:0;">El destacado se eleva igual que en escritorio. Los controles suben a 44 px: es el mínimo que se acierta con el pulgar.</p>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:11px;">
+    <p class="lab" style="text-transform:uppercase;letter-spacing:.09em;font-weight:500;margin:0;">Editor de galería</p>
+    <div style="width:390px;border-radius:30px;padding:9px;background:linear-gradient(160deg,#F4F2EE,#E4E0D8);box-shadow:0 20px 46px rgba(28,26,23,.16),inset 0 0 0 1px rgba(255,255,255,.7);">
+      <div style="position:relative;height:720px;border-radius:22px;overflow:hidden;background:#FFFFFF;">
+        <!-- Aquí la hamburguesa es un CHEVRON de vuelta: es el único segundo
+             nivel del admin, y un menú donde se espera «atrás» deja encerrado. -->
+        <div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:6px;height:54px;padding:0 14px;background:#F7F6F3;box-shadow:inset 0 -1px 0 rgba(28,26,23,.06);">
+          <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:-11px;border-radius:11px;flex-shrink:0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C1A17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </span>
+          <span style="font-size:13.5px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">XV de Camila</span>
+          <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:auto;margin-right:-11px;border-radius:11px;flex-shrink:0;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5F5A52" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>
+          </span>
+        </div>
+
+        <!-- La barra de subidas: dice a QUÉ galería vuelves. Si James sale a
+             mirar Configuración mientras sube una boda, esta línea es lo único
+             que queda de lo que estaba haciendo. -->
+        <div style="padding:11px 14px;background:linear-gradient(180deg,#FDFAF4,#FBF6EC);box-shadow:inset 0 -1px 0 rgba(138,109,59,.16);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:#5F5A52;"><b style="color:#1C1A17;font-weight:600;">4 de 8</b> en <span style="color:#8A6D3B;text-decoration:underline;">XV de Camila</span></span>
+            <span class="lab" style="margin-left:auto;">~2 min</span>
+          </div>
+          <div style="height:3px;border-radius:2px;background:#EFE6D4;overflow:hidden;margin-top:8px;">
+            <span class="progreso" style="display:block;height:100%;width:50%;background:linear-gradient(90deg,#C9A96A,#A8873F);"></span>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:9px;padding:13px 14px 11px;flex-wrap:wrap;">
+          <span class="lab"><b style="color:#1C1A17;font-weight:600;">8</b> medios</span>
+          <span style="width:1px;height:11px;background:#E7E4DE;"></span>
+          <span class="lab" style="display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#C9A96A;"></span>2 subiendo</span>
+          <span class="lab" style="display:flex;align-items:center;gap:5px;color:#9C2F27;"><span style="width:6px;height:6px;border-radius:50%;background:#C4362E;"></span>1 falló</span>
+          <!-- «Ordena con las flechas», no «arrastra»: el arrastre nativo de
+               HTML5 no existe en iOS, y prometerlo es peor que no ofrecerlo. -->
+          <span class="lab" style="width:100%;margin-top:2px;">Ordena con las flechas del ⋯</span>
+        </div>
+
+        <div style="padding:0 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:radial-gradient(at 30% 25%,#F8E9DC 0,transparent 58%),#F0E5DC;box-shadow:inset 0 0 0 2px #C9A96A;">
+            <span class="chip" style="position:absolute;top:7px;left:7px;border-color:#D8C193;background:rgba(255,255,255,.92);color:#8A6D3B;font-weight:600;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="#C9A96A" stroke="#C9A96A" stroke-width="1.6" stroke-linejoin="round"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9Z"/></svg>Portada</span>
+            <span style="position:absolute;right:6px;bottom:6px;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.94);box-shadow:0 3px 10px rgba(28,26,23,.2);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1A17" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>
+            </span>
+          </div>
+          <div style="position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:radial-gradient(at 28% 30%,#E7ECF6 0,transparent 58%),#E9EDF4;box-shadow:inset 0 0 0 1px rgba(28,26,23,.07);">
+            <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.5);">
+              <span class="num" style="font-size:16px;font-weight:600;color:#8A6D3B;">72%</span>
+            </span>
+            <span style="position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.6);">
+              <span class="progreso" style="display:block;height:100%;width:72%;background:linear-gradient(90deg,#C9A96A,#A8873F);"></span>
+            </span>
+          </div>
+          <div style="position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:radial-gradient(at 30% 26%,#FBEDEC 0,transparent 58%),#F8E7E5;box-shadow:inset 0 0 0 1px #F0D5D2;">
+            <span style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px;text-align:center;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C4362E" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+              <span style="font-size:10px;color:#9C2F27;font-weight:500;line-height:1.35;">Es 4K.<br>Expórtalo a 1080p</span>
+            </span>
+          </div>
+          <label style="aspect-ratio:3/4;border-radius:10px;border:1.5px dashed #D8C193;background:linear-gradient(180deg,#FDFAF4,#FBF6EC);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;padding:10px;">
+            <span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:11px;background:#F5E9D2;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+            <span style="font-size:11px;font-weight:600;color:#8A6D3B;line-height:1.35;">Añadir<br>del carrete</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <p class="lab" style="max-width:390px;line-height:1.6;margin:0;">La hamburguesa se vuelve un <b style="color:#5F5A52;font-weight:500;">chevron de vuelta</b>: es el único segundo nivel del admin. Dos columnas, y el ⋯ permanente de 44px porque con el pulgar no hay hover.</p>
+  </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

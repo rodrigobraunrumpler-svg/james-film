@@ -1,0 +1,61 @@
+---
+/**
+ * Los números que quitan la duda, antes que cualquier argumento.
+ *
+ * Cada uno sale de un dato REAL. El que no lo tenga **no se pinta**: un cero o
+ * un guion en una cifra de confianza consigue lo contrario de lo que busca.
+ */
+interface Props {
+  eventos: number;
+  /**
+   * Ya REDACTADO —«4 a 7», o «6» si los tres coinciden—, no un número.
+   *
+   * La palabra depende de lo que haya dentro y decidirla aquí obligaría a pasar
+   * también el desglose. Lo decide `index.astro`, que es quien tiene los
+   * paquetes. Misma regla que `piezas` en el hero.
+   */
+  reels: string | null;
+}
+
+const { eventos, reels } = Astro.props;
+
+const CIFRAS = [
+  { n: String(eventos), texto: 'eventos grabados', hay: eventos > 0 },
+  // 48 y no 24: el flyer da 24h solo en el Premium. Ver `CIFRA_BENTO`.
+  { n: '48 h', texto: 'para tener tus reels', hay: true },
+  { n: reels ?? '', texto: 'reels según el paquete', hay: Boolean(reels) },
+].filter((c) => c.hay);
+---
+
+{
+  /*
+   * DOS como mínimo, no una. Con una sola cifra la banda es un número estirado
+   * entre dos bordes a todo el ancho, y eso no se lee como una tira de cifras:
+   * se lee como una tira a la que le faltan celdas. Es el caso real mientras no
+   * haya galerías publicadas.
+   */
+  CIFRAS.length >= 2 && (
+    <div
+      class="grid border-y border-line"
+      style={`grid-template-columns: repeat(${CIFRAS.length}, minmax(0, 1fr))`}
+    >
+      {CIFRAS.map((c, i) => (
+        <div
+          class:list={[
+            // Sin `entra`: con el hero a 85dvh esta tira ASOMA por debajo del
+            // pliegue —es la señal de «esto sigue»— y esconderla dejaba un
+            // hueco vacío justo donde tenía que haber una cifra.
+            'flex flex-col items-center gap-0.5 px-2 py-5 lg:flex-row lg:justify-center lg:gap-2.5 lg:py-7',
+            i > 0 && 'border-l border-line',
+          ]}
+          style={`--i: ${i}`}
+        >
+          <span class="font-display text-[30px] font-extrabold tracking-[-0.02em] text-brass-200 lg:text-[38px]">
+            {c.n}
+          </span>
+          <span class="text-center text-xs text-ash lg:text-base">{c.texto}</span>
+        </div>
+      ))}
+    </div>
+  )
+}

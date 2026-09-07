@@ -1,0 +1,187 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Piezas</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── PALETA CLARA ────────────────────────────────────────────────────────
+     El principio del tema oscuro, invertido: allí el chrome es más CLARO que
+     el contenido; aquí el contenido es blanco y el chrome un hueso cálido.
+     En los dos casos el sidebar se separa sin necesitar una línea.
+
+     Cálido, nunca gris azulado: el latón sobre un gris frío se ve sucio.
+
+     Contrastes medidos sobre los TRES fondos donde vive el texto —blanco,
+     chrome #F7F6F3 y card #FAF9F6—, porque medir solo sobre blanco engaña:
+       bone   #1C1A17  17.4 / 16.1 / 16.5
+       ash    #5F5A52   6.8 /  6.3 /  6.5
+       muted  #726D64   5.1 /  4.8 /  4.9   ← era #78736A y daba 4.36 en chrome
+       brass  #8A6D3B   4.9 /  4.5 /  4.6
+       danger #C4362E   6.5 /  6.0 /  6.2
+     Los tres pasan AA en los tres fondos, incluido `muted` a 11px.
+
+     Y hay un gris que NO lleva texto nunca: #8E887E (3.5) vale para iconos y
+     bordes —WCAG 1.4.11 pide 3:1 a los gráficos, no 4.5— y nada por debajo de
+     eso toca una letra.
+
+     DOS latones, y la diferencia importa:
+       #8A6D3B  texto e iconos — el único que cumple contraste sobre blanco
+       #C9A96A  RELLENOS (barras, puntos, áreas) — ahí no hace de texto, así
+                que puede conservar el brillo de la marca sin ser ilegible. */
+
+  body{margin:0;font-family:Inter,-apple-system,"Segoe UI",sans-serif;font-size:13px;background:#FFFFFF;color:#1C1A17;-webkit-font-smoothing:antialiased;}
+  *{box-sizing:border-box;}
+  .disp{font-family:'Bricolage Grotesque',Inter,sans-serif;font-weight:800;letter-spacing:-.02em;}
+  .sub{color:#5F5A52;font-size:12.5px;margin:3px 0 0;}
+  .lab{color:#726D64;font-size:11px;}
+
+  /* La profundidad la da la SOMBRA, no un borde duro en cada caja. Dos capas
+     —una de contacto y otra de difusión— y la luz siempre desde arriba: es lo
+     que separa un panel claro moderno de una hoja de cálculo. El borde queda
+     casi invisible y solo define el filo. Radio 12: a 8 se lee a rejilla. */
+  .card{background:#FFFFFF;border:1px solid #EDEAE4;border-radius:12px;
+        box-shadow:0 1px 2px rgba(28,26,23,.04), 0 4px 14px rgba(28,26,23,.035);}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:8px;background:#FFFFFF;border:1px solid #DDD8CF;color:#1C1A17;font:inherit;font-size:12px;font-weight:500;
+       box-shadow:0 1px 1.5px rgba(28,26,23,.05);transition:border-color .15s,background-color .15s,box-shadow .15s,transform .12s;}
+  .btn:hover{border-color:#726D64;background:#FCFBF9;box-shadow:0 2px 6px rgba(28,26,23,.07);}
+  .btn:active{transform:translateY(1px);}
+  /* El acento en borde y texto, nunca un relleno macizo: la misma regla que en
+     oscuro, y en claro además un botón dorado pelearía con el verde de la previa. */
+  .btn-b{border-color:#D8C193;color:#8A6D3B;background:linear-gradient(180deg,#FDFAF4,#FBF6EC);}
+  .btn-b:hover{border-color:#8A6D3B;background:linear-gradient(180deg,#FBF6EC,#F7EFDF);}
+
+  .campo{display:flex;align-items:center;height:38px;padding:0 12px;border-radius:8px;background:#FFFFFF;border:1px solid #DDD8CF;box-shadow:inset 0 1px 2px rgba(28,26,23,.03);}
+  .num{font-variant-numeric:tabular-nums;}
+
+  /* Chip de estado: punto de color + texto. El punto hace el trabajo que en
+     oscuro hacía el fondo — sobre blanco, un fondo tintado se pierde. */
+  .chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:500;border:1px solid;}
+  .chip i{width:5px;height:5px;border-radius:50%;display:block;}
+
+  @keyframes sube{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes creceX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes creceY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+  @keyframes dibuja{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+  @keyframes aparece{from{opacity:0}to{opacity:1}}
+  @keyframes deriva{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-3%,2%,0) scale(1.05)}}
+  @media (prefers-reduced-motion: no-preference){
+    /* Techo de seis pasos: 360ms de retraso como mucho, 710ms hasta el último.
+       Sin él, con 32 teselas la rejilla se movía casi dos segundos y lo último
+       en llegar era la zona de soltar — justo adonde se va al abrir el editor.
+       Un escalonado explica jerarquía; entre 32 teselas iguales no hay ninguna
+       que explicar, solo retraso. */
+    .e{animation:sube .35s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(min(var(--i,0),6)*60ms)}
+    /* Una rejilla de iguales entra como UN bloque, sin desplazamiento: son 32
+       animaciones compuestas a la vez, y es donde el iPhone lo nota. */
+    .rejilla-entra{animation:aparece .2s ease both;animation-delay:180ms}
+    .bar{transform-origin:left center;animation:creceX .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(220ms + var(--i,0)*60ms)}
+    .col{transform-origin:bottom;animation:creceY .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(260ms + var(--i,0)*22ms)}
+    /* La curva se DIBUJA de izquierda a derecha con `clip-path`: sigue siendo
+       una sola propiedad compuesta, sin reflow. */
+    .traza{animation:dibuja .9s cubic-bezier(.2,.8,.2,1) .25s both}
+    .luz{animation:aparece .4s ease both, deriva 24s ease-in-out .4s infinite alternate}
+  }
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
+
+  /* En claro, «levantar» se lee con la sombra: sobre blanco, dos blancos no se
+     distinguen, y el cambio de fondo del tema oscuro aquí no dice nada. */
+  .lift{transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s,border-color .2s;}
+  .lift:hover{transform:translateY(-3px);border-color:#DDD8CF;
+              box-shadow:0 2px 4px rgba(28,26,23,.05), 0 12px 28px rgba(28,26,23,.09);}
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;gap:30px;width:1100px;padding:30px;background:#FFFFFF;">
+
+  <div>
+    <h2 class="disp" style="margin:0;font-size:22px;">Las piezas que atan el panel</h2>
+    <p class="sub" style="max-width:74ch;">El atajo que lleva a cualquier sitio, lo que se ve cuando aún no hay nada, y lo que se ve mientras carga.</p>
+  </div>
+
+  <div style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;">
+
+    <!-- ⌘K -->
+    <div style="width:480px;">
+      <p class="lab" style="text-transform:uppercase;letter-spacing:.09em;font-weight:500;margin:0 0 10px;">El buscador ⌘K</p>
+      <div style="position:relative;border-radius:14px;overflow:hidden;background:#F3F1EC;padding:22px;">
+        <div style="border-radius:12px;overflow:hidden;background:#FFFFFF;box-shadow:0 18px 44px rgba(28,26,23,.16),0 2px 6px rgba(28,26,23,.06);">
+          <div style="display:flex;align-items:center;gap:11px;height:48px;padding:0 16px;box-shadow:inset 0 -1px 0 #EDEAE4;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E887E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <span style="font-size:14px;">cam</span>
+            <span style="width:1.5px;height:17px;background:#8A6D3B;border-radius:1px;"></span>
+            <span style="margin-left:auto;border:1px solid #DDD8CF;border-radius:5px;padding:1px 6px;font-size:10px;color:#726D64;background:#FBFAF8;">esc</span>
+          </div>
+          <div style="padding-bottom:6px;"><div class="lab" style="padding:11px 16px 5px;text-transform:uppercase;letter-spacing:.09em;font-weight:500;">Ir a</div><div style="display:flex;align-items:center;gap:11px;height:38px;padding:0 16px;background:#F7F5F0;box-shadow:inset 2px 0 0 #8A6D3B;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L3 21"/></svg><span style="flex:1;font-size:12.5px;color:#1C1A17;font-weight:500;">Galerías</span><span class="lab num">12</span></div><div style="display:flex;align-items:center;gap:11px;height:38px;padding:0 16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E887E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg><span style="flex:1;font-size:12.5px;color:#3A3630;">Configuración › Contacto</span></div><div class="lab" style="padding:11px 16px 5px;text-transform:uppercase;letter-spacing:.09em;font-weight:500;">Galerías</div><div style="display:flex;align-items:center;gap:11px;height:38px;padding:0 16px;"><span style="width:16px;aspect-ratio:9/16;border-radius:3px;background:linear-gradient(160deg,#F7E9DE,#EFDCE3);box-shadow:inset 0 0 0 1px rgba(28,26,23,.07);flex-shrink:0;"></span><span style="flex:1;font-size:12.5px;color:#3A3630;">XV de Camila</span><span class="lab num">32 medios</span></div><div style="display:flex;align-items:center;gap:11px;height:38px;padding:0 16px;"><span style="width:16px;aspect-ratio:9/16;border-radius:3px;background:linear-gradient(160deg,#FBF3DD,#EEE5CC);box-shadow:inset 0 0 0 1px rgba(28,26,23,.07);flex-shrink:0;"></span><span style="flex:1;font-size:12.5px;color:#3A3630;">Cumple de Nico</span><span class="lab num">Borrador</span></div><div class="lab" style="padding:11px 16px 5px;text-transform:uppercase;letter-spacing:.09em;font-weight:500;">Hacer</div><div style="display:flex;align-items:center;gap:11px;height:38px;padding:0 16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E887E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="flex:1;font-size:12.5px;color:#3A3630;">Nueva galería</span></div></div>
+          <div style="display:flex;align-items:center;gap:14px;height:36px;padding:0 16px;background:#FBFAF8;box-shadow:inset 0 1px 0 #EDEAE4;">
+            <span class="lab">↑↓ moverse</span><span class="lab">↵ abrir</span>
+            <span class="lab" style="margin-left:auto;">Busca galerías, paquetes y pantallas</span>
+          </div>
+        </div>
+      </div>
+      <p class="lab" style="margin-top:10px;line-height:1.6;">
+        Encuentra <b style="color:#5F5A52;font-weight:500;">pantallas</b>, no solo filas: escribir «ajustes» lleva a Configuración.
+        Sin eso, el atajo solo sirve si ya sabes cómo se llama lo que buscas.
+      </p>
+    </div>
+
+    <!-- VACÍO -->
+    <div style="flex:1;min-width:300px;">
+      <p class="lab" style="text-transform:uppercase;letter-spacing:.09em;font-weight:500;margin:0 0 10px;">La primera vez que entra</p>
+      <div class="card" style="padding:44px 30px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;">
+        <span style="position:relative;display:flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:20px;background:linear-gradient(150deg,#FBF3E3,#F0E2C4);box-shadow:inset 0 0 0 1px rgba(138,109,59,.16),0 8px 22px rgba(138,109,59,.14);">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8A6D3B" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L3 21"/></svg>
+        </span>
+        <div>
+          <p style="margin:0;font-size:15px;font-weight:600;">Aún no tienes galerías</p>
+          <p class="lab" style="margin:6px auto 0;max-width:44ch;line-height:1.6;">
+            Una galería es un evento: la boda, los XV, el cumpleaños. Dentro van los reels que
+            grabaste, y es lo que compartes por WhatsApp.
+          </p>
+        </div>
+        <button class="btn btn-b" style="height:38px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Crear la primera
+        </button>
+      </div>
+      <p class="lab" style="margin-top:10px;line-height:1.6;">
+        Siempre con una <b style="color:#5F5A52;font-weight:500;">acción</b>: un vacío sin salida es una pared.
+        Y explica qué ES la cosa — James no tiene a quién preguntar.
+      </p>
+
+      <p class="lab" style="text-transform:uppercase;letter-spacing:.09em;font-weight:500;margin:26px 0 10px;">Mientras carga</p>
+      <div class="card" style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="border-radius:10px;overflow:hidden;box-shadow:inset 0 0 0 1px #EDEAE4;">
+          <div style="aspect-ratio:16/10;background:#F1EFEA;"></div>
+          <div style="padding:11px 12px;display:flex;flex-direction:column;gap:7px;">
+            <span style="height:11px;width:62%;border-radius:4px;background:#EDEAE4;"></span>
+            <span style="height:9px;width:44%;border-radius:4px;background:#F3F1EC;"></span>
+          </div>
+        </div>
+        <div style="border-radius:10px;overflow:hidden;box-shadow:inset 0 0 0 1px #EDEAE4;">
+          <div style="aspect-ratio:16/10;background:#F1EFEA;"></div>
+          <div style="padding:11px 12px;display:flex;flex-direction:column;gap:7px;">
+            <span style="height:11px;width:48%;border-radius:4px;background:#EDEAE4;"></span>
+            <span style="height:9px;width:56%;border-radius:4px;background:#F3F1EC;"></span>
+          </div>
+        </div>
+      </div>
+      <p class="lab" style="margin-top:10px;line-height:1.6;">
+        Con la <b style="color:#5F5A52;font-weight:500;">forma real</b> del contenido, no un rectángulo: así lo que llega
+        encaja donde ya estabas mirando. Sin brillo recorriendo — repinta en bucle y el iPhone lo nota.
+      </p>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

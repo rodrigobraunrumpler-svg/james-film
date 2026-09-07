@@ -93,6 +93,7 @@ export type UploadPurpose =
   | 'PORTADA_CATEGORIA'
   | 'IMAGEN_PAQUETE'
   | 'AVATAR_TESTIMONIO'
+  | 'FOTO_PERFIL'
   | 'CAPTURA_TESTIMONIO'
   | 'LOGO'
   | 'FIRMA'
@@ -165,6 +166,15 @@ export interface AdminGalleryDto extends Omit<GalleryDto, 'media'> {
    * `openapi-public.json` que el CI congela.
    */
   isPublished: boolean;
+  /**
+   * Hay una hoja de autorización de imagen firmada para este evento.
+   *
+   * **Bloquea la publicación**, igual que en los testimonios: en una galería
+   * salen caras de gente real y en los XV años salen MENORES. Fuera del DTO
+   * público —allí no significaría nada— y por eso no mueve el
+   * `openapi-public.json` que el CI congela.
+   */
+  hasConsent: boolean;
 }
 
 export interface GalleryListItemDto {
@@ -177,11 +187,22 @@ export interface GalleryListItemDto {
   isFeatured: boolean;
   category: CategoryRefDto;
   mediaCount: number;
+  /**
+   * Cuántos de esos `mediaCount` son FOTOS. Los vídeos son la resta.
+   *
+   * Sin esto la landing solo tenía un total y escribía «reels» en todas
+   * partes, así que una galería de tres fotos anunciaba «3 reels» — una cifra
+   * falsa en la portada, que es justo lo que este proyecto no publica. Se manda
+   * el desglose y la palabra la elige quien pinta.
+   */
+  photoCount: number;
 }
 
 /** Lo que ve el admin en la lista: estado, último cambio y datos de la portada. */
 export interface AdminGalleryListItemDto extends GalleryListItemDto {
   isPublished: boolean;
+  /** Para que la lista pueda avisar antes de que James pulse «Publicar». */
+  hasConsent: boolean;
   /**
    * Para «Publicada hace 3 días» / «Editada hace 2 horas». No hay `publishedAt`
    * en el schema: la frase cambia según `isPublished`, el instante es el mismo.
@@ -231,6 +252,29 @@ export interface AdminCategoryDto extends CategoryDto {
   metaDescription: string | null;
   galleryCount: number;
   packageCount: number;
+  /**
+   * Las portadas de sus tres galerías más recientes. La tarjeta enseña QUÉ hay
+   * dentro en vez de solo el nombre: una lista de nombres no dice nada de un
+   * catálogo que es visual. Van vacías mientras la categoría no tenga galerías
+   * publicadas con portada.
+   */
+  recentCoverUrls: string[];
+  /**
+   * A qué paquete acaban yendo los clics de esta categoría, derivado por
+   * `PackageCategory` — no hace falta una columna `categoryId` en el clic.
+   * Ordenado de más a menos y recortado a los tres primeros: la tarjeta pinta
+   * una barra, no una tabla.
+   */
+  clickMix: CategoryClickShareDto[];
+  /** La suma de `clickMix`. Cero es un estado legítimo, no un fallo. */
+  clickTotal: number;
+}
+
+/** Un tramo de la barra de clics de una categoría. */
+export interface CategoryClickShareDto {
+  packageId: string;
+  packageName: string;
+  count: number;
 }
 
 // ------------------------------------------------------------
@@ -367,6 +411,8 @@ export interface SiteSettingsDto {
   slogan: string | null;
   /** Markdown, solo negrita: el resaltado dorado del flyer. Se renderiza en build. */
   aboutText: string | null;
+  /** La cara de James. **No es el logo**: ése es una tira de película. */
+  photoUrl: string | null;
   logoUrl: string | null;
   signatureUrl: string | null;
   /** Internacional SIN el `+`, listo para `wa.me/`. Ej: "51994724944". */
@@ -495,8 +541,288 @@ export interface ApiPaginated<T> extends ApiSuccess<T[]> {
 // ------------------------------------------------------------
 
 /** El clic a WhatsApp ES el lead: sin formulario, sin fricción. */
+/**
+ * De dónde salió el clic. Es la MISMA lista cerrada que `@IsIn(FUENTES)` valida
+ * en la API: con `string` a secas, la landing compilaba mandando una fuente que
+ * no existe, la API devolvía 422 y el clic se perdía **sin ruido**. Ya pasó.
+ * Al añadir una hay que tocar `FUENTES` y regenerar el snapshot del OpenAPI.
+ */
+export type WhatsappSource =
+  | 'hero'
+  /**
+   * El botón verde de la BARRA superior y el del MENÚ desplegable.
+   *
+   * Los tres mandaban `hero`, y con eso ninguna mejora del hero se podía medir:
+   * el panel daría el mismo número antes y después porque estaría contando
+   * juntos el botón que se ve en la primera pantalla y el que acompaña durante
+   * toda la página. Son intenciones distintas — uno se pulsa tras leer la
+   * oferta, el otro tras haber bajado.
+   */
+  | 'barra'
+  | 'menu'
+  | 'paquetes'
+  | 'footer'
+  | 'galeria'
+  | 'calendario-libre'
+  | 'calendario-ocupado'
+  /** La línea de PUBLICIDAD PARA NEGOCIOS, que es otro público y otro CTA. */
+  | 'negocios';
+
 export interface TrackWhatsappClickInput {
   packageId?: string;
-  /** Dónde estaba el botón: "hero" | "paquetes" | "footer". */
-  source?: string;
+  source?: WhatsappSource;
+  /**
+   * Qué DÍA preguntaba, cuando el clic sale del calendario. Fecha de
+   * calendario (`YYYY-MM-DD`), no instante.
+   *
+   * La landing ya la sabe —la escribe dentro del mensaje de WhatsApp— y la
+   * tiraba, así que se podía contar cuánta gente pregunta por un día cogido
+   * pero no CUÁL. Se manda solo desde el calendario: un clic del hero no
+   * pregunta por ninguna fecha, y rellenarla ahí ensuciaría el recuento.
+   */
+  requestedDate?: IsoDate | null;
+}
+
+
+// ------------------------------------------------------------
+//  Disponibilidad — qué días NO tiene libres
+// ------------------------------------------------------------
+
+/** Un día ocupado tal y como lo ve el ADMIN. `note` nunca sale al público. */
+export interface BusyDayDto {
+  date: IsoDate;
+  note: string | null;
+  /** Los días de una misma reserva lo comparten. `null` si es un día suelto. */
+  groupId: string | null;
+}
+
+/**
+ * Una reserva, ya agrupada: lo que el Panel pinta y lo que el aviso cuenta.
+ * «24 y 25 de octubre» es UNA de éstas, no dos días.
+ */
+export interface BookingDto {
+  /** El `groupId`, o la propia fecha cuando es un día suelto. */
+  id: string;
+  from: IsoDate;
+  to: IsoDate;
+  note: string | null;
+}
+
+/**
+ * Lo que consume la landing. Solo fechas: sin notas, sin ids, sin nada que
+ * identifique a un cliente.
+ */
+export interface AvailabilityDto {
+  /** Días ocupados, en orden. Lo que NO esté aquí y caiga dentro de la ventana, libre. */
+  busy: IsoDate[];
+  /**
+   * Hasta dónde llega el dato. **Es imprescindible**: sin él la landing no
+   * puede distinguir «libre» de «no lo sé», y un día a catorce meses vista
+   * saldría libre cuando en realidad no hay información. Un día más allá de
+   * `until` NO se pinta — ni libre ni ocupado.
+   */
+  until: IsoDate;
+  /**
+   * La última vez que James tocó el calendario, para el «actualizado hace X».
+   * `null` si nunca ha marcado nada.
+   */
+  updatedAt: IsoDateTime | null;
+}
+
+/**
+ * Marca o desmarca. Un solo endpoint para el toque, el arrastre y el rango.
+ * Marcar varias fechas de una vez las mete en el MISMO grupo: es lo que
+ * convierte «24 y 25» en una reserva en vez de en dos días sueltos.
+ */
+/**
+ * Todo lo que la pantalla de Disponibilidad necesita, **en una sola petición**.
+ *
+ * Mismo criterio que el Panel: la pantalla no puede pintarse a trozos —el
+ * bloque de «lo que viene» decide el alto de todo lo de abajo— y cuatro
+ * peticiones darían cuatro saltos de layout en el 4G de James.
+ */
+export interface AvailabilitySummaryDto {
+  /** Las reservas que vienen, ya agrupadas. «24 y 25» es UNA, no dos. */
+  proximas: BookingDto[];
+  /**
+   * Sábados libres por mes, los próximos tres. Es el número que la web publica
+   * («quedan 2 sábados libres en setiembre») y el que decide si sube el precio
+   * o mueve algo. Que lo vea él antes que el cliente.
+   */
+  sabados: SaturdayCountDto[];
+  /**
+   * Reservas que YA PASARON y de las que no hay ninguna galería con esa fecha:
+   * trabajo grabado y sin publicar. Es el único dato de esta pantalla que él no
+   * tiene en ninguna otra parte, y es dinero parado.
+   */
+  sinGaleria: BookingDto[];
+  /**
+   * Clics a WhatsApp salidos del calendario en los últimos 30 días.
+   *
+   * `ocupado` es el número interesante: gente que quería un día que ya estaba
+   * cogido. Dice cuánta demanda está rechazando, que es lo que justifica subir
+   * precios o buscar un segundo cámara.
+   */
+  clicks: CalendarClicksDto;
+  /**
+   * Las fechas más pedidas desde el calendario en 30 días, la más pedida
+   * primero. Es el dato accionable: saber que el 24 de octubre lo han pedido
+   * tres veces y lo tiene cogido decide si sube el precio ese fin de semana,
+   * busca un segundo cámara o le escribe él al que preguntó.
+   */
+  masPedidas: RequestedDateDto[];
+  /** Cuándo tocó el calendario por última vez. `null` si nunca. */
+  updatedAt: IsoDateTime | null;
+}
+
+export interface SaturdayCountDto {
+  /** El primer día del mes, como fecha de calendario. */
+  month: IsoDate;
+  free: number;
+  total: number;
+}
+
+export interface CalendarClicksDto {
+  free: number;
+  busy: number;
+}
+
+/** Una fecha que la gente pide y James no tiene. Lo que decide subir el precio. */
+export interface RequestedDateDto {
+  date: IsoDate;
+  /** Cuántos escribieron por ese día en la ventana. */
+  count: number;
+  /** `true` si ese día está marcado como ocupado: entonces es demanda rechazada. */
+  busy: boolean;
+}
+
+export interface SetAvailabilityInput {
+  dates: IsoDate[];
+  busy: boolean;
+  /** Solo se aplica cuando `busy` es true. Se escribe en todos los días. */
+  note?: string | null;
+}
+
+// ------------------------------------------------------------
+//  Panel — la pantalla que abre James
+// ------------------------------------------------------------
+
+export type DeployStatus = 'IDLE' | 'QUEUED' | 'BUILDING' | 'SUCCESS' | 'FAILED';
+
+/**
+ * Cada aviso lleva su ACCIÓN, no solo su texto: un aviso que no se puede
+ * resolver desde donde se lee obliga a buscar la pantalla, y entonces se
+ * ignora. `id` es lo que el admin guarda en `localStorage` al descartarlo
+ * —sin tabla, decisión de §2— así que tiene que ser estable entre cargas.
+ */
+export type AttentionKind =
+  | 'DEPLOY_FAILED'
+  | 'MEDIA_FAILED'
+  | 'STALE_DRAFT'
+  /**
+   * Un día marcado como ocupado que ya pasó y del que no hay ninguna galería.
+   * Grabó y no publicó: es trabajo hecho que no está trayendo clientes, y es lo
+   * único del Panel que James no sabe ya por su cuenta.
+   */
+  | 'EVENT_WITHOUT_GALLERY';
+
+export interface AttentionItemDto {
+  id: string;
+  kind: AttentionKind;
+  title: string;
+  detail: string;
+  /** Ruta del admin a la que lleva el botón. */
+  href: string;
+  accion: string;
+  /** Miniatura cuando el aviso es sobre una galería. */
+  coverUrl: string | null;
+  /** El degradado de la galería se deriva de esto cuando no hay portada. */
+  galleryId: string | null;
+  /** Lo pinta en rojo en vez de en latón. Solo el deploy fallido lo es. */
+  grave: boolean;
+  /**
+   * Cuándo pasó. Va en ISO y lo formatea el admin con `Intl.RelativeTimeFormat`
+   * —«hace 2 horas»—: la API no devuelve texto de interfaz. `null` cuando el
+   * aviso no tiene un instante concreto.
+   */
+  since: IsoDateTime | null;
+}
+
+/** Un día de la serie de 30. `date` es fecha de calendario, se formatea en UTC. */
+export interface ClickDayDto {
+  date: IsoDate;
+  count: number;
+}
+
+/**
+ * El único número que mide el negocio. `previousTotal` es la ventana MÓVIL
+ * anterior (`now - 60d` a `now - 30d`), no el mes de calendario: así el
+ * cálculo no depende de la zona horaria.
+ */
+export interface ClickStatsDto {
+  total: number;
+  previousTotal: number;
+  daily: ClickDayDto[];
+  byPackage: CategoryClickShareDto[];
+  /** Clics desde el hero o el pie, sin paquete asociado. */
+  noPackage: number;
+  /**
+   * De DÓNDE salieron, no de qué paquete. Son dos preguntas distintas y el
+   * Panel solo contestaba la segunda: sin esto no se sabe si el calendario —o
+   * la línea de negocios, que es medio producto— trae clientes o no los trae.
+   * Ordenado de más a menos y sin las fuentes que no tuvieron ninguno.
+   */
+  bySource: SourceClickShareDto[];
+}
+
+export interface SourceClickShareDto {
+  source: WhatsappSource;
+  clicks: number;
+}
+
+export interface DeployStateDto {
+  status: DeployStatus;
+  pendingChanges: number;
+  error: string | null;
+  finishedAt: IsoDateTime | null;
+}
+
+export interface DashboardDto {
+  attention: AttentionItemDto[];
+  clicks: ClickStatsDto;
+  storage: StorageUsageDto;
+  deploy: DeployStateDto;
+  /** Para el atajo «Subir a …»: la última galería que James tocó. */
+  ultimaGaleria: { id: string; title: string } | null;
+  /**
+   * Sábados libres de los tres próximos meses, contados desde HOY.
+   *
+   * Es el número de escasez que la web publica —«quedan 2 sábados libres en
+   * setiembre»— y estaba solo en Disponibilidad, o sea únicamente si iba a
+   * buscarlo. En el Panel lo ve al abrir, que es donde decide si sube el precio
+   * o mueve algo.
+   */
+  saturdays: SaturdayCountDto[];
+}
+
+// ------------------------------------------------------------
+//  Buscador ⌘K
+// ------------------------------------------------------------
+
+export type SearchKind = 'GALLERY' | 'PACKAGE' | 'CATEGORY' | 'TESTIMONIAL';
+
+/**
+ * Un resultado del buscador global. Deliberadamente plano: el atajo tiene que
+ * poder pintar cualquier tipo con el mismo componente, y el día que entre un
+ * quinto modelo no debería tocar la interfaz.
+ */
+export interface SearchResultDto {
+  kind: SearchKind;
+  id: string;
+  /** Lo que se lee grande. */
+  label: string;
+  /** La línea de debajo: estado, precio, recuento. Puede faltar. */
+  hint: string | null;
+  href: string;
+  coverUrl: string | null;
 }

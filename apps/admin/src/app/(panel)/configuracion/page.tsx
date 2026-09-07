@@ -7,13 +7,12 @@ import {
 export const metadata = { title: 'Configuración · James Film' };
 
 export default function Page() {
+  // El h1 vive DENTRO del panel, con su bajada y sus pestañas: aquí había un
+  // segundo `<h1>Configuración</h1>` y la pantalla lo pintaba dos veces.
+  // nuqs lee la URL, así que necesita Suspense en el App Router.
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="text-xl font-semibold tracking-[-0.01em]">Configuración</h1>
-      {/* nuqs lee la URL: necesita Suspense en el App Router. */}
-      <Suspense fallback={<SkeletonConfiguracion />}>
-        <PanelConfiguracion />
-      </Suspense>
-    </div>
+    <Suspense fallback={<SkeletonConfiguracion />}>
+      <PanelConfiguracion />
+    </Suspense>
   );
 }

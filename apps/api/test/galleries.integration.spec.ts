@@ -66,7 +66,7 @@ describe('controller público', () => {
 
   it('no devuelve galerías con soft delete', async () => {
     const g = await crear({ title: 'Publicada' });
-    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true, hasConsent: true });
     await http().delete(`/admin/galleries/${g.id}`).set(auth()).expect(204);
 
     const { body } = await http().get('/galleries').expect(200);
@@ -83,7 +83,7 @@ describe('controller público', () => {
 
   it('la LISTA no trae los medios, solo cuántos hay', async () => {
     const g = await crear({ title: 'Con medios' });
-    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true, hasConsent: true });
     await prisma.media.createMany({
       data: [
         {
@@ -113,7 +113,7 @@ describe('controller público', () => {
 
   it('el detalle solo devuelve Media en READY', async () => {
     const g = await crear({ title: 'Detalle' });
-    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true, hasConsent: true });
     await prisma.media.createMany({
       data: [
         {
@@ -142,7 +142,7 @@ describe('controller público', () => {
 
   it('no expone campos internos en el DTO', async () => {
     const g = await crear({ title: 'Interna' });
-    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true, hasConsent: true });
     await prisma.media.create({
       data: {
         galleryId: g.id,
@@ -181,7 +181,7 @@ describe('controller público', () => {
     // páginas: una sale dos veces y otra ninguna.
     for (const t of ['Uno', 'Dos', 'Tres', 'Cuatro']) {
       const g = await crear({ title: t });
-      await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+      await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true, hasConsent: true });
     }
 
     const p1 = await http().get('/galleries?page=1&pageSize=2').expect(200);
@@ -248,7 +248,7 @@ describe('portada y estado (lo que necesita el editor)', () => {
   it('?estado filtra borradores y publicadas, y rechaza cualquier otra cosa', async () => {
     const borrador = await crear({ title: 'Sigue en borrador' });
     const publicada = await crear({ title: 'Ya está en vivo' });
-    await http().patch(`/admin/galleries/${publicada.id}`).set(auth()).send({ isPublished: true });
+    await http().patch(`/admin/galleries/${publicada.id}`).set(auth()).send({ isPublished: true, hasConsent: true });
 
     const soloBorradores = await http()
       .get('/admin/galleries?estado=borradores')
@@ -286,7 +286,7 @@ describe('portada y estado (lo que necesita el editor)', () => {
 
   it('/counts NO lo captura la ruta :id, y cuadra con la lista', async () => {
     const publicada = await crear({ title: 'Contada y publicada' });
-    await http().patch(`/admin/galleries/${publicada.id}`).set(auth()).send({ isPublished: true });
+    await http().patch(`/admin/galleries/${publicada.id}`).set(auth()).send({ isPublished: true, hasConsent: true });
     await crear({ title: 'Contada y en borrador' });
 
     // Si `@Get('counts')` se declarara DESPUÉS de `@Get(':id')`, esto sería un
@@ -296,6 +296,29 @@ describe('portada y estado (lo que necesita el editor)', () => {
 
     const lista = await http().get('/admin/galleries?estado=borradores').set(auth()).expect(200);
     expect(lista.body.meta.totalCount).toBe(body.data.borradores);
+  });
+
+  it('destacar una galería desmarca la anterior: primera en la web solo puede haber una', async () => {
+    const a = await crear({ title: 'Destacada A' });
+    const b = await crear({ title: 'Destacada B' });
+
+    await http().patch(`/admin/galleries/${a.id}`).set(auth()).send({ isFeatured: true }).expect(200);
+    await http().patch(`/admin/galleries/${b.id}`).set(auth()).send({ isFeatured: true }).expect(200);
+
+    // `isFeatured` solo sirve para ganar el orderBy de la lista pública, así que
+    // dos marcadas dejaban al panel diciendo que las dos encabezan la web
+    // mientras el `order` decidía en silencio cuál de verdad.
+    expect((await prisma.gallery.findUniqueOrThrow({ where: { id: a.id } })).isFeatured).toBe(false);
+    expect((await prisma.gallery.findUniqueOrThrow({ where: { id: b.id } })).isFeatured).toBe(true);
+
+    // Y quitarla NO asciende a ninguna otra: quedarse sin destacada es válido,
+    // ahí manda el `order`.
+    await http()
+      .patch(`/admin/galleries/${b.id}`)
+      .set(auth())
+      .send({ isFeatured: false })
+      .expect(200);
+    expect(await prisma.gallery.count({ where: { isFeatured: true } })).toBe(0);
   });
 
   it('la lista de admin trae updatedAt y los datos de la portada; la pública NO', async () => {
@@ -314,7 +337,7 @@ describe('portada y estado (lo que necesita el editor)', () => {
       },
     });
     expect(m.id).toBeDefined();
-    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true, hasConsent: true });
 
     const admin = await http().get(`/admin/galleries?q=Con portada`).set(auth()).expect(200);
     expect(admin.body.data[0]).toMatchObject({ coverType: 'REEL', coverDurationSec: 72 });
@@ -349,7 +372,7 @@ describe('portada y estado (lo que necesita el editor)', () => {
 
   it('el detalle de admin trae status y error; el público NO', async () => {
     const g = await crear({ title: 'Estados' });
-    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ isPublished: true, hasConsent: true });
     await prisma.media.createMany({
       data: [
         {
@@ -579,7 +602,7 @@ describe('isPublished: lo ve el admin, no la landing', () => {
     await http()
       .patch(`/admin/galleries/${g.id}`)
       .set(auth())
-      .send({ isPublished: true })
+      .send({ isPublished: true, hasConsent: true })
       .expect(200);
 
     const { body } = await http().get(`/galleries/${g.slug}`).expect(200);
@@ -593,7 +616,7 @@ describe('isPublished: lo ve el admin, no la landing', () => {
     const publicada = await http()
       .patch(`/admin/galleries/${g.id}`)
       .set(auth())
-      .send({ isPublished: true })
+      .send({ isPublished: true, hasConsent: true })
       .expect(200);
     expect(publicada.body.data.isPublished).toBe(true);
     await http().get(`/galleries/${g.slug}`).expect(200);
@@ -651,5 +674,78 @@ describe('vaciar TODOS los opcionales a la vez', () => {
     const { body } = await http().get(`/admin/galleries/${g.id}`).set(auth()).expect(200);
     expect(body.data.description).toBe('no me toques');
     expect(body.data.location).toBe('Ayacucho');
+  });
+});
+
+
+/**
+ * PUBLICAR EXIGE LA AUTORIZACIÓN DE IMAGEN.
+ *
+ * Es la misma puerta que ya tenían los testimonios y por una razón más fuerte:
+ * en una galería salen caras de gente real y en los XV años salen **menores**.
+ * Hasta ahora publicar era un botón sin fricción sobre lo único que puede
+ * traerle a James un problema de verdad (Ley 29733, art. 15 del Código Civil).
+ */
+describe('consentimiento para publicar una galería', () => {
+  const publicar = (id: string, body: Record<string, unknown> = {}) =>
+    http()
+      .patch(`/admin/galleries/${id}`)
+      .set(auth())
+      .send({ isPublished: true, ...body });
+
+  it('sin autorización marcada, publicar da 422 con su código', async () => {
+    const g = await crear({ title: 'test- Sin permiso' });
+    const res = await publicar(g.id).expect(422);
+    expect(res.body.code).toBe('CONSENT_REQUIRED');
+
+    // Y no se ha publicado a medias.
+    const fila = await prisma.gallery.findUniqueOrThrow({ where: { id: g.id } });
+    expect(fila.isPublished).toBe(false);
+  });
+
+  it('nace SIN autorización, aunque nadie diga nada', async () => {
+    const g = await crear({ title: 'test- Recien creada' });
+    const fila = await prisma.gallery.findUniqueOrThrow({ where: { id: g.id } });
+    expect(fila.hasConsent).toBe(false);
+  });
+
+  it('marcarla y publicar en el MISMO patch vale', async () => {
+    // Es lo que hace el panel: una sola confirmación, un solo guardado.
+    const g = await crear({ title: 'test- Permiso y publicar' });
+    const { body } = await publicar(g.id, { hasConsent: true }).expect(200);
+    expect(body.data.isPublished).toBe(true);
+    expect(body.data.hasConsent).toBe(true);
+  });
+
+  it('con la autorización ya marcada antes, publicar sola vale', async () => {
+    const g = await crear({ title: 'test- Permiso antes' });
+    await http().patch(`/admin/galleries/${g.id}`).set(auth()).send({ hasConsent: true }).expect(200);
+    await publicar(g.id).expect(200);
+  });
+
+  it('DESPUBLICAR nunca se bloquea, aunque se quite el permiso a la vez', async () => {
+    // Quitar algo de la web es justo lo que hay que poder hacer sin fricción:
+    // es como se atiende una solicitud de cancelación.
+    const g = await crear({ title: 'test- Retirar' });
+    await publicar(g.id, { hasConsent: true }).expect(200);
+
+    const { body } = await http()
+      .patch(`/admin/galleries/${g.id}`)
+      .set(auth())
+      .send({ isPublished: false, hasConsent: false })
+      .expect(200);
+    expect(body.data.isPublished).toBe(false);
+  });
+
+  it('el DTO del admin lo lleva; el público no lo menciona', async () => {
+    const g = await crear({ title: 'test- DTO' });
+    const { body: admin } = await http().get(`/admin/galleries/${g.id}`).set(auth()).expect(200);
+    expect(admin.data).toHaveProperty('hasConsent');
+
+    await publicar(g.id, { hasConsent: true }).expect(200);
+    const { body: publico } = await http().get(`/galleries/${g.slug}`).expect(200);
+    expect(publico.data, 'el consentimiento no es asunto del visitante').not.toHaveProperty(
+      'hasConsent',
+    );
   });
 });

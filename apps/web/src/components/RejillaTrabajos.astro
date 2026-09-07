@@ -1,0 +1,72 @@
+---
+/**
+ * La rejilla de trabajos. La comparten `/trabajos` y la página de cada
+ * categoría, que son la misma pantalla con distinto filtro: copiarla en dos
+ * sitios garantiza que en dos semanas se vean distintas.
+ */
+import Icono from './Icono.astro';
+import { degradado } from '../lib/degradado';
+import { largo } from '../lib/fechas';
+import { ESCONDER_SI_FALLA, SIZES, src, srcset } from '../lib/imagen';
+import { piezasCorto } from '../lib/piezas';
+import type { GalleryListItemDto } from '@james-film/contracts';
+
+interface Props {
+  galerias: GalleryListItemDto[];
+  /** El texto de cuando no hay nada. Cambia según de dónde se entre. */
+  vacio: string;
+}
+
+const { galerias, vacio } = Astro.props;
+---
+
+{
+  galerias.length > 0 ? (
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4" data-rejilla>
+      {galerias.map((g, i) => (
+        <a
+          href={`/trabajos/${g.slug}`}
+          data-cat={g.category.slug}
+          class="entra flex flex-col gap-2"
+          style={`--i: ${i}`}
+        >
+          <div
+            class="relative aspect-9/16 overflow-hidden rounded-card border border-line"
+            style={`background: ${degradado(g.id)}`}
+          >
+            {g.coverUrl && (
+              <img
+                src={src(g.coverUrl)}
+                srcset={srcset(g.coverUrl)}
+                sizes={SIZES.tesela}
+                alt=""
+                loading={i < 6 ? 'eager' : 'lazy'}
+                onerror={ESCONDER_SI_FALLA}
+                class="absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+            {piezasCorto(g) && (
+              <span
+                class="absolute right-2 bottom-2 rounded-chip px-1.75 py-0.75 text-xs"
+                style="background: rgba(8,7,6,0.82); color: #f2efe9"
+              >
+                {piezasCorto(g)}
+              </span>
+            )}
+          </div>
+          <div class="flex flex-col">
+            <span class="text-sm font-medium">{g.title}</span>
+            <span class="text-xs text-ash">
+              {[g.category.name, g.eventDate && largo(g.eventDate)].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+        </a>
+      ))}
+    </div>
+  ) : (
+    <p class="flex items-center gap-2.5 text-ash">
+      <Icono nombre="camara" tamano={18} clase="text-brass-600" />
+      {vacio}
+    </p>
+  )
+}

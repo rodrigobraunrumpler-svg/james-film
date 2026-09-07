@@ -12,6 +12,7 @@ export type DatosAjustes = Partial<
     | 'tagline'
     | 'slogan'
     | 'aboutText'
+    | 'photoKey'
     | 'logoKey'
     | 'signatureKey'
     | 'whatsappNumber'

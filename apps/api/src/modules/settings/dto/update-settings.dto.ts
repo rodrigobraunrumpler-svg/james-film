@@ -11,6 +11,7 @@ export class UpdateSettingsDto {
   @IsOptional() @IsString() @MaxLength(160) slogan?: string | null;
   @IsOptional() @IsString() @MaxLength(4000) aboutText?: string | null;
 
+  @IsOptional() @IsString() @MaxLength(255) photoKey?: string | null;
   @IsOptional() @IsString() @MaxLength(255) logoKey?: string | null;
   @IsOptional() @IsString() @MaxLength(255) signatureKey?: string | null;
 

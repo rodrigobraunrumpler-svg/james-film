@@ -1,4 +1,5 @@
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
@@ -12,11 +13,35 @@ import { validationExceptionFactory } from './common/validation/validation-excep
  * una copia y deja de detectar los cambios.
  */
 export function configurarApp(app: NestExpressApplication): void {
+  /**
+   * El navegador de la LANDING habla DIRECTAMENTE con la API: el clic a
+   * WhatsApp se registra desde ahí. `CLAUDE.md` ya lo anticipaba —«vuelve a
+   * hacer falta el día que un navegador hable directamente con la API»—, y sin
+   * esto el preflight fallaba y el clic se perdía en silencio: el panel diría
+   * «0 clics» y parecería que la web no funciona.
+   *
+   * Va lo PRIMERO de la cadena para que el `OPTIONS` termine aquí y no gaste
+   * cuota del throttler global: si el preflight consume, el `POST` que va
+   * detrás se queda sin. Hay test.
+   */
+  app.enableCors({
+    origin: app.get(ConfigService).getOrThrow<string[]>('WEB_ORIGIN'),
+    methods: ['GET', 'POST'],
+    /**
+     * LO QUE CONSERVA «sin superficie de CSRF»: sin credenciales no hay cookie
+     * que el navegador mande sola. El admin sigue yendo por su pasarela, que
+     * adjunta el Bearer en el servidor.
+     */
+    credentials: false,
+    maxAge: 86_400,
+  });
+
   // La CSP por defecto de helmet rompe la UI de Swagger (scripts y estilos en
   // línea). Se exceptúa /docs en vez de desactivar la CSP entera.
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
-  // El primero de la cadena: el filtro de errores necesita el id aunque falle
+  // Lo primero que TOCA una petición de verdad —el CORS de arriba responde al
+  // preflight y ya no sigue—: el filtro de errores necesita el id aunque falle
   // cualquier cosa después.
   app.use(requestId);
 

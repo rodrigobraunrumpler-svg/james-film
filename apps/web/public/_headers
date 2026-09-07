@@ -1,0 +1,41 @@
+# Cabeceras de Cloudflare Pages.
+#
+# La CSP es la parte delicada: TIENE que dejar pasar el dominio `media.` (donde
+# viven los reels y las portadas) y el de la API (donde se registra el clic a
+# WhatsApp). Si no, la web se queda sin imágenes y sin métrica, y el único
+# rastro está en la consola de quien visita — o sea, en ninguna parte.
+#
+# Los dominios van a mano y no por variable de entorno: un fichero `_headers`
+# es estático, Pages no lo interpola. Al cambiar de dominio hay que tocarlo, y
+# por eso está escrito arriba del todo.
+
+/*
+  # `unsafe-inline` en `script-src` es obligatorio, no un descuido: el script
+  # del tema va EN LÍNEA y bloqueante a propósito —leerlo en un efecto pintaría
+  # la pantalla oscura y saltaría a clara—, y el registro del clic también.
+  # Con nonces habría que generar el HTML en runtime, y esta web es estática.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://media.jamesfilm.pe; media-src 'self' https://media.jamesfilm.pe; font-src 'self'; connect-src 'self' https://api.jamesfilm.pe; form-action 'none'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests
+
+  # Nada de adivinar el tipo por el contenido: un .jpg que en realidad es HTML
+  # deja de ser un problema.
+  X-Content-Type-Options: nosniff
+
+  # Al salir a `wa.me` solo viaja el origen, no la ruta. Que WhatsApp sepa que
+  # vienes de jamesfilm.pe está bien; de qué galería exacta, no hace falta.
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Esta web no usa ninguna de estas. Declararlo apagado impide que un script
+  # de terceros las pida en nombre del sitio.
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+
+  # `frame-ancestors 'none'` ya lo cubre en navegadores modernos; esto es para
+  # los que aún miran esta cabecera.
+  X-Frame-Options: DENY
+
+# Las fuentes y los assets con hash son inmutables: se cachean un año. El HTML
+# NO, o un despliegue no se vería hasta que caduque.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable

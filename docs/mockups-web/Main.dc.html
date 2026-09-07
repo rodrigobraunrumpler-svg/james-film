@@ -1,0 +1,632 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=Inter:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #0A0908; }
+    a { color: #C9A96A; text-decoration: none; }
+    a:hover { color: #E5D3AC; }
+    .d { font-family: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif; font-weight: 800; letter-spacing: -0.025em; line-height: 1.04; }
+    .b { font-family: Inter, system-ui, -apple-system, sans-serif; }
+    .pista { font-size: 14px; line-height: 1.5; color: #9C958C; }
+    .eyebrow { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #9A7F47; font-weight: 500; }
+    .cal { display: flex; align-items: center; justify-content: center; height: 48px; border-radius: 12px; font-size: 16px; border: 1px solid transparent; }
+    .lib { border-color: #2E2A26; color: #F2EFE9; }
+    .ocu { color: #6B655C; background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(155,148,140,.14) 5px 10px); }
+    .sel { background: #C9A96A; color: #0A0908; font-weight: 600; border-color: #C9A96A; }
+    .ran { background: rgba(201,169,106,.18); border-color: rgba(201,169,106,.4); color: #E5D3AC; }
+    .fue { color: #3D362F; }
+
+    /* ── Movimiento: SOLO transform y opacity, y apagado si se pide ── */
+    @keyframes sube { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    @keyframes desliza { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    @keyframes latido { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.82); } }
+    @keyframes brilla { 0%,100% { opacity: .5; } 50% { opacity: .95; } }
+    @keyframes flota { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+    @media (prefers-reduced-motion: no-preference) {
+      .e { animation: sube .62s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(min(var(--i,0), 6) * 90ms); }
+      .tira { animation: desliza 26s linear infinite; }
+      .vivo { animation: latido 2.1s ease-in-out infinite; }
+      .aura { animation: brilla 7s ease-in-out infinite; }
+      .flota { animation: flota 6s ease-in-out infinite; }
+    }
+    /* Grano: textura, no gradiente de relleno */
+    .grano { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.32'/></svg>"); }
+  </style>
+</helmet>
+
+<div class="b" style="position: relative; width: 390px; background: #0A0908; color: #F2EFE9; font-size: 17px; line-height: 1.6; overflow: hidden;">
+
+  <!-- ═══ TIRA DE CONTEXTO · dónde está y cuándo contesta ═══ -->
+  <!-- Las dos cosas que se comprueban antes de escribir a un desconocido. En
+       el menú no caben sin robarle sitio a la navegación. -->
+  <div style="position: relative; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 20px; background: #141210; font-size: 13px; color: #9C958C;">
+    <span style="display: flex; align-items: center; gap: 6px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9A7F47" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.8"/></svg>
+      Ayacucho
+    </span>
+    <span style="width: 3px; height: 3px; border-radius: 999px; background: #3D362F;"></span>
+    <span style="display: flex; align-items: center; gap: 6px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9A7F47" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Contesto de 9 a. m. a 9 p. m.
+    </span>
+  </div>
+
+  <!-- ═══ BARRA ═══ -->
+  <div style="position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #2E2A26; background: rgba(10,9,8,0.92);">
+    <a href="#" style="display: flex; align-items: center; gap: 10px; color: #F2EFE9;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2" y="4" width="20" height="16" rx="2.5" stroke="#C9A96A" stroke-width="1.6"/>
+        <path d="M2 9h20M2 15h20M7 4v16M17 4v16" stroke="#C9A96A" stroke-width="1.2"/>
+      </svg>
+      <span class="d" style="font-size: 17px; letter-spacing: 0.08em;">JAMES FILM</span>
+    </a>
+    <div style="display: flex; align-items: center; gap: 4px;">
+      <!-- El botón verde vive TAMBIÉN aquí desde el primer píxel: quien entra
+           decidido no debería tener que buscar nada. -->
+      <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 7px; height: 48px; padding: 0 15px; border-radius: 12px; background: #25D366; color: #0A0908; font-size: 15px; font-weight: 600;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0A0908" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+        Escribir
+      </a>
+      <button type="button" style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; border: 0; background: transparent; cursor: pointer;" aria-label="Abrir menú">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2EFE9" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ MENÚ · píldoras con icono, la activa con su filo ═══ -->
+  <!-- Se desliza con el dedo, sin barra visible. La píldora activa sigue a la
+       sección al bajar: orientación sin tener que pensarla. -->
+  <div style="position: relative; z-index: 3; display: flex; gap: 8px; padding: 11px 20px; overflow: hidden; background: #141210; border-bottom: 1px solid #2E2A26;">
+    <a href="#seccion" style="display: flex; align-items: center; gap: 7px; height: 48px; padding: 0 16px; border-radius: 999px; border: 1px solid #C9A96A; background: rgba(201,169,106,.1); color: #E5D3AC; font-size: 15px; white-space: nowrap;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="m10 9 5 3-5 3V9Z"/></svg>
+      Trabajos
+    </a>
+    <a href="#seccion" style="display: flex; align-items: center; gap: 7px; height: 48px; padding: 0 16px; border-radius: 999px; border: 1px solid #2E2A26; color: #F2EFE9; font-size: 15px; white-space: nowrap;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5"/></svg>
+      Paquetes
+    </a>
+    <a href="#seccion" style="display: flex; align-items: center; gap: 7px; height: 48px; padding: 0 16px; border-radius: 999px; border: 1px solid #2E2A26; color: #F2EFE9; font-size: 15px; white-space: nowrap;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Fechas libres
+    </a>
+    <a href="#seccion" style="display: flex; align-items: center; gap: 7px; height: 48px; padding: 0 16px; border-radius: 999px; border: 1px solid #2E2A26; color: #F2EFE9; font-size: 15px; white-space: nowrap;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+      Testimonios
+    </a>
+  </div>
+
+  <!-- ═══ HERO ═══ -->
+  <div style="position: relative; height: 640px; background: radial-gradient(120% 90% at 50% 12%, #2B2620, #141210 52%, #0A0908);">
+    <div style="position: absolute; inset: 0; background: radial-gradient(120% 90% at 62% 26%, #4A3A28 0%, #1C1512 55%, #080706 100%);"></div>
+    <div class="aura flota" style="position: absolute; top: -70px; right: -90px; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(201,169,106,.28) 0%, rgba(201,169,106,.06) 45%, transparent 70%); filter: blur(18px);"></div>
+    <div class="grano"></div>
+
+    <div style="position: absolute; top: 18px; left: 20px; display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; background: rgba(10,9,8,0.66); border: 1px solid #2E2A26; backdrop-filter: blur(8px);">
+      <span class="vivo" style="width: 7px; height: 7px; border-radius: 999px; background: #C9A96A;"></span>
+      <span style="font-size: 12px; color: #E5D3AC; letter-spacing: 0.04em;">Grabando en Ayacucho</span>
+    </div>
+
+    <div style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 15px; padding: 0 20px 22px; background: linear-gradient(to top, rgba(10,9,8,0.97) 30%, rgba(10,9,8,0.62) 58%, transparent 80%);">
+      <div class="e" style="--i: 0; display: flex; flex-direction: column; gap: 13px;">
+        <span class="eyebrow">Creador de contenido · Ayacucho</span>
+        <h1 class="d" style="margin: 0; font-size: 40px;">Transformo momentos en <span style="color: #C9A96A;">historias</span></h1>
+        <!-- LA OFERTA, en una frase. Sin esto, quien entra frío no sabe qué se
+             vende: «transformo momentos» es la marca, no el producto. -->
+        <p style="margin: 0; font-size: 17px; line-height: 1.45; color: #F2EFE9;">
+          Reels y aftermovies para <strong style="font-weight: 600;">bodas, XV años y cumpleaños</strong>. Los primeros, en 24 horas.
+        </p>
+      </div>
+
+      <!-- Prueba social ENCIMA del pliegue: la duda de «¿es de fiar?» llega
+           antes que la de «¿cuánto cuesta?». -->
+      <div class="e" style="--i: 1; display: flex; align-items: center; gap: 10px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+        <span style="font-size: 15px;">30 eventos grabados</span>
+        <span style="width: 4px; height: 4px; border-radius: 999px; background: #9A7F47;"></span>
+        <a href="#calendario" style="font-size: 15px; color: #E5D3AC; text-decoration: underline; text-underline-offset: 3px;">3 sábados libres</a>
+      </div>
+
+      <div class="e" style="--i: 2; display: flex; flex-direction: column; gap: 10px;">
+        <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 58px; border-radius: 12px; background: #25D366; color: #0A0908; font-size: 17px; font-weight: 600; box-shadow: 0 10px 34px rgba(37,211,102,0.22);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0908" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+          ¡HABLEMOS DE TU EVENTO!
+        </a>
+        <p class="pista" style="margin: 0; text-align: center;">Se abre tu WhatsApp con el mensaje ya escrito. Preguntar no cuesta nada.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CONFIANZA · números reales ═══ -->
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #2E2A26; border-bottom: 1px solid #2E2A26; background: #141210;">
+    <div class="e" style="--i: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 20px 8px;">
+      <span class="d" style="font-size: 30px; color: #E5D3AC;">30</span>
+      <span style="font-size: 13px; color: #9C958C; text-align: center;">eventos grabados</span>
+    </div>
+    <div class="e" style="--i: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 20px 8px; border-left: 1px solid #2E2A26; border-right: 1px solid #2E2A26;">
+      <span class="d" style="font-size: 30px; color: #E5D3AC;">24 h</span>
+      <span style="font-size: 13px; color: #9C958C; text-align: center;">los primeros reels</span>
+    </div>
+    <div class="e" style="--i: 2; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 20px 8px;">
+      <span class="d" style="font-size: 30px; color: #E5D3AC;">7</span>
+      <span style="font-size: 13px; color: #9C958C; text-align: center;">reels por paquete</span>
+    </div>
+  </div>
+
+  <!-- ═══ TIRA DE TRABAJOS · lo más «creador de contenido» que hay ═══ -->
+  <div style="position: relative; padding: 26px 0 24px; overflow: hidden;">
+    <p class="eyebrow" style="margin: 0 0 14px; padding: 0 20px;">Lo último que entregué</p>
+    <div style="display: flex; width: max-content;">
+      <div class="tira" style="display: flex; gap: 12px; padding-right: 12px;">
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 30% 25%, #4A3A28 0%, #1C1512 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 65% 30%, #3A3140 0%, #191418 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 45% 60%, #2E3A33 0%, #141A17 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 55% 35%, #453322 0%, #1B1410 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 40% 40%, #3F2B2B 0%, #1A1212 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 60% 50%, #2B3340 0%, #12161A 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 30% 25%, #4A3A28 0%, #1C1512 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 65% 30%, #3A3140 0%, #191418 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 45% 60%, #2E3A33 0%, #141A17 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 55% 35%, #453322 0%, #1B1410 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 40% 40%, #3F2B2B 0%, #1A1212 55%, #080706 100%);"></span>
+        <span style="width: 108px; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 60% 50%, #2B3340 0%, #12161A 55%, #080706 100%);"></span>
+      </div>
+    </div>
+    <div style="position: absolute; top: 0; right: 0; bottom: 0; width: 56px; background: linear-gradient(to left, #0A0908, transparent); pointer-events: none;"></div>
+  </div>
+
+  <!-- ═══ CÓMO TRABAJAMOS · esto es la «seguridad» ═══ -->
+  <div style="display: flex; flex-direction: column; gap: 18px; padding: 34px 20px; background: #141210; border-top: 1px solid #2E2A26; border-bottom: 1px solid #2E2A26;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="eyebrow">Cómo funciona</span>
+      <h2 class="d" style="margin: 0; font-size: 28px;">Sin sorpresas, en tres pasos</h2>
+    </div>
+    <div class="e" style="--i: 0; display: flex; gap: 14px;">
+      <span class="d" style="flex-shrink: 0; width: 34px; font-size: 26px; color: #9A7F47;">1</span>
+      <div>
+        <p style="margin: 0; font-size: 17px; font-weight: 500;">Me escribes por WhatsApp</p>
+        <p style="margin: 3px 0 0; font-size: 15px; color: #9C958C;">Me dices la fecha y el tipo de evento. Te confirmo si estoy libre y cuánto cuesta el tuyo.</p>
+      </div>
+    </div>
+    <div class="e" style="--i: 1; display: flex; gap: 14px;">
+      <span class="d" style="flex-shrink: 0; width: 34px; font-size: 26px; color: #9A7F47;">2</span>
+      <div>
+        <p style="margin: 0; font-size: 17px; font-weight: 500;">Grabo tu evento</p>
+        <p style="margin: 3px 0 0; font-size: 15px; color: #9C958C;">Llego con equipo y luz propios. Tú no tienes que organizar nada.</p>
+      </div>
+    </div>
+    <div class="e" style="--i: 2; display: flex; gap: 14px;">
+      <span class="d" style="flex-shrink: 0; width: 34px; font-size: 26px; color: #C9A96A;">3</span>
+      <div>
+        <p style="margin: 0; font-size: 17px; font-weight: 500;">En 24 horas tienes los primeros</p>
+        <p style="margin: 3px 0 0; font-size: 15px; color: #9C958C;">Te llegan al celular, listos para subir. El resto, en 48.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DIFERENCIADORES ═══ -->
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 30px 20px;">
+    <div class="e" style="--i: 0; display: flex; flex-direction: column; gap: 9px; padding: 16px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L8 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4l-1.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      <p style="margin: 0; font-size: 15px; font-weight: 500;">CALIDAD PROFESIONAL</p>
+      <p style="margin: 0; font-size: 14px; color: #9C958C;">Equipo y luz de verdad.</p>
+    </div>
+    <div class="e" style="--i: 1; display: flex; flex-direction: column; gap: 9px; padding: 16px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h8l-1 8 10-12h-8l1-8Z"/></svg>
+      <p style="margin: 0; font-size: 15px; font-weight: 500;">ENTREGA RÁPIDA</p>
+      <p style="margin: 0; font-size: 14px; color: #9C958C;">Los primeros, en 24 h.</p>
+    </div>
+    <div class="e" style="--i: 2; display: flex; flex-direction: column; gap: 9px; padding: 16px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3.2"/><path d="M22 20v-2a4 4 0 0 0-3-3.8"/></svg>
+      <p style="margin: 0; font-size: 15px; font-weight: 500;">CONTENIDO QUE CONECTA</p>
+      <p style="margin: 0; font-size: 14px; color: #9C958C;">Pensado para verse entero.</p>
+    </div>
+    <div class="e" style="--i: 3; display: flex; flex-direction: column; gap: 9px; padding: 16px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      <p style="margin: 0; font-size: 15px; font-weight: 500;">RESULTADOS REALES</p>
+      <p style="margin: 0; font-size: 14px; color: #9C958C;">Se comparten, no se archivan.</p>
+    </div>
+  </div>
+
+  <!-- ═══ QUÉ RECIBES · lo intangible, hecho concreto ═══ -->
+  <!-- Se vende un archivo que aún no existe. Enseñar el ENTREGABLE —cuántos,
+       de qué duración, en qué formato, por dónde llega— convierte una promesa
+       en una cosa. Es la duda que nadie pregunta y todo el mundo tiene. -->
+  <div style="display: flex; flex-direction: column; gap: 16px; padding: 4px 20px 40px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="eyebrow">Qué recibes</span>
+      <h2 class="d" style="margin: 0; font-size: 28px;">Lo que te llega al celular</h2>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div class="e" style="--i: 0; display: flex; align-items: center; gap: 14px; padding: 15px 17px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+        <span style="display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; background: rgba(201,169,106,.1);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 6h4"/></svg>
+        </span>
+        <div style="min-width: 0; flex: 1;">
+          <p style="margin: 0; font-size: 17px; font-weight: 500;">7 reels verticales</p>
+          <p style="margin: 2px 0 0; font-size: 15px; color: #9C958C;">De 20 a 60 segundos, con música y textos. Listos para subir.</p>
+        </div>
+      </div>
+      <div class="e" style="--i: 1; display: flex; align-items: center; gap: 14px; padding: 15px 17px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+        <span style="display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; background: rgba(201,169,106,.1);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="m10 9 5 3-5 3V9Z"/></svg>
+        </span>
+        <div style="min-width: 0; flex: 1;">
+          <p style="margin: 0; font-size: 17px; font-weight: 500;">1 aftermovie</p>
+          <p style="margin: 2px 0 0; font-size: 15px; color: #9C958C;">El resumen del día, de 1 a 3 minutos. El que se ve en familia.</p>
+        </div>
+      </div>
+      <div class="e" style="--i: 2; display: flex; align-items: center; gap: 14px; padding: 15px 17px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+        <span style="display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; background: rgba(201,169,106,.1);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M4 20h16"/></svg>
+        </span>
+        <div style="min-width: 0; flex: 1;">
+          <p style="margin: 0; font-size: 17px; font-weight: 500;">Todo el material bruto</p>
+          <p style="margin: 2px 0 0; font-size: 15px; color: #9C958C;">Sin editar, por si algún día lo quieres. Es tuyo.</p>
+        </div>
+      </div>
+      <div class="e" style="--i: 3; display: flex; align-items: center; gap: 14px; padding: 15px 17px; border-radius: 12px; border: 1px solid #C9A96A; background: rgba(201,169,106,.06);">
+        <span style="display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; flex-shrink: 0; border-radius: 12px; background: rgba(201,169,106,.14);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </span>
+        <div style="min-width: 0; flex: 1;">
+          <p style="margin: 0; font-size: 17px; font-weight: 500; color: #E5D3AC;">Por un enlace, en 24 horas</p>
+          <p style="margin: 2px 0 0; font-size: 15px; color: #9C958C;">Sin USB, sin ir a recogerlo. Lo abres desde el celular y lo descargas.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CATEGORÍAS ═══ -->
+  <div style="display: flex; flex-direction: column; gap: 15px; padding: 14px 20px 38px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="eyebrow">Lo que grabo</span>
+      <h2 class="d" style="margin: 0; font-size: 28px;">Cada evento tiene su ritmo</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+      <a class="e" style="--i: 0; position: relative; display: flex; flex-direction: column; justify-content: flex-end; height: 152px; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 30% 25%, #4A3A28 0%, #1C1512 55%, #080706 100%); color: #F2EFE9; overflow: hidden;" href="#">
+        <span style="font-size: 17px; font-weight: 500;">Bodas</span>
+        <span style="font-size: 14px; color: #9C958C;">12 eventos</span>
+      </a>
+      <a class="e" style="--i: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 152px; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 65% 30%, #3A3140 0%, #191418 55%, #080706 100%); color: #F2EFE9;" href="#">
+        <span style="font-size: 17px; font-weight: 500;">XV Años</span>
+        <span style="font-size: 14px; color: #9C958C;">8 eventos</span>
+      </a>
+      <a class="e" style="--i: 2; display: flex; flex-direction: column; justify-content: flex-end; height: 152px; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 45% 60%, #2E3A33 0%, #141A17 55%, #080706 100%); color: #F2EFE9;" href="#">
+        <span style="font-size: 17px; font-weight: 500;">Cumpleaños</span>
+        <span style="font-size: 14px; color: #9C958C;">6 eventos</span>
+      </a>
+      <a class="e" style="--i: 3; display: flex; flex-direction: column; justify-content: flex-end; height: 152px; padding: 14px; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 55% 35%, #453322 0%, #1B1410 55%, #080706 100%); color: #F2EFE9;" href="#">
+        <span style="font-size: 17px; font-weight: 500;">Eventos</span>
+        <span style="font-size: 14px; color: #9C958C;">4 eventos</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- ═══ GALERÍAS ═══ -->
+  <div style="display: flex; flex-direction: column; gap: 15px; padding: 0 20px 42px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="eyebrow">Trabajos</span>
+      <h2 class="d" style="margin: 0; font-size: 28px;">Míralos como te van a llegar</h2>
+      <p class="pista" style="margin: 4px 0 0;">Vertical, para el celular. Es exactamente lo que subes a tus redes.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+      <div class="e" style="--i: 0; display: flex; flex-direction: column; gap: 8px;">
+        <div style="position: relative; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 40% 40%, #3F2B2B 0%, #1A1212 55%, #080706 100%);">
+          <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="rgba(242,239,233,0.44)" stroke-width="1.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8Z"/></svg></span>
+          <span style="position: absolute; right: 8px; bottom: 8px; padding: 3px 7px; border-radius: 6px; background: rgba(8,7,6,0.82); font-size: 12px;">0:42</span>
+          <!-- Las vistas son la prueba de la promesa: «contenido que genera
+               impacto» es una frase; 12 mil vistas es un hecho. -->
+          <span style="position: absolute; left: 8px; bottom: 8px; display: flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px; background: rgba(8,7,6,0.82); font-size: 12px; color: #E5D3AC;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E5D3AC" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="2.6"/></svg>
+            12 mil
+          </span>
+        </div>
+        <div>
+          <p style="margin: 0; font-size: 15px; font-weight: 500;">Boda de Rosa y Luis</p>
+          <p style="margin: 2px 0 0; font-size: 14px; color: #9C958C;">Bodas · 24 reels</p>
+        </div>
+      </div>
+      <div class="e" style="--i: 1; display: flex; flex-direction: column; gap: 8px;">
+        <div style="position: relative; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 60% 50%, #2B3340 0%, #12161A 55%, #080706 100%);">
+          <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="rgba(242,239,233,0.44)" stroke-width="1.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8Z"/></svg></span>
+          <span style="position: absolute; right: 8px; bottom: 8px; padding: 3px 7px; border-radius: 6px; background: rgba(8,7,6,0.82); font-size: 12px;">1:12</span>
+        </div>
+        <div>
+          <p style="margin: 0; font-size: 15px; font-weight: 500;">XV de Camila</p>
+          <p style="margin: 2px 0 0; font-size: 14px; color: #9C958C;">XV Años · 18 reels</p>
+        </div>
+      </div>
+    </div>
+    <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 50px; border-radius: 12px; border: 1px solid #2E2A26; color: #E5D3AC; font-size: 16px;">
+      Ver los 30 trabajos
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E5D3AC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+
+  <!-- ═══ PAQUETES ═══ -->
+  <div style="display: flex; flex-direction: column; gap: 18px; padding: 38px 20px; background: #141210; border-top: 1px solid #2E2A26;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="eyebrow">Paquetes</span>
+      <h2 class="d" style="margin: 0; font-size: 28px;">Elige el que te encaje</h2>
+      <p class="pista" style="margin: 4px 0 0;">Compáralos y dime cuál te sirve. Si ninguno encaja, lo armamos a tu medida.</p>
+    </div>
+
+    <!-- Lo que NO cambia entre paquetes, dicho antes de compararlos: quita el
+         miedo a «elegir el barato y quedarme sin algo». -->
+    <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 12px; border: 1px dashed #3D362F; background: #0A0908;">
+      <p style="margin: 0; font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: #9A7F47;">En los tres, siempre</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <span style="padding: 6px 12px; border-radius: 999px; border: 1px solid #2E2A26; font-size: 14px;">7 reels</span>
+        <span style="padding: 6px 12px; border-radius: 999px; border: 1px solid #2E2A26; font-size: 14px;">Equipo y luz propios</span>
+        <span style="padding: 6px 12px; border-radius: 999px; border: 1px solid #2E2A26; font-size: 14px;">Vertical 9:16</span>
+        <span style="padding: 6px 12px; border-radius: 999px; border: 1px solid #2E2A26; font-size: 14px;">Material bruto</span>
+      </div>
+    </div>
+
+    <div class="e" style="--i: 0; display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 16px; border: 1px solid #2E2A26; background: #0A0908;">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+        <div><p class="d" style="margin: 0; font-size: 21px;">BÁSICO</p><p style="margin: 2px 0 0; font-size: 15px; color: #9C958C;">Viral Highlights</p></div>
+        <p class="d" style="margin: 0; font-size: 31px; white-space: nowrap;">S/ 300</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Cobertura: 3 - 4 horas</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">7 Reels / TikToks en tendencia</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Cortes dinámicos y ganchos (Hooks)</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Entrega rápida: 24h - 48h</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Material bruto incluido</span></div>
+      </div>
+      <p style="margin: 0; padding-top: 12px; border-top: 1px solid #2E2A26; font-size: 15px; color: #9C958C;">Ideal para pequeños eventos y cumpleaños</p>
+      <a href="#" style="display: flex; align-items: center; justify-content: center; height: 50px; border-radius: 12px; border: 1px solid #2E2A26; color: #F2EFE9; font-size: 16px; font-weight: 500;">Preguntar por el Básico</a>
+    </div>
+
+    <div class="e" style="--i: 1; position: relative; display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 16px; border: 1px solid #C9A96A; background: #1E1B18; box-shadow: 0 14px 44px rgba(201,169,106,0.10);">
+      <span style="position: absolute; top: -11px; left: 20px; padding: 3px 11px; border-radius: 999px; background: #C9A96A; color: #0A0908; font-size: 12px; font-weight: 600; letter-spacing: 0.06em;">NUESTRO MÁS VENDIDO</span>
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-top: 4px;">
+        <div><p class="d" style="margin: 0; font-size: 21px; color: #E5D3AC;">PRO</p><p style="margin: 2px 0 0; font-size: 15px; color: #9C958C;">Memorias &amp; Tendencias</p></div>
+        <p class="d" style="margin: 0; font-size: 31px; color: #E5D3AC; white-space: nowrap;">S/ 600</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Cobertura: 6 - 7 horas</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">7 Reels / TikToks Virales</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">1 Video Resumen «Aftermovie» (1-2 min)</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">1 Mini-Reel exprés (Same Day Edit / 12h)</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Edición ágil, textos dinámicos, música trending</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Material bruto en alta calidad</span></div>
+      </div>
+      <p style="margin: 0; padding-top: 12px; border-top: 1px solid #2E2A26; font-size: 15px; color: #9C958C;">Ideal para quinceañeras y cumpleaños grandes</p>
+      <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 9px; height: 52px; border-radius: 12px; background: #25D366; color: #0A0908; font-size: 16px; font-weight: 600;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0908" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+        Preguntar por el Pro
+      </a>
+    </div>
+
+    <div class="e" style="--i: 2; display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 16px; border: 1px solid #F2EFE9; background: #0A0908;">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+        <div><p class="d" style="margin: 0; font-size: 21px;">PREMIUM</p><p style="margin: 2px 0 0; font-size: 15px; color: #9C958C;">La Alfombra Roja</p></div>
+        <p class="d" style="margin: 0; font-size: 31px; white-space: nowrap;">S/ 900</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2EFE9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Cobertura completa: hasta 10 horas</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2EFE9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">7 Reels / TikToks Virales</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2EFE9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">1 Video Resumen «Aftermovie» (2-3 min)</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2EFE9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Entrega Express (Reels en 24h)</span></div>
+        <div style="display: flex; gap: 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2EFE9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;" aria-hidden="true"><path d="m4 12 5 5L20 6"/></svg><span style="font-size: 16px;">Entrevistas y tomas estéticas</span></div>
+      </div>
+      <p style="margin: 0; padding-top: 12px; border-top: 1px solid #2E2A26; font-size: 15px; color: #9C958C;">Ideal para bodas y XV años</p>
+      <a href="#" style="display: flex; align-items: center; justify-content: center; height: 50px; border-radius: 12px; border: 1px solid #2E2A26; color: #F2EFE9; font-size: 16px; font-weight: 500;">Preguntar por el Premium</a>
+    </div>
+
+    <p class="pista" style="margin: 0;">Los precios son referenciales: cambian según la distancia y las horas. Escríbeme y te digo el tuyo.</p>
+  </div>
+
+  <!-- ═══ CALENDARIO · después de los paquetes, antes de la prueba social ═══ -->
+  <div id="calendario" style="display: flex; flex-direction: column; gap: 16px; padding: 38px 20px; background: #141210; border-top: 1px solid #2E2A26; border-bottom: 1px solid #2E2A26;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="eyebrow">Disponibilidad</span>
+      <h2 class="d" style="margin: 0; font-size: 28px;">¿Está libre tu día?</h2>
+      <p class="pista" style="margin: 4px 0 0;">Toca el día de tu evento y te escribo con la fecha ya puesta.</p>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 15px; border-radius: 12px; border: 1px solid rgba(201,169,106,.4); background: rgba(201,169,106,.08);">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span style="font-size: 15px; color: #E5D3AC;">Quedan <b style="font-weight: 600;">3 sábados libres</b> en octubre</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 13px; padding: 17px; border-radius: 16px; border: 1px solid #2E2A26; background: #0A0908;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <button type="button" style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; border: 1px solid #2E2A26; background: transparent; cursor: pointer;" aria-label="Mes anterior">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="d" style="font-size: 20px;">Octubre 2026</span>
+        <button type="button" style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; border: 1px solid #2E2A26; background: transparent; cursor: pointer;" aria-label="Mes siguiente">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2EFE9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; font-size: 12px; color: #6B655C; text-align: center;">
+        <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;">
+        <span class="cal fue">28</span><span class="cal fue">29</span><span class="cal fue">30</span>
+        <span class="cal lib">1</span><span class="cal lib">2</span><span class="cal ocu">3</span><span class="cal lib">4</span>
+        <span class="cal lib">5</span><span class="cal lib">6</span><span class="cal lib">7</span><span class="cal lib">8</span><span class="cal lib">9</span><span class="cal ocu">10</span><span class="cal lib">11</span>
+        <span class="cal lib">12</span><span class="cal lib">13</span><span class="cal lib">14</span><span class="cal lib">15</span><span class="cal lib">16</span><span class="cal lib">17</span><span class="cal lib">18</span>
+        <span class="cal lib">19</span><span class="cal lib">20</span><span class="cal lib">21</span><span class="cal lib">22</span><span class="cal lib">23</span><span class="cal sel">24</span><span class="cal ran">25</span>
+        <span class="cal lib">26</span><span class="cal lib">27</span><span class="cal lib">28</span><span class="cal lib">29</span><span class="cal lib">30</span><span class="cal ocu">31</span><span class="cal fue">1</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 13px; padding-top: 11px; border-top: 1px solid #2E2A26; font-size: 13px; color: #9C958C;">
+        <span style="display: flex; align-items: center; gap: 7px;"><span style="width: 14px; height: 14px; border-radius: 6px; border: 1px solid #2E2A26;"></span>Libre</span>
+        <span style="display: flex; align-items: center; gap: 7px;"><span style="width: 14px; height: 14px; border-radius: 6px; background: repeating-linear-gradient(135deg, transparent 0 4px, rgba(155,148,140,.3) 4px 8px);"></span>Ocupado</span>
+        <span style="display: flex; align-items: center; gap: 7px;"><span style="width: 14px; height: 14px; border-radius: 6px; background: #C9A96A;"></span>Tu fecha</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px; padding: 13px 15px; border-radius: 12px; border: 1px solid #C9A96A; background: rgba(201,169,106,.08);">
+      <div style="min-width: 0; flex: 1;">
+        <p style="margin: 0; font-size: 13px; color: #9C958C;">Tu fecha</p>
+        <p style="margin: 1px 0 0; font-size: 17px; font-weight: 500; color: #E5D3AC;">Del 24 al 25 de octubre</p>
+      </div>
+      <button type="button" style="display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; border: 1px solid #2E2A26; background: transparent; cursor: pointer;" aria-label="Quitar la fecha elegida">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 56px; border-radius: 12px; background: #25D366; color: #0A0908; font-size: 17px; font-weight: 600;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0908" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+      Preguntar por esos días
+    </a>
+    <p style="margin: 0; text-align: center; font-size: 13px; color: #6B655C;">Actualizado hace 2 días</p>
+  </div>
+
+  <!-- ═══ TESTIMONIOS ═══ -->
+  <div style="display: flex; flex-direction: column; gap: 15px; padding: 38px 20px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="eyebrow">Lo que dicen</span>
+      <h2 class="d" style="margin: 0; font-size: 28px;">Mensajes de después del evento</h2>
+    </div>
+
+    <div class="e" style="--i: 0; display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px; border: 1px solid #2E2A26; background: #141210;">
+      <div style="display: flex; align-items: center; gap: 11px;">
+        <span style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2E2A26; background: #1E1B18; color: #C9A96A; font-size: 16px; font-weight: 500;">R</span>
+        <div style="min-width: 0;">
+          <p style="margin: 0; font-size: 16px; font-weight: 500;">Rosa Quispe</p>
+          <p style="margin: 1px 0 0; font-size: 14px; color: #9C958C;">Boda · 15 de marzo</p>
+        </div>
+        <span style="margin-left: auto; display: flex; gap: 2px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#C9A96A" aria-hidden="true"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9Z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#C9A96A" aria-hidden="true"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9Z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#C9A96A" aria-hidden="true"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9Z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#C9A96A" aria-hidden="true"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9Z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#C9A96A" aria-hidden="true"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9Z"/></svg>
+        </span>
+      </div>
+      <p style="margin: 0; font-size: 17px; line-height: 1.55;">«Los reels llegaron al día siguiente y ya los subí todos. Mi mamá lloró viendo el aftermovie.»</p>
+      <!-- La captura REAL del WhatsApp. Es la única prueba que no se puede
+           inventar, y James ya la sube desde el panel: el modelo la tiene como
+           SCREENSHOT y el diseño la estaba escondiendo. -->
+      <div style="position: relative; max-height: 240px; overflow: hidden; border-radius: 12px; border: 1px solid #2E2A26; background: #0B141A; padding: 14px;">
+        <div style="max-width: 84%; padding: 9px 12px; border-radius: 10px 10px 10px 3px; background: #1F2C33; color: #E9EDEF; font-size: 14px; line-height: 1.45;">Ya vi todo James 😭 quedó hermosísimo</div>
+        <div style="max-width: 84%; margin: 8px 0 0 auto; padding: 9px 12px; border-radius: 10px 10px 3px 10px; background: #005C4B; color: #E9EDEF; font-size: 14px; line-height: 1.45;">Me alegro muchísimo señorita 🙏</div>
+        <div style="max-width: 84%; margin-top: 8px; padding: 9px 12px; border-radius: 10px 10px 10px 3px; background: #1F2C33; color: #E9EDEF; font-size: 14px; line-height: 1.45;">Mi mamá lloró viendo el resumen, se lo mandé a toda la familia</div>
+        <span style="position: absolute; inset: auto 0 0 0; height: 46px; background: linear-gradient(to top, #141210, transparent);"></span>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #6B655C;">Captura compartida con su permiso.</p>
+    </div>
+
+    <div class="e" style="--i: 1; display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px; border: 1px solid #2E2A26; background: #141210;">
+      <div style="display: flex; align-items: center; gap: 11px;">
+        <span style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; border: 1px solid #2E2A26; background: #1E1B18; color: #C9A96A; font-size: 16px; font-weight: 500;">C</span>
+        <div style="min-width: 0;">
+          <p style="margin: 0; font-size: 16px; font-weight: 500;">Carmen Huamán</p>
+          <p style="margin: 1px 0 0; font-size: 14px; color: #9C958C;">XV Años · 2 de agosto</p>
+        </div>
+      </div>
+      <p style="margin: 0; font-size: 17px; line-height: 1.55;">«Contraté el Pro y valió cada sol. El mini-reel del mismo día lo vieron 4 mil personas.»</p>
+    </div>
+  </div>
+
+  <!-- ═══ PREGUNTAS · las que frenan de verdad ═══ -->
+  <div style="display: flex; flex-direction: column; gap: 12px; padding: 8px 20px 40px;">
+    <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px;">
+      <span class="eyebrow">Antes de escribir</span>
+      <h2 class="d" style="margin: 0; font-size: 28px;">Lo que siempre me preguntan</h2>
+    </div>
+    <div class="e" style="--i: 0; display: flex; flex-direction: column; gap: 7px; padding: 17px 18px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+      <p style="margin: 0; font-size: 17px; font-weight: 500;">¿Viajas fuera de Ayacucho?</p>
+      <p style="margin: 0; font-size: 16px; color: #9C958C;">Sí. Huanta, Huamanga y alrededores sin recargo; más lejos lo hablamos y te digo el precio antes de cerrar nada.</p>
+    </div>
+    <div class="e" style="--i: 1; display: flex; flex-direction: column; gap: 7px; padding: 17px 18px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+      <p style="margin: 0; font-size: 17px; font-weight: 500;">¿Cuándo tengo que pagar?</p>
+      <p style="margin: 0; font-size: 16px; color: #9C958C;">Una parte al reservar la fecha y el resto el día del evento. Sin adelanto no aparto el día.</p>
+    </div>
+    <div class="e" style="--i: 2; display: flex; flex-direction: column; gap: 7px; padding: 17px 18px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+      <p style="margin: 0; font-size: 17px; font-weight: 500;">¿Y si el día se pone feo o llueve?</p>
+      <p style="margin: 0; font-size: 16px; color: #9C958C;">Se graba igual: llevo luz propia. Lo que cambia es dónde hacemos las tomas de pareja, y eso lo resolvemos ahí mismo.</p>
+    </div>
+    <div class="e" style="--i: 3; display: flex; flex-direction: column; gap: 7px; padding: 17px 18px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+      <p style="margin: 0; font-size: 17px; font-weight: 500;">¿Puedo pedir cambios en los reels?</p>
+      <p style="margin: 0; font-size: 16px; color: #9C958C;">Una ronda de ajustes entra en todos los paquetes. Me dices qué cambiar y te lo devuelvo corregido.</p>
+    </div>
+    <p class="pista" style="margin: 6px 0 0;">¿Te queda otra duda? Pregúntamela por WhatsApp, contesto yo mismo.</p>
+  </div>
+
+  <!-- ═══ SOBRE MÍ ═══ -->
+  <div style="display: flex; flex-direction: column; gap: 16px; padding: 8px 20px 40px;">
+    <span class="eyebrow">Sobre mí</span>
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <!-- Marcador de FOTO REAL de James. Sin cara, la sección podría ser de
+           cualquiera — y esta persona va a estar diez horas dentro de la boda
+           de tu hija. -->
+      <span style="display: flex; align-items: center; justify-content: center; width: 78px; height: 78px; flex-shrink: 0; border-radius: 999px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 40% 30%, #453322 0%, #1B1410 60%, #080706 100%); color: #6B655C; font-size: 11px; text-align: center; line-height: 1.3;">FOTO<br>DE JAMES</span>
+      <div style="min-width: 0;">
+        <p style="margin: 0; font-size: 20px; font-weight: 600;">James [APELLIDO]</p>
+        <p style="margin: 2px 0 0; font-size: 15px; color: #9C958C;">Creador de contenido · Ayacucho</p>
+      </div>
+    </div>
+    <p style="margin: 0; font-size: 19px; line-height: 1.55;">
+      ¡Hola! Soy <strong style="color: #C9A96A; font-weight: 600;">James</strong>, creador de contenido audiovisual. Me especializo en capturar y contar historias que conectan, inspiran y venden. Llevo tu evento al siguiente nivel con videos profesionales y <strong style="color: #C9A96A; font-weight: 600;">contenido que genera impacto</strong>.
+    </p>
+    <svg width="118" height="42" viewBox="0 0 118 42" fill="none" aria-hidden="true">
+      <path d="M8 32c6-14 10-22 14-22s2 12-2 16-8 2-6-6 8-14 14-14c4 0 4 6 1 12s-1 8 3 4 8-14 12-14 3 6 1 10-1 6 2 4 6-8 9-8 4 4 2 8" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <!--oscuro: este panel se queda oscuro en los DOS temas. Cierra con la marca
+       y separa el pie sin una línea. Su texto NO se voltea. -->
+  <!-- ═══ CIERRE + PIE ═══ -->
+  <div style="position: relative; display: flex; flex-direction: column; gap: 22px; margin: 0 20px 24px; padding: 34px 24px; border-radius: 24px; background: linear-gradient(160deg, #1E1B18, #0F0D0B); color: #F2EFE9; overflow: hidden;">
+    <div class="aura" style="position: absolute; top: -110px; left: 50%; transform: translateX(-50%); width: 340px; height: 240px; border-radius: 50%; background: radial-gradient(circle, rgba(37,211,102,.16) 0%, transparent 68%); filter: blur(20px);"></div>
+    <div style="position: relative; display: flex; flex-direction: column; gap: 14px;">
+      <h2 class="d" style="margin: 0; font-size: 32px;">¿Qué día es tu evento?</h2>
+      <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 58px; border-radius: 12px; background: #25D366; color: #0A0908; font-size: 17px; font-weight: 600; box-shadow: 0 10px 34px rgba(37,211,102,0.22);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0908" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+        994 724 944
+      </a>
+      <p class="pista" style="margin: 0; text-align: center;">Contesto entre las 9 de la mañana y las 9 de la noche.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 20px; border-top: 1px solid #2E2A26;">
+      <a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 48px; color: #F2EFE9; font-size: 16px;">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12a4 4 0 1 0 4 4V3c.7 2 2.4 3.4 4.5 3.6"/></svg>
+        TikTok <span style="color: #9C958C;">@james_film</span>
+      </a>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 48px; color: #F2EFE9; font-size: 16px;">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#C9A96A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="3.8"/><circle cx="17.3" cy="6.7" r="0.9" fill="#C9A96A"/></svg>
+        Instagram <span style="color: #9C958C;">James_film30</span>
+      </a>
+    </div>
+
+    <p style="margin: 0; padding-top: 18px; border-top: 1px solid #2E2A26; font-size: 13px; letter-spacing: 0.1em; color: #9A7F47; text-align: center;">HISTORIAS REALES. EMOCIONES REALES.<br>RECUERDOS PARA SIEMPRE.</p>
+
+    <div style="display: flex; justify-content: center; gap: 18px;">
+      <a href="#" style="font-size: 14px; color: #9C958C;">Privacidad</a>
+      <a href="#" style="font-size: 14px; color: #9C958C;">Términos</a>
+      <a href="#" style="font-size: 14px; color: #9C958C;">Uso de imagen</a>
+    </div>
+  </div>
+
+  <!--/oscuro-->
+  <!-- ═══ BARRA PEGADA · el CTA nunca queda fuera de alcance ═══ -->
+  <div style="display: flex; align-items: center; gap: 12px; padding: 12px 20px 14px; background: rgba(10,9,8,0.94); border-top: 1px solid #2E2A26; backdrop-filter: blur(10px);">
+    <div style="min-width: 0; flex: 1;">
+      <p style="margin: 0; font-size: 15px; font-weight: 500;">¿Tu fecha está libre?</p>
+      <p style="margin: 1px 0 0; font-size: 13px; color: #9C958C;">Pregunta sin compromiso</p>
+    </div>
+    <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 12px; background: #25D366; color: #0A0908; font-size: 16px; font-weight: 600; white-space: nowrap;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A0908" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+      Escribir
+    </a>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

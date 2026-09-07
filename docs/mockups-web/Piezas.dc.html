@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=Inter:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; background: #0A0908; }
+    a { color: #C9A96A; text-decoration: none; }
+    a:hover { color: #E5D3AC; }
+    .d { font-family: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+    .b { font-family: Inter, system-ui, -apple-system, sans-serif; }
+    .lab { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #9A7F47; font-weight: 500; }
+    .nota { font-size: 14px; line-height: 1.5; color: #9C958C; }
+    .sw { display: flex; flex-direction: column; gap: 7px; }
+    .chip { height: 52px; border-radius: 9px; border: 1px solid #2E2A26; }
+  </style>
+</helmet>
+
+<div class="b" style="width: 920px; background: #0A0908; color: #F2EFE9; font-size: 16px; line-height: 1.6; padding: 36px 40px; box-sizing: border-box; display: flex; flex-direction: column; gap: 38px;">
+
+  <div>
+    <h1 class="d" style="margin: 0 0 6px; font-size: 28px;">Vocabulario visual</h1>
+    <p class="nota" style="margin: 0;">La paleta de §6, sin el cian ni el magenta del flyer. El acento único sube: Básico neutro → Pro latón → Premium hueso.</p>
+  </div>
+
+  <!-- PALETA -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <span class="lab">Paleta</span>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px;">
+      <div class="sw"><div class="chip" style="background: #0A0908;"></div><span style="font-size: 13px;">void</span><span class="nota" style="font-size: 12px;">#0A0908</span></div>
+      <div class="sw"><div class="chip" style="background: #141210;"></div><span style="font-size: 13px;">surface</span><span class="nota" style="font-size: 12px;">#141210</span></div>
+      <div class="sw"><div class="chip" style="background: #1E1B18;"></div><span style="font-size: 13px;">elevated</span><span class="nota" style="font-size: 12px;">#1E1B18</span></div>
+      <div class="sw"><div class="chip" style="background: #2E2A26;"></div><span style="font-size: 13px;">line</span><span class="nota" style="font-size: 12px;">#2E2A26</span></div>
+      <div class="sw"><div class="chip" style="background: #9C958C;"></div><span style="font-size: 13px;">ash</span><span class="nota" style="font-size: 12px;">#9C958C</span></div>
+      <div class="sw"><div class="chip" style="background: #F2EFE9;"></div><span style="font-size: 13px;">bone</span><span class="nota" style="font-size: 12px;">#F2EFE9</span></div>
+      <div class="sw"><div class="chip" style="background: #E5D3AC;"></div><span style="font-size: 13px;">brass-200</span><span class="nota" style="font-size: 12px;">#E5D3AC</span></div>
+      <div class="sw"><div class="chip" style="background: #C9A96A;"></div><span style="font-size: 13px;">brass-400</span><span class="nota" style="font-size: 12px;">#C9A96A</span></div>
+      <div class="sw"><div class="chip" style="background: #9A7F47;"></div><span style="font-size: 13px;">brass-600</span><span class="nota" style="font-size: 12px;">#9A7F47</span></div>
+      <div class="sw"><div class="chip" style="background: #25D366;"></div><span style="font-size: 13px;">whatsapp</span><span class="nota" style="font-size: 12px;">#25D366</span></div>
+    </div>
+  </div>
+
+  <!-- TIPOGRAFÍA -->
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    <span class="lab">Tipografía · Bricolage Grotesque 800 + Inter 400/500</span>
+    <p class="d" style="margin: 0; font-size: 46px;">Transformo momentos</p>
+    <p style="margin: 0; font-size: 19px;">Cuerpo a 17 px, no a 13. Esto lo lee la madre de la novia en un móvil, al sol.</p>
+    <p class="nota" style="margin: 0;">La pista, a 14 px en <span style="color: #F2EFE9;">ash</span>. Siempre debajo de la acción.</p>
+  </div>
+
+  <!-- BOTONES -->
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    <span class="lab">Acciones · alto mínimo 48 px, el principal 56</span>
+    <div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 9px; width: 290px;">
+        <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 56px; border-radius: 12px; background: #25D366; color: #0A0908; font-size: 17px; font-weight: 600;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A0908" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.2-5.5A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+          ¡HABLEMOS DE TU EVENTO!
+        </a>
+        <p class="nota" style="margin: 0;">Se abre tu WhatsApp con el mensaje ya escrito. Preguntar no cuesta nada.</p>
+      </div>
+      <a href="#" style="display: flex; align-items: center; justify-content: center; width: 200px; height: 48px; border-radius: 10px; border: 1px solid #2E2A26; color: #F2EFE9; font-size: 16px; font-weight: 500;">Secundario</a>
+      <a href="#" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 200px; height: 48px; border-radius: 10px; border: 1px solid #2E2A26; color: #E5D3AC; font-size: 16px;">
+        Ver más
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E5D3AC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+    <p class="nota" style="margin: 0;">Un solo botón verde por pantalla, repetido al bajar. Nunca tres acciones compitiendo.</p>
+  </div>
+
+  <!-- ESTADOS VACÍOS -->
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    <span class="lab">Estados · una sección sin contenido NO se pinta</span>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start;">
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="position: relative; aspect-ratio: 9/16; border-radius: 12px; border: 1px solid #2E2A26; background: radial-gradient(120% 90% at 40% 40%, #3F2B2B 0%, #1A1212 55%, #080706 100%);">
+          <span style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #9C958C; font-size: 13px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9C958C" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L3 21"/></svg>
+            Sin portada
+          </span>
+        </div>
+        <p class="nota" style="margin: 0;">La portada que no carga se esconde y deja ver el degradado. Nunca el icono roto.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; align-items: center; justify-content: center; aspect-ratio: 9/16; border-radius: 12px; border: 1px dashed #2E2A26; color: #9C958C; font-size: 14px; text-align: center; padding: 16px; box-sizing: border-box;">
+          Sin trabajos publicados todavía
+        </div>
+        <p class="nota" style="margin: 0;">Sin galerías, la sección entera desaparece. Un titular con nada debajo se lee como un fallo.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; border: 1px solid #2E2A26; background: #1E1B18; color: #C9A96A; font-size: 15px;">R</span>
+            <div><p style="margin: 0; font-size: 15px; font-weight: 500;">Rosa Quispe</p><p style="margin: 0; font-size: 13px; color: #9C958C;">Boda · 15 mar</p></div>
+          </div>
+          <p style="margin: 0; font-size: 15px; line-height: 1.5;">«Los reels llegaron al día siguiente.»</p>
+        </div>
+        <p class="nota" style="margin: 0;">Solo se publica con consentimiento firmado. Ley 29733, y hay menores en los XV.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PALETA CLARA -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <span class="lab">Paleta clara · no es la oscura invertida</span>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px;">
+      <div class="sw"><div class="chip" style="background: #FBFAF7;"></div><span style="font-size: 13px;">ground</span><span class="nota" style="font-size: 12px;">#FBFAF7</span></div>
+      <div class="sw"><div class="chip" style="background: #F4F1EB;"></div><span style="font-size: 13px;">surface</span><span class="nota" style="font-size: 12px;">#F4F1EB</span></div>
+      <div class="sw"><div class="chip" style="background: #FFFFFF;"></div><span style="font-size: 13px;">elevated</span><span class="nota" style="font-size: 12px;">#FFFFFF</span></div>
+      <div class="sw"><div class="chip" style="background: #E6E1D8;"></div><span style="font-size: 13px;">line</span><span class="nota" style="font-size: 12px;">#E6E1D8</span></div>
+      <div class="sw"><div class="chip" style="background: #6B655C;"></div><span style="font-size: 13px;">ash</span><span class="nota" style="font-size: 12px;">#6B655C</span></div>
+      <div class="sw"><div class="chip" style="background: #17150F;"></div><span style="font-size: 13px;">bone</span><span class="nota" style="font-size: 12px;">#17150F</span></div>
+      <div class="sw"><div class="chip" style="background: #8A6D3B;"></div><span style="font-size: 13px;">brass · texto</span><span class="nota" style="font-size: 12px;">#8A6D3B</span></div>
+      <div class="sw"><div class="chip" style="background: #C9A96A;"></div><span style="font-size: 13px;">brass · relleno</span><span class="nota" style="font-size: 12px;">#C9A96A</span></div>
+      <div class="sw"><div class="chip" style="background: #8C857A;"></div><span style="font-size: 13px;">icono</span><span class="nota" style="font-size: 12px;">#8C857A</span></div>
+      <div class="sw"><div class="chip" style="background: #25D366;"></div><span style="font-size: 13px;">whatsapp</span><span class="nota" style="font-size: 12px;">#25D366</span></div>
+    </div>
+    <p class="nota" style="margin: 0;">Dos latones: <span style="color: #F2EFE9;">#8A6D3B</span> para leer y <span style="color: #F2EFE9;">#C9A96A</span> —el de la marca— para rellenos. El de la marca da <b style="color: #F2EFE9;">1.8:1</b> sobre blanco: como texto no vale.</p>
+  </div>
+
+  <!-- LO QUE NO SE HACE -->
+  <div style="display: flex; flex-direction: column; gap: 12px; padding: 20px; border-radius: 12px; border: 1px solid #2E2A26; background: #141210;">
+    <span class="lab">Lo que no se hace</span>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+      <p class="nota" style="margin: 0;"><span style="color: #F2EFE9;">Nada solo en <em>:hover</em>.</span> En un móvil no hay hover, y quien no es nativo digital no descubre lo escondido.</p>
+      <p class="nota" style="margin: 0;"><span style="color: #F2EFE9;">Ni cian ni magenta.</span> El flyer los usa para separar los tres paquetes; aquí eso lo hace el acento único.</p>
+      <p class="nota" style="margin: 0;"><span style="color: #F2EFE9;">Sin autoplay en la rejilla.</span> Solo el hero: bucle de 6 s, silenciado, ~1,5 MB.</p>
+      <p class="nota" style="margin: 0;"><span style="color: #F2EFE9;">Sin formulario.</span> El clic a WhatsApp <em>es</em> el lead. No hay «déjanos tu correo».</p>
+      <p class="nota" style="margin: 0;"><span style="color: #F2EFE9;">Un bloque oscuro a sangre en el tema claro se lee como un fallo de render.</span> El cierre va como PANEL redondeado con margen, para que se vea que está puesto a propósito.</p>
+      <p class="nota" style="margin: 0;"><span style="color: #F2EFE9;">Los reels se quedan oscuros en los DOS temas.</span> Su fondo es el material —vídeo—, no la superficie de la página.</p>
+      <p class="nota" style="margin: 0;"><span style="color: #F2EFE9;">El menú NO es el del admin.</span> Aquel tiene siete entradas porque James gestiona siete cosas; aquí cada entrada es una salida. Cuatro: Trabajos, Paquetes, Testimonios, Sobre mí.</p>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

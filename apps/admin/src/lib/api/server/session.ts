@@ -44,26 +44,49 @@ export async function borrarSesion(): Promise<void> {
   (await cookies()).delete(COOKIE);
 }
 
-/** Devuelve el par nuevo, o null si el refresh ya no vale (expirado o revocado). */
 /**
- * Devuelve la sesión nueva o el MOTIVO por el que no la hay. Antes devolvía
- * `null` para todo, y con eso la pasarela no podía distinguir «tu sesión
- * caducó» de «la cerramos por seguridad» —que es el reuso del refresh token y
- * merece que James se entere—.
+ * Devuelve la sesión nueva o el MOTIVO por el que no la hay.
+ *
+ * Son TRES resultados, no dos, y la diferencia es la que decide si se borra la
+ * cookie:
+ *
+ * - `SESSION_EXPIRED` / `SESSION_REVOKED` — **la API ha dicho que no**. El
+ *   refresh ya no vale: hay que volver a entrar.
+ * - `SIN_RESPUESTA` — **no hemos podido preguntárselo**: la API está caída, se
+ *   está reiniciando o venció el tiempo. El refresh token **sigue siendo
+ *   válido**, así que la sesión NO se toca.
+ *
+ * Sin esa tercera rama, cualquier corte de red cerraba la sesión de verdad
+ * —borrando la cookie— y James veía «Tu sesión caducó» con un refresh token
+ * perfectamente bueno de 30 días. Un fallo de infraestructura no puede
+ * traducirse en «vuelve a escribir tu contraseña».
  */
 export type ResultadoRefresh =
-  { ok: true; sesion: Sesion } | { ok: false; code: 'SESSION_EXPIRED' | 'SESSION_REVOKED' };
+  | { ok: true; sesion: Sesion }
+  | { ok: false; code: 'SESSION_EXPIRED' | 'SESSION_REVOKED' | 'SIN_RESPUESTA' };
 
 export async function refrescar(refreshToken: string): Promise<ResultadoRefresh> {
-  const res = await fetch(`${serverConfig.apiUrl}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-    signal: AbortSignal.timeout(serverConfig.timeoutMs),
-    cache: 'no-store',
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${serverConfig.apiUrl}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+      signal: AbortSignal.timeout(serverConfig.timeoutMs),
+      cache: 'no-store',
+    });
+  } catch (e) {
+    // Ni siquiera llegamos a preguntar: la sesión no tiene la culpa.
+    console.error('[sesion] no se pudo contactar con la API para refrescar:', e);
+    return { ok: false, code: 'SIN_RESPUESTA' };
+  }
 
   if (!res.ok) {
+    // Solo un 4xx es la API DICIENDO que el refresh no vale. Un 5xx es un
+    // problema suyo, y cerrar la sesión por eso sería castigar a James por una
+    // caída del servidor.
+    if (res.status >= 500) return { ok: false, code: 'SIN_RESPUESTA' };
+
     const fallo = (await res.json().catch(() => undefined)) as { code?: string } | undefined;
     return {
       ok: false,
@@ -72,6 +95,6 @@ export async function refrescar(refreshToken: string): Promise<ResultadoRefresh>
   }
 
   // La API envuelve TODA respuesta: { success, code, data, timestamp }.
-  const cuerpo = (await res.json()) as { data?: Sesion };
-  return cuerpo.data ? { ok: true, sesion: cuerpo.data } : { ok: false, code: 'SESSION_EXPIRED' };
+  const cuerpo = (await res.json().catch(() => undefined)) as { data?: Sesion } | undefined;
+  return cuerpo?.data ? { ok: true, sesion: cuerpo.data } : { ok: false, code: 'SESSION_EXPIRED' };
 }

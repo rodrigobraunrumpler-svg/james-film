@@ -128,7 +128,11 @@ export function TeselaSoltar({ seleccion }: { seleccion: Seleccion }) {
         )}
       >
         <Upload className="text-brass size-[19px]" strokeWidth={1.6} aria-hidden />
-        <span className="text-brass text-xs">Arrastra tus reels</span>
+        {/* En táctil no hay arrastre: ahí lo que hay es el carrete. Decir
+            «arrastra» en el iPhone de James describe algo que no existe. */}
+        <span className="text-brass text-xs lg:hidden">Añadir del carrete</span>
+        <span className="text-brass hidden text-xs lg:inline">Suelta reels aquí</span>
+        <span className="text-muted text-[10px] leading-tight">MP4 · 1080p · máx. 200 MB</span>
       </button>
       <input
         ref={input}
