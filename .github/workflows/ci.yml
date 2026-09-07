@@ -31,26 +31,37 @@ jobs:
           --health-timeout 3s
           --health-retries 10
 
-      # Mismas credenciales, bucket y puerto que el Docker local: el flujo de
-      # subida firmado se ejercita entero en CI, sin cuenta de Cloudflare.
-      storage:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: jamesfilm
-          MINIO_ROOT_PASSWORD: jamesfilm-secreto
-        ports: ['9000:9000']
-        options: >-
-          --health-cmd "mc ready local"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 15
-
     steps:
       - uses: actions/checkout@v4
 
+      # MinIO NO puede ir en `services:`, y es la razón por la que este workflow
+      # falló en «Initialize containers» la primera vez que llegó a ejecutarse.
+      # Un service container arranca la imagen SIN argumentos, y el CMD de
+      # minio/minio es `minio` a secas: sin el subcomando `server /data` imprime
+      # la ayuda y termina. A un service solo se le pasan image, env, ports y
+      # options -- el comando no --, así que la única forma es un paso.
+      #
+      # Mismas credenciales y puerto que el Docker local: el flujo de subida
+      # firmado se ejercita entero en CI, sin cuenta de Cloudflare.
+      - name: Levantar MinIO
+        run: |
+          docker run -d --name storage --network host \
+            -e MINIO_ROOT_USER=jamesfilm \
+            -e MINIO_ROOT_PASSWORD=jamesfilm-secreto \
+            minio/minio:latest server /data
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:9000/minio/health/live >/dev/null \
+            || { echo "::error::MinIO no respondió en 30 s"; docker logs storage; exit 1; }
+
+      # `--entrypoint sh` no es opcional: el entrypoint de minio/mc es `mc`, así
+      # que sin sobrescribirlo el `sh -c` llega como argumento suyo y responde
+      # «`sh` is not a recognized command». Comprobado ejecutándolo.
       - name: Crear el bucket
         run: |
-          docker run --rm --network host minio/mc:latest sh -c "
+          docker run --rm --network host --entrypoint sh minio/mc:latest -c "
             mc alias set local http://localhost:9000 jamesfilm jamesfilm-secreto &&
             mc mb --ignore-existing local/jamesfilm
           "
