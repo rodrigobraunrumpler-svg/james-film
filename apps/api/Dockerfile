@@ -41,14 +41,21 @@ WORKDIR /repo
 #    El `prepare` de la raiz hace `git config core.hooksPath`, que fuera de un
 #    repo git aborta el install. Se neutraliza con --ignore-scripts y se corre
 #    a mano lo unico que hacia falta (`prisma generate`, en la etapa 3).
+#
+#    SIN `--mount=type=cache` para el store de pnpm, y no es un olvido: el
+#    builder de Railway exige que el id lleve su prefijo LITERAL
+#    (`id=s/<service-id>-/pnpm/store`) y no admite variables, asi que
+#    `${TARGETARCH}` lo invalida y el build muere en 5 s sin ejecutar una sola
+#    instruccion. Hardcodear el id del servicio ataria el repo a un proyecto de
+#    Railway concreto. Y la cache de CAPAS ya cubre el caso comun -- este RUN
+#    solo se reejecuta si cambia el lockfile --, o sea que lo unico que se
+#    pierde es no reusar el store en esa reinstalacion, semanal como mucho.
 # ---------------------------------------------------------------------------
 FROM base AS deps
-ARG TARGETARCH
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/contracts/package.json packages/contracts/
-RUN --mount=type=cache,id=pnpm-store-${TARGETARCH},target=/pnpm/store,sharing=locked \
-    pnpm install --frozen-lockfile --ignore-scripts --filter api...
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter api...
 
 # ---------------------------------------------------------------------------
 # 3. build — genera el cliente de Prisma y compila. `nest build` es solo tsc:
@@ -86,12 +93,11 @@ RUN cd apps/api && pnpm exec nest build
 #    alcanzable: 449 MB -> 186 MB. La etapa 5 comprueba que no rompio nada.
 # ---------------------------------------------------------------------------
 FROM base AS prod-deps
-ARG TARGETARCH
+# Sin cache mount, por lo mismo que la etapa 2.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/contracts/package.json packages/contracts/
-RUN --mount=type=cache,id=pnpm-store-${TARGETARCH},target=/pnpm/store,sharing=locked \
-    pnpm --filter api deploy --prod --legacy --ignore-scripts /prod
+RUN pnpm --filter api deploy --prod --legacy --ignore-scripts /prod
 COPY docker/podar-prod.mjs /tmp/podar-prod.mjs
 RUN node /tmp/podar-prod.mjs /prod && rm /tmp/podar-prod.mjs
 
