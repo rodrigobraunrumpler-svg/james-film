@@ -8,13 +8,31 @@
 # Los dominios van a mano y no por variable de entorno: un fichero `_headers`
 # es estático, Pages no lo interpola. Al cambiar de dominio hay que tocarlo, y
 # por eso está escrito arriba del todo.
+#
+# ┌─ PROVISIONAL · BORRAR EN LA ETAPA 5 (dominio) ────────────────────────────┐
+# │ Mientras no exista jamesfilm.pe, la web vive en *.pages.dev y habla con   │
+# │ Railway y con el r2.dev del bucket. Los dos hosts están AÑADIDOS al CSP   │
+# │ abajo, y el `noindex` evita que Google indexe la versión provisional y    │
+# │ luego compita con el dominio de verdad.                                   │
+# │                                                                           │
+# │ Al conectar el dominio se quitan LAS TRES cosas de golpe:                  │
+# │   1. …r2.dev de `img-src` y `media-src`                                    │
+# │   2. …up.railway.app de `connect-src`                                      │
+# │   3. la cabecera X-Robots-Tag                                              │
+# │ Dejarlas sería ampliar el CSP para siempre por una comodidad de un mes.    │
+# └───────────────────────────────────────────────────────────────────────────┘
 
 /*
   # `unsafe-inline` en `script-src` es obligatorio, no un descuido: el script
   # del tema va EN LÍNEA y bloqueante a propósito —leerlo en un efecto pintaría
   # la pantalla oscura y saltaría a clara—, y el registro del clic también.
   # Con nonces habría que generar el HTML en runtime, y esta web es estática.
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://media.jamesfilm.pe; media-src 'self' https://media.jamesfilm.pe; font-src 'self'; connect-src 'self' https://api.jamesfilm.pe; form-action 'none'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://media.jamesfilm.pe https://pub-14ba0e11e96040a7a0307dba1abe30b7.r2.dev; media-src 'self' https://media.jamesfilm.pe https://pub-14ba0e11e96040a7a0307dba1abe30b7.r2.dev; font-src 'self'; connect-src 'self' https://api.jamesfilm.pe https://api-production-a7757.up.railway.app; form-action 'none'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests
+
+  # PROVISIONAL (etapa 5): la web está en *.pages.dev. Sin esto, Google puede
+  # indexar la versión de pruebas y luego competir con el dominio real por sus
+  # propias páginas. Se quita el día que jamesfilm.pe sirva la web.
+  X-Robots-Tag: noindex
 
   # Nada de adivinar el tipo por el contenido: un .jpg que en realidad es HTML
   # deja de ser un problema.
