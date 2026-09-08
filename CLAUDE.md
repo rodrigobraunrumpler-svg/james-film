@@ -24,6 +24,16 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 
 **Media**
 - Entrega: **1080×1920, H.264 High, CRF 20, AAC 192k, MP4 `+faststart`**. Nunca HEVC ni 4K. §4
+- **Lo que decide es el CÓDEC, no el contenedor: `.mov` SE ACEPTA** (7-sep-2026). El iPhone graba
+  QuickTime **siempre**, con cualquier ajuste de cámara, así que rechazarlo condenaba a James a
+  convertir cada archivo a mano. Se bloqueaba por «Firefox no reproduce contenedores QuickTime» y
+  **eso es falso**: medido con un `<video>` real —no con `canPlayType`— servido como
+  `video/quicktime`, un `.MOV` con H.264 decodifica en Firefox y en Chromium. `video/quicktime`
+  está en las dos listas `MIMES_VIDEO`, la de `apps/api` y su espejo en el admin, y en el `accept`
+  de la zona de soltar.
+- **A CRF 20 el preset de entrega no siempre cabe bajo los 15 Mbps.** Un clip de 12 s a 1080×1920
+  con mucho detalle salió a 16,5. Hay que añadir `-maxrate 12M -bufsize 24M`; el número del preset
+  es una guía de calidad, no una garantía de tamaño.
 - El máster nunca se sirve ni se sube. El disco de James es el archivo maestro, R2 es la vitrina. §4
 - Validación en el navegador antes de firmar: formato reproducible, lado largo ≤2160px,
   bitrate ≤15 Mbps, faststart presente. **Los mensajes de error dicen qué hacer**, no "formato inválido". §4
@@ -1031,9 +1041,17 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
 - NestJS 12 trae **Vitest 4**. Sustituye a Jest en §15, y de paso unifica: §15 ya quería Vitest
   para el admin, así que ahora todo el repo usa el mismo runner.
 - **Playwright para E2E**, en `apps/admin/e2e`, solo en `main` (levanta API y admin). Los fixtures
-  `reel.mp4` y `reel-hevc.mp4` se generaron con ffmpeg y están commiteados: 41 KB cada uno.
+  `reel.mp4`, `reel-hevc.mp4`, `reel.mov`, `reel-hevc.mov` y `reel-hevc-sin-faststart.mov` se
+  generaron con ffmpeg y están commiteados: entre 41 y 212 KB. Los `.mov` llevan marca `ftyp qt`
+  como los del iPhone; el último pesa 212 KB **a propósito**, porque por debajo de los 64 KB de la
+  ventana el archivo se lee entero de una vez y la rama que lo justifica no se ejecutaría.
   `faststart.fixtures.nodo.spec.ts` valida el parser contra ELLOS y no contra cajas fabricadas por
   el propio test — una cabecera inventada solo demuestra que el parser lee lo que el test escribe.
+- **El aviso del Chromium empaquetado vale para CÓDECS, no para contenedores.** Trae su propio
+  bundle de ffmpeg, así que decodifica cosas que el Chrome del visitante quizá no — por eso una
+  medida de HEVC hecha ahí no sirve de nada. Demultiplexar un `.mov` sí es código del navegador y
+  no depende del hardware: esa medida sí es representativa, y es la que abrió la puerta a aceptar
+  QuickTime.
 - **El Chromium empaquetado SÍ decodifica H.264** (`canPlayType` → `probably` en Playwright 1.62;
   trae su propio bundle de ffmpeg). El spec de subida se salta comprobando la **capacidad**, no el
   canal. `channel: 'chrome'` sigue siendo el defecto —es lo más parecido a lo que usa James— con
@@ -1368,12 +1386,34 @@ Planes: [fase 1 — base](docs/plans/2026-08-28-fase-1-base.md) ✅ ·
 ([revisión](docs/plans/2026-08-28-fase-3-revision.md)) ·
 [fase 4 — resto del admin](docs/plans/2026-08-28-fase-4-resto-del-admin.md)
 
-**`faststart` AVISA, no bloquea** (resuelto lo que la fase 3.5 dejaba abierto). HEVC sí bloquea:
-Chrome y Firefox no lo reproducen, así que subirlo es publicar un vídeo que media web no puede
-abrir. Un MP4 sin faststart **se reproduce perfectamente**; lo único es que el primer play tarda
+**`faststart` AVISA, no bloquea** (resuelto lo que la fase 3.5 dejaba abierto). HEVC sí bloquea,
+**pero el motivo escrito aquí estaba caducado y el nuevo es otro** (corregido el 7-sep-2026): decía
+«Chrome y Firefox no lo reproducen» y en 2026 los dos lo hacen —Chrome desde la 107 donde el
+sistema aporta el decodificador, Firefox desde la 134/136/137—. Lo que sostiene el bloqueo hoy es
+que **decodificar HEVC depende del hardware del visitante**: en Windows sin decodificador por
+hardware falla, y Edge exige una extensión de pago de la Store. El que no puede reproducirlo no ve
+un vídeo peor, **no ve nada**, y no pulsa el botón de WhatsApp — y eso no se mide desde aquí.
+Frente a eso, el arreglo cuesta un tap: *Ajustes › Cámara › Formatos › «Más compatible»*, que **no
+baja la calidad** (misma imagen, archivo más grande) y solo renuncia a 4K60, que este proyecto
+reescala igual. Esa es también la línea que separa el HEVC del `.mov`: el contenedor lo
+demultiplexa el navegador **siempre**, el códec no. Un MP4 sin faststart **se reproduce perfectamente**; lo único es que el primer play tarda
 porque el navegador no puede empezar hasta tenerlo entero. Bloquearlo dejaba a James **sin salida**
 cuando su editor no ofrece esa opción —y varios no la ofrecen—: cambiar un inconveniente por una
 imposibilidad es peor negocio. El aviso se pinta en `ash`, nunca en rojo.
+
+**Y un HEVC SIN faststart se colaba entero, que es el fallo que esto destapó.** El parser leía
+solo los primeros 64 KB, y en un archivo sin faststart el `moov` está **al final**: el FourCC del
+códec no cae en esa ventana, sale `desconocido`, y como solo se bloquea lo que se reconoce, el
+vídeo se subía y acababa publicado. `inspeccionarMp4` lee ahora una **segunda ventana en la cola**,
+y solo cuando la primera no encontró el códec — con faststart no llega a ejecutarse, y hay test que
+lo comprueba contando las lecturas. Salió de un `IMG_*.MOV` real del iPhone: `ftyp → wide → mdat`
+de 106 MB con el `moov` detrás. **Ninguna caja fabricada a mano lo habría enseñado**, porque todas
+las de los tests traen el `moov` delante — es la misma razón por la que los fixtures son de ffmpeg.
+
+**Un mensaje no afirma lo que no ha comprobado.** El primer intento decía «el vídeo de dentro está
+bien: basta con cambiar el contenedor» sin haber identificado el códec, y en el archivo real de
+James eso era mentira: había HEVC en 4K. Con el códec sin identificar se dice qué exportar y no se
+promete nada.
 
 **Los mensajes de error no nombran ninguna aplicación.** Decían «vuelve a exportarlo desde CapCut»
 y James puede haber montado en Premiere, en DaVinci o en el propio iPhone: nombrar un producto que

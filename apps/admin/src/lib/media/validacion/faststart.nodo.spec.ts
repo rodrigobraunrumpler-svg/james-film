@@ -143,6 +143,47 @@ describe('validarMp4', () => {
     expect(aviso).toMatch(/inicio rápido|optimizar para web/);
   });
 
+  const mov = { name: 'IMG_8559.MOV', size: 24 * 1024 * 1024, type: 'video/quicktime' };
+
+  it('el HEVC nombra el AJUSTE de la cámara, no solo el códec', () => {
+    // El mensaje viejo decía «vuelve a exportarlo con H.264» a alguien que no
+    // está exportando: el archivo salió de la cámara. Sin nombrar
+    // Ajustes › Cámara › Formatos, James no tiene forma de llegar a la causa,
+    // y cada vídeo que grabe después falla igual.
+    const { error } = validarMp4(mov, { faststart: true, codec: 'hevc' });
+
+    expect(error).toContain('HEVC');
+    expect(error).toMatch(/Ajustes.*Cámara.*Formatos/);
+    expect(error).toContain('Más compatible');
+  });
+
+  it('un .MOV con H.264 PASA: lo que decide es el códec, no la caja', () => {
+    // La caja dejó de ser motivo de rechazo al medirla: un .MOV con H.264
+    // decodifica en Firefox y en Chromium servido como video/quicktime. El
+    // iPhone graba .MOV siempre, así que bloquearlo obligaba a James a
+    // convertir cada archivo a mano.
+    expect(validarMp4(mov, { faststart: true, codec: 'h264' })).toEqual({
+      error: null,
+      aviso: null,
+    });
+  });
+
+  it('un .MOV con HEVC sigue bloqueado, y por el CÓDEC', () => {
+    // La diferencia con la caja es real: demultiplexar el contenedor lo hace el
+    // navegador siempre; decodificar HEVC depende del hardware del visitante.
+    const { error } = validarMp4(mov, { faststart: true, codec: 'hevc' });
+
+    expect(error).toContain('HEVC');
+    expect(error).toMatch(/Ajustes.*Cámara.*Formatos/);
+  });
+
+  it('un MP4 con H.264 sigue pasando limpio', () => {
+    expect(validarMp4(archivo, { faststart: true, codec: 'h264' })).toEqual({
+      error: null,
+      aviso: null,
+    });
+  });
+
   it('el códec desconocido pasa: la API tiene la última palabra', () => {
     expect(validarMp4(archivo, { faststart: true, codec: 'desconocido' })).toEqual({
       error: null,

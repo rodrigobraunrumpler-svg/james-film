@@ -140,7 +140,7 @@ export function TeselaSoltar({ seleccion }: { seleccion: Seleccion }) {
         multiple
         // `capture` NO: abriría la cámara en vez del carrete, que es donde
         // aterriza lo que James exporta de su editor.
-        accept="video/mp4,image/jpeg,image/png,image/webp,image/heic,image/heif"
+        accept="video/mp4,video/quicktime,image/jpeg,image/png,image/webp,image/heic,image/heif"
         onChange={(e) => anadir(e.target.files)}
         className="sr-only"
       />

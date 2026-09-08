@@ -7,6 +7,7 @@ import { clasesBoton } from '@/components/shared/boton';
 import { eventosQueCaben } from '@/lib/almacenamiento';
 import { partirTamano, tamano } from '@/lib/format';
 import { cn } from '@/lib/utils/cn';
+import { usePublicar } from '../hooks/use-panel';
 
 /**
  * Los sábados libres de los tres próximos meses, en el Panel.
@@ -117,6 +118,8 @@ export function BloqueAtajos({
   ultimaGaleria: DashboardDto['ultimaGaleria'];
   pendingChanges: number;
 }) {
+  const publicar = usePublicar();
+
   return (
     <section
       className="entra bg-card border-line rounded-card flex flex-col gap-2 border px-4 py-3.5"
@@ -141,9 +144,18 @@ export function BloqueAtajos({
       )}
 
       {pendingChanges > 0 && (
-        <button type="button" className={clasesBoton('secundario', 'h-[38px] justify-start')}>
+        <button
+          type="button"
+          onClick={() => publicar.mutate()}
+          disabled={publicar.isPending}
+          className={clasesBoton('secundario', 'h-[38px] justify-start')}
+        >
           <Send className="size-3.5" aria-hidden />
-          Publicar {pendingChanges === 1 ? 'el cambio' : `los ${pendingChanges} cambios`}
+          {/* Lo pendiente va DENTRO del botón, nunca en un overlay: la señal se
+              queda donde ocurrió la acción. */}
+          {publicar.isPending
+            ? 'Publicando…'
+            : `Publicar ${pendingChanges === 1 ? 'el cambio' : `los ${pendingChanges} cambios`}`}
         </button>
       )}
     </section>

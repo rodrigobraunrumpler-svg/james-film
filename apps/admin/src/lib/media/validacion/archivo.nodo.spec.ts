@@ -17,13 +17,18 @@ describe('validarArchivo', () => {
     expect(validarArchivo(archivo())).toBeNull();
   });
 
-  it('rechaza un .mov antes de firmar nada, diciendo qué exportar', () => {
-    // "lo que el navegador no puede reproducir" es el criterio equivocado en el
-    // único navegador que importa: iOS Safari reproduce HEVC desde iOS 11.
-    const error = validarArchivo(archivo({ name: 'clip.mov', type: 'video/quicktime' }));
+  it('acepta un .mov: el iPhone graba en esa caja SIEMPRE', () => {
+    // Se bloqueaba por «Firefox no reproduce QuickTime», y al medirlo resultó
+    // falso: decodifica en Firefox y en Chromium. Lo que decide es el códec, y
+    // de eso se ocupa `validarMp4` tras leer la cabecera.
+    expect(validarArchivo(archivo({ name: 'clip.mov', type: 'video/quicktime' }))).toBeNull();
+  });
+
+  it('sigue rechazando un vídeo que no es ni MP4 ni MOV', () => {
+    const error = validarArchivo(archivo({ name: 'clip.avi', type: 'video/x-msvideo' }));
 
     expect(error).toContain('MP4');
-    expect(error).toMatch(/H\.264|1080p|calidad/);
+    expect(error).toMatch(/H\.264/);
   });
 
   it('un archivo de 300 MB se rechaza ANTES de empezar a subir', () => {

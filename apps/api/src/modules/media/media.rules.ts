@@ -1,11 +1,25 @@
 import type { MediaType, Orientation } from '@james-film/contracts';
 
 /**
- * Lista blanca, no negra. El acuerdo con James es MP4/H.264 (§4), así que un
- * .mov con HEVC ni siquiera llega a firmarse. HEIC tampoco aparece: el admin lo
- * convierte antes de subir porque Cloudflare no lo procesa.
+ * Lista blanca, no negra. Lo que decide es el CÓDEC —H.264 sí, HEVC no—, no el
+ * contenedor: el admin bloquea el HEVC leyendo la cabecera antes de pedir firma.
+ * HEIC no aparece: el admin lo convierte antes de subir porque Cloudflare no lo
+ * procesa.
+ *
+ * **`video/quicktime` entró MIDIENDO** (7-sep-2026). El iPhone graba `.MOV`
+ * siempre, con cualquier ajuste de cámara, así que rechazarlo obligaba a James a
+ * convertir cada archivo a mano. Se bloqueaba por «Firefox no reproduce
+ * contenedores QuickTime», y eso resultó ser FALSO: servidos como
+ * `video/quicktime`, un `.MOV` con H.264 decodifica en Firefox y en Chromium
+ * —comprobado con `<video>` real, no con `canPlayType`—.
+ *
+ * Y la medida vale pese al aviso de CLAUDE.md sobre el Chromium empaquetado:
+ * ese aviso es por los CÓDECS, que trae en su propio ffmpeg. Demultiplexar el
+ * contenedor es código del navegador y no depende del hardware, así que aquí el
+ * resultado sí es representativo. El HEVC se sigue bloqueando justo por lo
+ * contrario: ahí sí decide el hardware de cada visitante.
  */
-export const MIMES_VIDEO = ['video/mp4'] as const;
+export const MIMES_VIDEO = ['video/mp4', 'video/quicktime'] as const;
 export const MIMES_FOTO = ['image/jpeg', 'image/png', 'image/webp'] as const;
 /**
  * JPEG, no WebP. `canvas.toBlob('image/webp')` NO existe en Safari —ni iOS ni macOS,
@@ -20,6 +34,7 @@ export const MIMES_POSTER = ['image/jpeg'] as const;
 
 const EXTENSIONES: Record<string, string> = {
   'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',

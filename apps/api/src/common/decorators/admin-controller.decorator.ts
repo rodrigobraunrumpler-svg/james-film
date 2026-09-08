@@ -1,5 +1,6 @@
-import { applyDecorators, Controller } from '@nestjs/common';
+import { applyDecorators, Controller, UseInterceptors } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { TriggerDeployInterceptor } from '../interceptors/trigger-deploy.interceptor.js';
 import { Roles } from './roles.decorator.js';
 import type { UsuarioActual } from './current-user.decorator.js';
 
@@ -33,6 +34,9 @@ export function AdminController(ruta: string, opciones: OpcionesAdminController)
     ApiTags(opciones.tag),
     ApiBearerAuth(),
     Roles(...(opciones.roles ?? ['ADMIN'])),
-    // El TriggerDeployInterceptor de la fase 6 va AQUÍ, y en ningún otro sitio.
+    // AQUÍ, y en ningún otro sitio: cuenta el cambio y agenda el rebuild de la
+    // web. Solo actúa sobre métodos que mutan y que hayan ido bien; lo que muta
+    // sin cambiar la web lleva `@SinDeploy()`.
+    UseInterceptors(TriggerDeployInterceptor),
   );
 }

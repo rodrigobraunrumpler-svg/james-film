@@ -20,3 +20,9 @@ blob-report/
 apps/*/pnpm-workspace.yaml
 apps/*/pnpm-lock.yaml
 *.tsbuildinfo
+
+# Vídeos de prueba del iPhone y sus conversiones: fuera del repo.
+# Los .mov de apps/admin/e2e/fixtures/ SÍ van — son fixtures de 41-212 KB.
+/*.MOV
+/*.mov
+/convertidos/

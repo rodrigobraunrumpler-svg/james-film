@@ -81,10 +81,32 @@ function buscarCodec(buffer: ArrayBuffer): Codec {
   return 'desconocido';
 }
 
-/** Lee SOLO la ventana de cabecera. Un vídeo de 200 MB no cabe en un iPhone. */
+/**
+ * Lee SOLO ventanas de 64 KB. Un vídeo de 200 MB no cabe en un iPhone.
+ *
+ * DOS ventanas, y la segunda no es un lujo: **sin faststart el `moov` está al
+ * FINAL**, así que el FourCC del códec no cae en la de entrada y el códec sale
+ * `desconocido`. Como `validarMp4` solo bloquea lo que reconoce, un **HEVC sin
+ * faststart se colaba entero** y acababa publicado sin que Chrome pudiera
+ * reproducirlo — justo el fallo que el bloqueo de HEVC existe para impedir.
+ *
+ * Salió con un `IMG_*.MOV` real del iPhone de James: `ftyp → wide → mdat` de
+ * 106 MB, con el `moov` detrás. Ninguna caja fabricada a mano lo habría
+ * enseñado, porque todas las de los tests traen el `moov` delante.
+ *
+ * La cola se lee **solo si hizo falta**: con faststart, la primera ventana ya
+ * trae el códec y esto no llega a ejecutarse.
+ */
 export async function inspeccionarMp4(blob: BlobLeible): Promise<CabeceraMp4> {
   const hasta = Math.min(blob.size, CABECERA_BYTES);
-  return analizarCabecera(await blob.slice(0, hasta).arrayBuffer());
+  const cabecera = analizarCabecera(await blob.slice(0, hasta).arrayBuffer());
+
+  if (cabecera.codec !== 'desconocido' || blob.size <= CABECERA_BYTES) return cabecera;
+
+  const cola = await blob.slice(blob.size - CABECERA_BYTES, blob.size).arrayBuffer();
+  // `faststart` NO se recalcula: que el moov esté al final es precisamente lo
+  // que nos ha traído hasta aquí, y la primera ventana ya lo determinó bien.
+  return { faststart: cabecera.faststart, codec: buscarCodec(cola) };
 }
 
 export interface RevisionMp4 {
@@ -108,11 +130,16 @@ export interface RevisionMp4 {
  * subirlo. Cambiar un inconveniente por una imposibilidad es peor negocio.
  */
 export function validarMp4(a: ArchivoElegido, cabecera: CabeceraMp4): RevisionMp4 {
+  // Va ANTES que el contenedor a propósito: un .MOV del iPhone suele fallar por
+  // las dos cosas, y de las dos esta es la única que James puede arreglar de
+  // raíz. Decirle «es un .MOV» le haría convertir archivos uno a uno para
+  // siempre; decirle lo del ajuste lo arregla para todos los que grabe después.
   if (cabecera.codec === 'hevc') {
     return {
       error:
-        `«${a.name}» está en HEVC (H.265). Tu iPhone lo reproduce, pero la web no. ` +
-        `Vuelve a exportarlo con códec H.264.`,
+        `«${a.name}» está grabado en HEVC (H.265). Tu iPhone lo reproduce, pero la web no. ` +
+        `Si sale de la cámara: Ajustes › Cámara › Formatos › «Más compatible», y vuelve a ` +
+        `grabarlo. Si ya está editado, expórtalo con códec H.264.`,
       aviso: null,
     };
   }

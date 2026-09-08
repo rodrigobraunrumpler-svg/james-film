@@ -74,6 +74,15 @@ export const envSchema = z.object({
   /** Lo lee SOLO StorageService. Ningún servicio conoce el dominio. */
   CDN_BASE_URL: z.url(),
 
+  /**
+   * El Deploy Hook de Cloudflare Pages: un POST ahí reconstruye la landing.
+   *
+   * OPCIONAL a propósito. En local y en CI no existe, y ahí no debe existir —
+   * cada guardado en desarrollo dispararía un build de producción. Sin ella el
+   * `DeployService` cuenta los cambios y no llama a nadie.
+   */
+  DEPLOY_HOOK_URL: z.url().optional(),
+
   MAX_VIDEO_MB: z.coerce.number().int().positive().default(200),
   MAX_IMAGE_MB: z.coerce.number().int().positive().default(15),
   PRESIGN_TTL_SECONDS: z.coerce.number().int().positive().default(900),

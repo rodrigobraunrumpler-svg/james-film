@@ -1,5 +1,6 @@
 import { Body, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
 import { AdminController } from '../../common/decorators/admin-controller.decorator.js';
+import { SinDeploy } from '../../common/decorators/sin-deploy.decorator.js';
 import {
   DocActualizarMedia,
   DocBorrarMedia,
@@ -25,6 +26,7 @@ export class MediaAdminController {
 
   /** N archivos, UN roundtrip: ocho reels no deben ser ocho peticiones (§10). */
   @DocPresign()
+  @SinDeploy()
   @Post('galleries/:id/media/presign')
   presign(@Param('id') galleryId: string, @Body() dto: PresignDto) {
     return this.media.presign(galleryId, dto.items);

@@ -9,6 +9,7 @@ import { validateEnv } from './config/env.schema.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { DeployModule } from './modules/deploy/deploy.module.js';
 import { GalleriesModule } from './modules/galleries/galleries.module.js';
 import { IconsModule } from './modules/icons/icons.module.js';
 import { MediaModule } from './modules/media/media.module.js';
@@ -41,6 +42,9 @@ import { StorageModule } from './storage/storage.module.js';
     }),
     PrismaModule,
     CommonModule,
+    // Global: el interceptor de `@AdminController` inyecta su servicio desde
+    // los once módulos de admin.
+    DeployModule,
     HealthModule,
     StorageModule,
     AuthModule,
