@@ -1,6 +1,7 @@
 import { HttpCode, Post } from '@nestjs/common';
 import { AdminController } from '../../common/decorators/admin-controller.decorator.js';
 import { SinDeploy } from '../../common/decorators/sin-deploy.decorator.js';
+import { DocPublicar } from './docs/deploy.docs.js';
 import { DeployService } from './deploy.service.js';
 
 @AdminController('admin/deploy', { tag: 'admin/publicación' })
@@ -15,6 +16,7 @@ export class DeployAdminController {
    * `@SinDeploy()` porque este POST **es** la publicación: sin él se contaría a
    * sí mismo como un cambio pendiente y el contador nunca llegaría a cero.
    */
+  @DocPublicar()
   @SinDeploy()
   @HttpCode(202)
   @Post()

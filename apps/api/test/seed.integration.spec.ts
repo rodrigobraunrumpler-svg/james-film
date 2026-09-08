@@ -82,6 +82,14 @@ describe('seed', () => {
   });
 
   it('deja el singleton de DeployState listo para la barra de publicación', async () => {
+    // Se borra la fila ANTES, y no es cosmética: desde que existe el
+    // `TriggerDeployInterceptor`, cada mutación de los otros ficheros de la
+    // suite incrementa `pendingChanges` sobre esta misma base. Sin el borrado
+    // este test leía 241 y afirmaba 0 — una afirmación sobre los DATOS, no
+    // sobre el seed. Lo que se prueba es qué CREA el seed, así que la fila
+    // tiene que no existir cuando corre.
+    await prisma.deployState.deleteMany({ where: { id: 'singleton' } });
+
     correrSeed();
 
     const d = await prisma.deployState.findUniqueOrThrow({ where: { id: 'singleton' } });
