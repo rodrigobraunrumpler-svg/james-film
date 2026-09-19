@@ -62,7 +62,7 @@ export function Panel() {
         <div className="flex flex-col gap-3.5">
           <BloqueSabados meses={saturdays} />
           <BloqueEspacio storage={storage} />
-          <BloqueAtajos ultimaGaleria={ultimaGaleria} pendingChanges={deploy.pendingChanges} />
+          <BloqueAtajos ultimaGaleria={ultimaGaleria} deploy={deploy} />
         </div>
       </div>
     </div>

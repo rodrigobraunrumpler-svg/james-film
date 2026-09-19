@@ -5,7 +5,7 @@ import { Plus, Send, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { clasesBoton } from '@/components/shared/boton';
 import { eventosQueCaben } from '@/lib/almacenamiento';
-import { partirTamano, tamano } from '@/lib/format';
+import { partirTamano, relativo, tamano } from '@/lib/format';
 import { cn } from '@/lib/utils/cn';
 import { usePublicar } from '../hooks/use-panel';
 
@@ -113,11 +113,12 @@ export function BloqueEspacio({ storage }: { storage: DashboardDto['storage'] })
  */
 export function BloqueAtajos({
   ultimaGaleria,
-  pendingChanges,
+  deploy,
 }: {
   ultimaGaleria: DashboardDto['ultimaGaleria'];
-  pendingChanges: number;
+  deploy: DashboardDto['deploy'];
 }) {
+  const { pendingChanges, status, finishedAt } = deploy;
   const publicar = usePublicar();
 
   return (
@@ -157,6 +158,19 @@ export function BloqueAtajos({
             ? 'Publicando…'
             : `Publicar ${pendingChanges === 1 ? 'el cambio' : `los ${pendingChanges} cambios`}`}
         </button>
+      )}
+
+      {/* Línea de texto, ni spinner ni barra. Cloudflare expone ETAPAS y no un
+          porcentaje, así que una barra tendría que inventárselo — y la primera
+          vez que se quedara clavada al 80 %, James dejaría de creérsela.
+          La pregunta real no es «cuánto va» sino «¿ya está en la web?», y con
+          «hace 3 minutos» sobre un build de ~1 minuto eso queda contestado.
+          El FALLO no se dice aquí: ya lo canta el bloque de avisos, en rojo y
+          arriba del todo. Repetirlo enseñaría a no leer ninguno de los dos. */}
+      {status === 'SUCCESS' && finishedAt && (
+        <p className="text-muted mt-0.5 text-xs">
+          Publicado {relativo(finishedAt)} · la web tarda cerca de un minuto en rehacerse
+        </p>
       )}
     </section>
   );

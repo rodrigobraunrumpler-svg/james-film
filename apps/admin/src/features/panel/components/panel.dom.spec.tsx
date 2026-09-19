@@ -243,6 +243,50 @@ describe('el panel', () => {
     expect(within(atajos).queryByRole('button', { name: /Publicar/ })).not.toBeInTheDocument();
   });
 
+  it('dice cuándo se publicó, en texto y sin barra de progreso', async () => {
+    // Cloudflare expone ETAPAS, no un porcentaje, así que una barra tendría que
+    // inventárselo. Y la pregunta de James no es «cuánto va» sino «¿ya está en
+    // la web?»: eso lo contesta un «hace X» junto al minuto que tarda el build.
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      ok(
+        resumen({
+          deploy: {
+            status: 'SUCCESS',
+            pendingChanges: 0,
+            error: null,
+            finishedAt: new Date(Date.now() - 3 * 60_000).toISOString(),
+          },
+        }),
+      ) as Response,
+    );
+
+    render(<Panel />, { wrapper: Envoltorio });
+
+    expect(await screen.findByText(/Publicado hace 3 minutos/)).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
+  it('un deploy FALLIDO no se cuenta aquí: ya lo canta el bloque de avisos', async () => {
+    // Decirlo dos veces en la misma pantalla enseña a no leer ninguno de los dos.
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      ok(
+        resumen({
+          deploy: {
+            status: 'FAILED',
+            pendingChanges: 2,
+            error: 'No se pudo avisar a Cloudflare',
+            finishedAt: new Date().toISOString(),
+          },
+        }),
+      ) as Response,
+    );
+
+    render(<Panel />, { wrapper: Envoltorio });
+
+    expect(await screen.findByText(/Publicar los 2 cambios/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Publicado /)).not.toBeInTheDocument();
+  });
+
   it('el espacio se dice en EVENTOS, que es lo que James entiende', async () => {
     servidor();
     render(<Panel />, { wrapper: Envoltorio });

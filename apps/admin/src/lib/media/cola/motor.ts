@@ -1,6 +1,6 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { MediaType, MediaConfirmResult, PresignItemResult } from '@james-film/contracts';
-import type { Preparado } from '../validacion/preparar';
+import type { EtapaPreparacion, Preparado } from '../validacion/preparar';
 import { ErrorSubida } from './subir';
 import { estaEnCurso, ocupaDecodificador, ocupaRed, type EstadoItem, type ItemCola } from './tipos';
 
@@ -23,7 +23,7 @@ export interface DepsCola {
   preparar(
     archivo: File,
     tipo: MediaType,
-    onEtapa: (e: 'VALIDANDO' | 'EXTRAYENDO_POSTER') => void,
+    onEtapa: (e: EtapaPreparacion, fraccion?: number) => void,
   ): Promise<Preparado>;
   firmar(galleryId: string, item: Record<string, unknown>): Promise<PresignItemResult>;
   subir(opciones: {
@@ -130,8 +130,11 @@ export function crearCola(deps: DepsCola): Cola {
     const item = leer(id);
     if (!item) return;
 
-    const resultado = await deps.preparar(item.archivo, item.tipo, (etapa) => {
-      if (leer(id)) parchear(id, { estado: etapa });
+    const resultado = await deps.preparar(item.archivo, item.tipo, (etapa, fraccion) => {
+      // La fracción solo llega recodificando. Se reutiliza `progreso`, que es
+      // el mismo 0..1 que pinta la barra de la subida: son dos fases con su
+      // propia barra, y la etiqueta de la tesela dice cuál es cuál.
+      if (leer(id)) parchear(id, { estado: etapa, progreso: fraccion ?? 0 });
     });
 
     if (cancelados.has(id) || !leer(id)) return;

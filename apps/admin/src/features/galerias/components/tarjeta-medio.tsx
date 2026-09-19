@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils/cn';
 const ETIQUETAS: Record<ItemCola['estado'], string> = {
   SELECCIONADO: 'En cola',
   VALIDANDO: 'Comprobando…',
+  RECODIFICANDO: 'Convirtiendo…',
   EXTRAYENDO_POSTER: 'Sacando la miniatura…',
   FIRMANDO: 'Preparando…',
   SUBIENDO: 'Subiendo',
@@ -96,6 +97,12 @@ export function TarjetaMedio({
   /** Se subió bien; solo hay algo que conviene saber. Nunca en rojo. */
   const aviso = !fallo ? (item?.aviso ?? null) : null;
   const porcentaje = Math.round((item?.progreso ?? 0) * 100);
+  /**
+   * Las DOS etapas con progreso real. Convertir tarda tanto o más que subir en
+   * un vídeo grande, así que esconder la barra ahí dejaría el móvil quieto medio
+   * minuto sin decir nada — que es como se lee «se colgó».
+   */
+  const conBarra = item?.estado === 'SUBIENDO' || item?.estado === 'RECODIFICANDO';
   /** Fila PENDING sin item en la cola: la pestaña murió a media subida. */
   const procesando = !item && medio?.status === 'PENDING';
   const listo = medio?.status === 'READY' && !subiendo;
@@ -170,7 +177,7 @@ export function TarjetaMedio({
 
         {/* El objeto que trabaja ES el indicador: el latón sube llenando la
             miniatura. Sin barra aparte que mirar. */}
-        {enLinea && subiendo && item.estado === 'SUBIENDO' && (
+        {enLinea && subiendo && conBarra && (
           <>
             <div
               className="border-brass absolute inset-x-0 bottom-0 origin-bottom border-t bg-[color-mix(in_oklab,var(--color-brass-relleno)_16%,transparent)] transition-transform duration-300 ease-linear"
@@ -179,7 +186,7 @@ export function TarjetaMedio({
               aria-valuenow={porcentaje}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`Subiendo ${datos.nombre}`}
+              aria-label={`${item.estado === 'RECODIFICANDO' ? 'Convirtiendo' : 'Subiendo'} ${datos.nombre}`}
             />
             <span className="absolute inset-0 flex items-center justify-center text-lg font-medium">
               {porcentaje}%
@@ -198,7 +205,7 @@ export function TarjetaMedio({
           </span>
         )}
 
-        {enLinea && (procesando || (subiendo && item.estado !== 'SUBIENDO')) && (
+        {enLinea && (procesando || (subiendo && !conBarra)) && (
           <>
             {/* La franja diagonal del prototipo. Estática: un shimmer que
                 recorre repinta en bucle para conseguir exactamente lo mismo. */}

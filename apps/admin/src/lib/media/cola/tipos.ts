@@ -1,7 +1,13 @@
 import type { MediaType } from '@james-film/contracts';
 
 /**
- * SELECCIONADO → VALIDANDO → EXTRAYENDO_POSTER → FIRMANDO → SUBIENDO → CONFIRMANDO → LISTO
+ * SELECCIONADO → VALIDANDO → [RECODIFICANDO] → EXTRAYENDO_POSTER → FIRMANDO →
+ * SUBIENDO → CONFIRMANDO → LISTO
+ *
+ * RECODIFICANDO es la única etapa OPCIONAL: solo aparece si el archivo está en
+ * HEVC o en 4K. Y es la única de la preparación que tarda de verdad, así que
+ * lleva progreso real en `progreso` — medio minuto de móvil quieto se lee como
+ * que se colgó.
  *
  * El reintento vuelve SIEMPRE a FIRMANDO, nunca a VALIDANDO ni a
  * EXTRAYENDO_POSTER: la firma incluye `content-length`, así que un
@@ -11,6 +17,7 @@ import type { MediaType } from '@james-film/contracts';
 export type EstadoItem =
   | 'SELECCIONADO'
   | 'VALIDANDO'
+  | 'RECODIFICANDO'
   | 'EXTRAYENDO_POSTER'
   | 'FIRMANDO'
   | 'SUBIENDO'
@@ -54,6 +61,7 @@ export interface ItemCola {
 export const EN_CURSO: readonly EstadoItem[] = [
   'SELECCIONADO',
   'VALIDANDO',
+  'RECODIFICANDO',
   'EXTRAYENDO_POSTER',
   'FIRMANDO',
   'SUBIENDO',
@@ -68,4 +76,8 @@ export const ocupaRed = (i: ItemCola): boolean =>
 
 /** Ocupa el decodificador: uno solo a la vez, un `<video>` por vez. */
 export const ocupaDecodificador = (i: ItemCola): boolean =>
-  i.estado === 'VALIDANDO' || i.estado === 'EXTRAYENDO_POSTER';
+  i.estado === 'VALIDANDO' ||
+  // Recodificar usa el MISMO decodificador de hardware, y además el
+  // codificador. Dos a la vez en un iPhone es quedarse sin ninguno.
+  i.estado === 'RECODIFICANDO' ||
+  i.estado === 'EXTRAYENDO_POSTER';

@@ -1,5 +1,5 @@
 import type { MediaType } from '@james-film/contracts';
-import { validarArchivo, validarMetadatosVideo, esVideo } from './archivo';
+import { bitrateMbps, validarArchivo, validarMetadatosVideo, esVideo } from './archivo';
 import { ErrorValidacion } from './errores';
 import { extraerPoster as extraerPosterReal } from './extraer-poster';
 import type { PosterExtraido } from './extraer-poster';
@@ -7,9 +7,14 @@ import { inspeccionarMp4, validarMp4 } from './faststart';
 import type { CabeceraMp4 } from './faststart';
 import { normalizarImagen as normalizarImagenReal } from './normalizar-imagen';
 import type { ImagenNormalizada } from './normalizar-imagen';
+import { motivoParaRecodificar, recodificarAMp4 } from './recodificar';
+
+/** Lo que la tesela enseña mientras prepara. `RECODIFICANDO` trae fracción. */
+export type EtapaPreparacion = 'VALIDANDO' | 'RECODIFICANDO' | 'EXTRAYENDO_POSTER';
 
 export interface DepsPreparar {
   inspeccionar(archivo: File): Promise<CabeceraMp4>;
+  recodificar(archivo: File, onProgreso: (fraccion: number) => void): Promise<File>;
   extraerPoster(archivo: File): Promise<PosterExtraido>;
   normalizarImagen(archivo: File): Promise<ImagenNormalizada>;
 }
@@ -32,6 +37,7 @@ export type Preparado =
 
 const depsReales = (): DepsPreparar => ({
   inspeccionar: (a) => inspeccionarMp4(a),
+  recodificar: (a, p) => recodificarAMp4(a, p),
   extraerPoster: (a) => extraerPosterReal(a),
   normalizarImagen: (a) => normalizarImagenReal(a),
 });
@@ -48,8 +54,13 @@ export async function prepararArchivo(
   archivo: File,
   tipo: MediaType,
   deps: DepsPreparar = depsReales(),
-  /** Para que la tarjeta diga «Comprobando…» y luego «Sacando la miniatura…». */
-  onEtapa: (etapa: 'VALIDANDO' | 'EXTRAYENDO_POSTER') => void = () => {},
+  /**
+   * Para que la tarjeta diga «Comprobando…», «Convirtiendo…» y «Sacando la
+   * miniatura…». La fracción solo llega durante la conversión, que es la única
+   * etapa que tarda lo bastante como para que un usuario se pregunte si se
+   * colgó — y por eso va con progreso REAL, no con un indeterminado.
+   */
+  onEtapa: (etapa: EtapaPreparacion, fraccion?: number) => void = () => {},
 ): Promise<Preparado> {
   const rechazo = (motivo: string): Preparado => ({ ok: false, archivo, motivo });
 
@@ -72,25 +83,66 @@ export async function prepararArchivo(
     }
 
     const cabecera = await deps.inspeccionar(archivo);
-    const revision = validarMp4(archivo, cabecera);
-    if (revision.error) return rechazo(revision.error);
+
+    /** Lo que se SUBE. Deja de ser el original en cuanto hay que convertir. */
+    let fuente = archivo;
+    let convertido = false;
+    let aviso: string | null = null;
+
+    const convertir = async (): Promise<void> => {
+      onEtapa('RECODIFICANDO', 0);
+      fuente = await deps.recodificar(archivo, (f) => onEtapa('RECODIFICANDO', f));
+      convertido = true;
+      // Lo que sale ya es H.264 1080p con faststart, así que el aviso de
+      // arranque lento deja de aplicar aunque el original lo tuviera.
+      aviso = null;
+    };
+
+    if (motivoParaRecodificar(cabecera)) {
+      // HEVC: se sabe con 64 KB y sin decodificar nada, así que se convierte
+      // antes de tocar el decodificador. Y se convierte en vez de rechazar
+      // porque el iPhone de James lo graba así salvo que alguien se acuerde de
+      // un ajuste — y acordarse no es una solución.
+      await convertir();
+    } else {
+      const revision = validarMp4(archivo, cabecera);
+      if (revision.error) return rechazo(revision.error);
+      aviso = revision.aviso;
+    }
 
     onEtapa('EXTRAYENDO_POSTER');
-    const { poster, width, height, durationSec } = await deps.extraerPoster(archivo);
+    let { poster, width, height, durationSec } = await deps.extraerPoster(fuente);
 
-    const metadatos = validarMetadatosVideo(archivo, { width, height, durationSec });
+    // Segunda oportunidad: el 4K y el bitrate solo se saben DESPUÉS de leer los
+    // metadatos. Un clip de cámara puede venir en H.264 y aun así no caber.
+    if (
+      !convertido &&
+      motivoParaRecodificar(cabecera, {
+        width,
+        height,
+        bitrateMbps: bitrateMbps(fuente.size, durationSec),
+      })
+    ) {
+      await convertir();
+      onEtapa('EXTRAYENDO_POSTER');
+      ({ poster, width, height, durationSec } = await deps.extraerPoster(fuente));
+    }
+
+    // Se valida SIEMPRE lo que se va a subir, convertido o no: si la conversión
+    // no bastó, esto es lo que lo dice en vez de subir algo que la web rechaza.
+    const metadatos = validarMetadatosVideo(fuente, { width, height, durationSec });
     if (metadatos) return rechazo(metadatos);
 
     return {
       ok: true,
       archivo,
-      blob: archivo,
+      blob: fuente,
       tipo,
       width,
       height,
       durationSec,
       poster,
-      ...(revision.aviso ? { aviso: revision.aviso } : {}),
+      ...(aviso ? { aviso } : {}),
     };
   } catch (e) {
     // La cola llama a esto por cada archivo: una excepción suelta tumbaría el
