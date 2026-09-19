@@ -13,6 +13,21 @@ import { MAX_BITRATE_MBPS, MAX_LADO_LARGO } from './limites';
 export const LADO_LARGO_OBJETIVO = 1920;
 
 /**
+ * Bits por segundo del vídeo que se PRODUCE, con margen bajo `MAX_BITRATE_MBPS`.
+ *
+ * Un nivel cualitativo NO sirve aquí: `Quality('high')` a 1080p sacó **30,6
+ * Mbps** en un clip real de James, el doble del techo, y la conversión acababa
+ * rechazada por la misma puerta que venía a esquivar — gastando medio minuto de
+ * móvil para nada. La calidad se pide por número porque lo que hay que
+ * garantizar es el TAMAÑO, no la nitidez.
+ *
+ * 10 Mbps a 1080p en H.264 es holgado para un reel, y deja sitio al audio: el
+ * validador mide el bitrate MEDIO del archivo entero, pistas de sonido
+ * incluidas.
+ */
+export const BITRATE_OBJETIVO_BPS = 10_000_000;
+
+/**
  * Por qué hay que recodificar, o `null` si el archivo ya sirve.
  *
  * Devuelve el MOTIVO y no un booleano a propósito: es lo que la tesela enseña
@@ -87,7 +102,7 @@ export async function recodificarAMp4(
 
       return {
         codec: 'avc',
-        quality: new Quality('high'),
+        quality: new Quality({ bitrate: BITRATE_OBJETIVO_BPS, bitrateMode: 'variable' }),
         // Solo UNA dimensión: la otra se deduce conservando la proporción, así
         // que no hay bandas negras. Y solo si el vídeo es MÁS grande —dar el
         // objetivo a secas AGRANDARÍA uno pequeño, que es perder calidad y

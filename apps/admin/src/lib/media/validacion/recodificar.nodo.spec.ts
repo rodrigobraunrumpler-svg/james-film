@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_BITRATE_MBPS, MAX_LADO_LARGO } from './limites';
-import { LADO_LARGO_OBJETIVO, motivoParaRecodificar, nombreMp4 } from './recodificar';
+import {
+  BITRATE_OBJETIVO_BPS,
+  LADO_LARGO_OBJETIVO,
+  motivoParaRecodificar,
+  nombreMp4,
+} from './recodificar';
 
 const h264 = { faststart: true, codec: 'h264' } as const;
 const meta = (over: Partial<{ width: number; height: number; bitrateMbps: number }> = {}) => ({
@@ -70,5 +75,19 @@ describe('el objetivo de reescalado', () => {
     // doble sin que nadie lo note en un móvil.
     expect(LADO_LARGO_OBJETIVO).toBeLessThan(MAX_LADO_LARGO);
     expect(LADO_LARGO_OBJETIVO).toBe(1920);
+  });
+});
+
+describe('el bitrate objetivo', () => {
+  it('deja MARGEN bajo el techo, no lo roza', () => {
+    // `Quality('high')` sacó 30,6 Mbps a 1080p en un clip real y la conversión
+    // se rechazaba sola. Pedir un número es lo que garantiza el tamaño; un
+    // nivel cualitativo garantiza nitidez, que no es lo que hace falta aquí.
+    const objetivoMbps = BITRATE_OBJETIVO_BPS / 1_000_000;
+
+    expect(objetivoMbps).toBeLessThan(MAX_BITRATE_MBPS);
+    // Holgura para el audio y para los picos: el validador mide la MEDIA del
+    // archivo entero, no solo la pista de vídeo.
+    expect(objetivoMbps).toBeLessThanOrEqual(MAX_BITRATE_MBPS * 0.8);
   });
 });
