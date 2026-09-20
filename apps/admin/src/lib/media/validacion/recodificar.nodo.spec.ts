@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MAX_BITRATE_MBPS, MAX_LADO_LARGO } from './limites';
 import {
   BITRATE_OBJETIVO_BPS,
+  bitrateCorregido,
   LADO_LARGO_OBJETIVO,
   motivoParaRecodificar,
   nombreMp4,
@@ -89,5 +90,41 @@ describe('el bitrate objetivo', () => {
     // Holgura para el audio y para los picos: el validador mide la MEDIA del
     // archivo entero, no solo la pista de vídeo.
     expect(objetivoMbps).toBeLessThanOrEqual(MAX_BITRATE_MBPS * 0.8);
+  });
+});
+
+describe('bitrateCorregido', () => {
+  it('si el resultado cabe, no se repite la conversión', () => {
+    // Una segunda pasada cuesta otro minuto de móvil: solo se paga si hace falta.
+    expect(bitrateCorregido(8e6, 9, 15)).toBeNull();
+    expect(bitrateCorregido(8e6, 15, 15)).toBeNull();
+  });
+
+  it('si se pasó, corrige EN PROPORCIÓN a lo que se pasó', () => {
+    // Pedir 10 y obtener 20,6 fue real. Adivinar un número más bajo es lo que
+    // ya falló dos veces; lo que no falla es medir y dividir.
+    const corregido = bitrateCorregido(10e6, 20.6, 15)!;
+
+    expect(corregido).toBeLessThan(10e6);
+    // Con el doble de overshoot, el objetivo baja aproximadamente a la mitad
+    // del 70 % del techo.
+    expect(corregido).toBeCloseTo((10e6 * 15 * 0.7) / 20.6, -3);
+  });
+
+  it('apunta por DEBAJO del techo, no a rozarlo', () => {
+    // Quedarse en el borde gastaría la segunda pasada para acabar en lo mismo.
+    const medido = 30;
+    const corregido = bitrateCorregido(8e6, medido, 15)!;
+    // Proyección lineal de lo que saldría con el objetivo corregido.
+    const esperadoMbps = (corregido / 8e6) * medido;
+
+    expect(esperadoMbps).toBeLessThan(15);
+  });
+
+  it('nunca devuelve cero ni un negativo, por absurdo que sea lo medido', () => {
+    // Un archivo con duración rarísima puede dar un bitrate disparatado, y un
+    // objetivo de 0 haría que el codificador fallara en vez de encoger.
+    expect(bitrateCorregido(8e6, 1e9, 15)).toBeGreaterThan(0);
+    expect(bitrateCorregido(8e6, Infinity, 15)).toBeGreaterThan(0);
   });
 });

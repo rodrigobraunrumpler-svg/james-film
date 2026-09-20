@@ -21,11 +21,32 @@ export const LADO_LARGO_OBJETIVO = 1920;
  * móvil para nada. La calidad se pide por número porque lo que hay que
  * garantizar es el TAMAÑO, no la nitidez.
  *
- * 10 Mbps a 1080p en H.264 es holgado para un reel, y deja sitio al audio: el
+ * 8 Mbps a 1080p en H.264 es holgado para un reel, y deja sitio al audio: el
  * validador mide el bitrate MEDIO del archivo entero, pistas de sonido
  * incluidas.
  */
-export const BITRATE_OBJETIVO_BPS = 10_000_000;
+export const BITRATE_OBJETIVO_BPS = 8_000_000;
+
+/**
+ * El objetivo corregido cuando el codificador se pasa, o `null` si el resultado
+ * ya cabe.
+ *
+ * Porque **pedir un bitrate no es obtenerlo**: con 10 Mbps pedidos salieron
+ * 20,6 medidos. Un codificador no promete un tamaño, así que la única forma de
+ * garantizarlo es medir lo que salió y corregir en proporción a lo que se pasó
+ * — adivinar un número más bajo es lo que ya falló dos veces.
+ *
+ * Se apunta al 70 % del techo y no al techo: volver a quedarse en el borde
+ * gastaría otro minuto de móvil para acabar en lo mismo.
+ */
+export function bitrateCorregido(
+  objetivoBps: number,
+  medidoMbps: number,
+  techoMbps: number,
+): number | null {
+  if (medidoMbps <= techoMbps) return null;
+  return Math.max(1, Math.floor((objetivoBps * techoMbps * 0.7) / medidoMbps));
+}
 
 /**
  * Por qué hay que recodificar, o `null` si el archivo ya sirve.
@@ -80,12 +101,14 @@ export async function recodificarAMp4(
     Quality,
   } = await import('mediabunny');
 
+  const pasada = async (bitrate: number): Promise<{ bytes: ArrayBuffer; segundos: number }> => {
+  const entrada = new Input({ source: new BlobSource(archivo), formats: ALL_FORMATS });
   // La referencia se guarda aparte: `conversion.output.target` está tipado como
   // el `Target` genérico, que no expone `buffer`.
   const destino = new BufferTarget();
 
   const conversion = await Conversion.init({
-    input: new Input({ source: new BlobSource(archivo), formats: ALL_FORMATS }),
+    input: entrada,
     output: new Output({
       // `in-memory` escribe el `moov` DELANTE, que es lo que evita que el
       // navegador de quien visita tenga que bajarse el reel entero antes de
@@ -102,7 +125,10 @@ export async function recodificarAMp4(
 
       return {
         codec: 'avc',
-        quality: new Quality({ bitrate: BITRATE_OBJETIVO_BPS, bitrateMode: 'variable' }),
+        // `constant` y no `variable`: con `variable` el bitrate es una
+        // SUGERENCIA y el codificador la duplicó. Aquí hay que garantizar el
+        // tamaño, no la nitidez.
+        quality: new Quality({ bitrate, bitrateMode: 'constant' }),
         // Solo UNA dimensión: la otra se deduce conservando la proporción, así
         // que no hay bandas negras. Y solo si el vídeo es MÁS grande —dar el
         // objetivo a secas AGRANDARÍA uno pequeño, que es perder calidad y
@@ -136,7 +162,19 @@ export async function recodificarAMp4(
     );
   }
 
-  return new File([buffer], nombreMp4(archivo), { type: 'video/mp4' });
+    return { bytes: buffer, segundos: await entrada.computeDuration() };
+  };
+
+  let { bytes, segundos } = await pasada(BITRATE_OBJETIVO_BPS);
+
+  // Se MIDE lo que salió en vez de darlo por bueno. Si el codificador se pasó,
+  // se repite UNA vez con el objetivo corregido: una segunda pasada cuesta
+  // tiempo, pero menos que rechazar un vídeo que ya está convertido.
+  const medido = segundos > 0 ? (bytes.byteLength * 8) / segundos / 1_000_000 : Infinity;
+  const corregido = bitrateCorregido(BITRATE_OBJETIVO_BPS, medido, MAX_BITRATE_MBPS);
+  if (corregido !== null) ({ bytes } = await pasada(corregido));
+
+  return new File([bytes], nombreMp4(archivo), { type: 'video/mp4' });
 }
 
 /**
