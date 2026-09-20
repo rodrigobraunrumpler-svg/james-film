@@ -9,7 +9,16 @@ test('la página trae calendario, sábados rápidos, pasos y estados', async ({ 
   await page.goto('/fechas-libres');
 
   expect(await page.locator('h1').filter({ hasText: /libre tu día/ }).count()).toBe(1);
-  expect(await page.locator('[data-dia]').count(), 'la rejilla del mes').toBeGreaterThan(20);
+  // La rejilla son SIEMPRE 42 casillas —seis semanas completas—, y eso no
+  // depende del día que se ejecute el test.
+  //
+  // `[data-dia]` en cambio son solo los días ELEGIBLES: los ya pasados se
+  // pintan inertes y sin ese atributo. Afirmar «más de 20» era una afirmación
+  // sobre la FECHA, no sobre la página — cierta el día 1 y falsa a partir del
+  // 11. Reventó el 19 de septiembre con doce, que son exactamente los días que
+  // quedaban del mes.
+  expect(await page.locator('[data-dias] > *').count(), 'la rejilla del mes').toBe(42);
+  expect(await page.locator('[data-dia]').count(), 'días elegibles').toBeGreaterThan(0);
   expect(await page.locator('ol li').count(), 'los tres pasos').toBeGreaterThanOrEqual(3);
   // Los estados van DIBUJADOS con el mismo elemento que la rejilla: si no se
   // parecen, explicarlos no sirve de nada.
