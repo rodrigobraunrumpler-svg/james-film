@@ -6,7 +6,7 @@ packages:
 # en cada package.json: subir de versión es una línea, no cuatro archivos.
 catalog:
   typescript: ^6.0.3
-  '@types/node': ^24.0.0
+  '@types/node': ^24.13.5
 
 # pnpm 11: los ajustes viven aquí, no en .npmrc (que solo guarda auth y registry).
 # Sin `engineStrict` el install avisaría en vez de fallar.
