@@ -167,14 +167,15 @@ const menu = MENU.filter((m) => anclas.includes(m.href)).map((m) => ({
       baila al navegar. Es la misma regla que el filo del sidebar del admin.
     -->
     {/*
-      SEIS entradas y un número de teléfono no caben a 1280.
+      SEIS entradas y un número de teléfono no caben a 1024.
       Y no desbordaban —eso se habría visto—: el `h-12` mantiene el ancla a 48px
       mientras el `overflow-wrap: anywhere` del `body` **parte las palabras
       dentro**, así que salía «Trabaj / os» y «Testimoni / os». Un `h-12` fijo
       esconde el síntoma que un test de desbordes busca.
 
-      Se arregla apretando el menú entre `lg` y `xl` —texto y padding más
-      pequeños, sin iconos— y devolviéndole el tamaño en `xl`, donde sí cabe.
+      Se arregla apretando el menú desde `lg` —texto y padding más pequeños,
+      sin iconos— y dejando el CTA verde solo con su icono hasta `xl`, donde
+      el número completo ya cabe.
       El `whitespace-nowrap` es lo que impide que una palabra se vuelva a partir
       si algún día entra una entrada más.
     */}
@@ -204,10 +205,10 @@ const menu = MENU.filter((m) => anclas.includes(m.href)).map((m) => ({
         data-fuente={fuente ?? 'barra'}
         target="_blank"
         rel="noopener"
-        class="ml-1 flex h-12 shrink-0 items-center gap-2.5 rounded-control boton-wa px-3.5 font-semibold whitespace-nowrap 2xl:px-5"
+        class="ml-1 flex size-12 shrink-0 items-center justify-center rounded-control boton-wa font-semibold whitespace-nowrap xl:w-auto xl:gap-2.5 xl:px-3.5 2xl:px-5"
       >
         <Icono nombre="chat" tamano={18} grosor={2.1} />
-        {display}
+        <span class="sr-only xl:not-sr-only">{display}</span>
       </a>
     </nav>
 

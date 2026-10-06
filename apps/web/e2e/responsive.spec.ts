@@ -112,13 +112,18 @@ test.describe('el menú de escritorio cabe', () => {
   for (const w of [1024, 1280, 1366, 1440, 1536, 1920]) {
     test(`a ${w}px no parte ninguna palabra ni saca el botón verde`, async ({ page }) => {
       await page.setViewportSize({ width: w, height: 900 });
-      await page.goto('/');
+      /**
+       * `/testimonios` declara siempre los seis destinos. La portada depende
+       * de los datos publicados y, con una base vacía, escondía justo el
+       * enlace adicional que hace de este el caso máximo de la cabecera.
+       */
+      await page.goto('/testimonios');
       // Con la fuente sin cargar el texto mide menos y el fallo no aparece.
       await page.evaluate(() => document.fonts.ready);
 
       const mal = await page.evaluate(() => {
         const nav = document.querySelector('nav[aria-label="Principal"]');
-        if (!nav) return { partidas: [] as string[], seSale: false };
+        if (!nav) return { partidas: [] as string[], seSale: false, scroll: 0 };
         const rango = document.createRange();
         const partidas: string[] = [];
         for (const a of nav.querySelectorAll(':scope > a')) {
@@ -134,11 +139,13 @@ test.describe('el menú de escritorio cabe', () => {
         return {
           partidas,
           seSale: wa ? Math.round(wa.right) > document.documentElement.clientWidth : false,
+          scroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
       });
 
       expect(mal.partidas, `se parten en dos líneas: ${mal.partidas.join(', ')}`).toEqual([]);
       expect(mal.seSale, 'el botón de WhatsApp se sale de la pantalla').toBe(false);
+      expect(mal.scroll, `la cabecera mete ${mal.scroll}px de scroll horizontal`).toBeLessThanOrEqual(1);
     });
   }
 });
