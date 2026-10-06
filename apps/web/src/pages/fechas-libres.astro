@@ -207,6 +207,7 @@ const corto = (iso: string) => largo(iso).replace(/^\S+\s+/, '');
                       reconoce en la rejilla porque es el mismo elemento. */}
                   <span class="dia-muestra" data-estado={e.estado} aria-hidden="true">
                     12
+                    {e.estado === 'ocupado' && <span class="marca-ocupado">×</span>}
                   </span>
                   <span class="min-w-0">
                     <span class="font-medium">{e.titulo}</span>
@@ -250,6 +251,7 @@ const corto = (iso: string) => largo(iso).replace(/^\S+\s+/, '');
    * de nada: hay que reconocerlo al verlo arriba.
    */
   .dia-muestra {
+    position: relative;
     display: flex;
     width: 48px;
     height: 48px;
@@ -262,13 +264,18 @@ const corto = (iso: string) => largo(iso).replace(/^\S+\s+/, '');
     color: var(--color-bone);
   }
   .dia-muestra[data-estado='ocupado'] {
-    border-color: transparent;
-    color: var(--color-ash);
-    background: repeating-linear-gradient(
-      135deg,
-      transparent 0 5px,
-      color-mix(in srgb, var(--color-ash) 26%, transparent) 5px 10px
-    );
+    border-color: var(--color-ocupado);
+    color: var(--color-bone);
+    background: var(--color-ocupado-relleno);
+  }
+  .dia-muestra .marca-ocupado {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    color: var(--color-ocupado);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
   }
   .dia-muestra[data-estado='elegido'] {
     background: var(--color-brass-relleno);

@@ -16,6 +16,7 @@ import Icono from './Icono.astro';
 import Seccion from './Seccion.astro';
 import { EN_LOS_TRES, PISTAS, SECCIONES } from '../content/copy';
 import type { PackageDto } from '@james-film/contracts';
+import { ESCONDER_SI_FALLA, SIZES, src, srcset } from '../lib/imagen';
 import { enEscalera, masCaroDe, precio } from '../lib/paquetes';
 import type { Fuente } from '../lib/whatsapp';
 
@@ -147,13 +148,33 @@ function acento(p: PackageDto) {
               ]}
               style={`--i: ${i}`}
             >
+              {p.imageUrl && (
+                <span
+                  class="pointer-events-none absolute inset-px z-0 overflow-hidden"
+                  style="border-radius: calc(var(--radius-card) - 1px)"
+                  aria-hidden="true"
+                >
+                  <img
+                    src={src(p.imageUrl)}
+                    srcset={srcset(p.imageUrl)}
+                    sizes={SIZES.paquete}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    onerror={ESCONDER_SI_FALLA}
+                    class="size-full scale-[1.035] object-cover opacity-45 blur-[2px] saturate-[0.85]"
+                  />
+                  <span class="paquete-velo absolute inset-0"></span>
+                </span>
+              )}
+
               {p.badgeText && (
-                <span class="absolute -top-2.75 left-5 rounded-full bg-brass-400 px-2.75 py-0.75 text-xs font-semibold tracking-[0.06em] text-void lg:left-7">
+                <span class="absolute -top-2.75 left-5 z-20 rounded-full bg-brass-400 px-2.75 py-0.75 text-xs font-semibold tracking-[0.06em] text-void lg:left-7">
                   {p.badgeText}
                 </span>
               )}
 
-              <div class:list={[p.badgeText && 'pt-1']}>
+              <div class:list={['relative z-10', p.badgeText && 'pt-1']}>
                 <p class:list={['font-display text-[21px] font-extrabold lg:text-[23px]', a.titulo]}>
                   {p.name}
                 </p>
@@ -163,7 +184,7 @@ function acento(p: PackageDto) {
               {pr && (
                 <p
                   class:list={[
-                    'font-display text-[31px] font-extrabold tracking-[-0.02em] lg:text-[42px]',
+                    'relative z-10 font-display text-[31px] font-extrabold tracking-[-0.02em] lg:text-[42px]',
                     a.titulo,
                   ]}
                 >
@@ -171,7 +192,7 @@ function acento(p: PackageDto) {
                 </p>
               )}
 
-              <ul class="flex list-none flex-col gap-2.25 p-0">
+              <ul class="relative z-10 flex list-none flex-col gap-2.25 p-0">
                 {p.items.map((it) => (
                   <li class:list={['flex gap-2.5', !it.included && 'text-ash line-through']}>
                     <Icono
@@ -186,7 +207,9 @@ function acento(p: PackageDto) {
               </ul>
 
               {p.idealFor && (
-                <p class="mt-auto border-t border-line pt-3.5 text-sm text-ash">{p.idealFor}</p>
+                <p class="relative z-10 mt-auto border-t border-line pt-3.5 text-sm text-ash">
+                  {p.idealFor}
+                </p>
               )}
 
               {p.isHighlighted ? (
@@ -198,6 +221,7 @@ function acento(p: PackageDto) {
                   paqueteId={p.id}
                   alto="medio"
                   pista={null}
+                  clase="relative z-10"
                 />
               ) : (
                 <a
@@ -207,7 +231,7 @@ function acento(p: PackageDto) {
                   data-paquete={p.id}
                   target="_blank"
                   rel="noopener"
-                  class="flex h-[50px] items-center justify-center gap-2 rounded-control border border-line font-medium text-bone transition-[transform,border-color] duration-150 hover:scale-[1.015] hover:border-brass-400 active:scale-[0.985]"
+                  class="relative z-10 flex h-[50px] items-center justify-center gap-2 rounded-control border border-line font-medium text-bone transition-[transform,border-color] duration-150 hover:scale-[1.015] hover:border-brass-400 active:scale-[0.985]"
                 >
                   Preguntar por el {p.name}
                 </a>
@@ -221,6 +245,17 @@ function acento(p: PackageDto) {
     </section>
   )
 }
+
+<style>
+  .paquete-velo {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-void) 52%, transparent),
+      color-mix(in srgb, var(--color-void) 88%, transparent) 72%,
+      var(--color-void)
+    );
+  }
+</style>
 
 <script>
   /**

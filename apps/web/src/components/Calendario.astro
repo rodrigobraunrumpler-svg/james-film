@@ -15,9 +15,9 @@
  * son cien líneas. Meter la librería sería sustituir código probado por una
  * dependencia y, encima, pelearse con su DOM para pintar los seis estados.
  *
- * El día ocupado lleva TRAMA DIAGONAL, no un rojo: no es un error, es una
- * agenda. Y **se sigue pudiendo pulsar** — quien mira un día tomado es justo
- * quien hay que llevar a preguntar por otro.
+ * El día ocupado lleva un fondo terracota suave y una ×: se reconoce de
+ * inmediato sin parecer deshabilitado. Y **se sigue pudiendo pulsar** — quien
+ * mira un día tomado es justo quien hay que llevar a preguntar por otro.
  */
 import Icono from './Icono.astro';
 import { INICIALES_SEMANA, hoy, mesYAno, rejillaDelMes } from '../lib/fechas';
@@ -156,6 +156,7 @@ const hrefBase = enlace({ numero, base });
                 class="dia"
               >
                 {numeroDia}
+                {ocupado && <span class="marca-ocupado" aria-hidden="true">×</span>}
                 {dia === inicio && <span class="punto-hoy"></span>}
               </button>
             );
@@ -286,15 +287,27 @@ const hrefBase = enlace({ numero, base });
     transform: scale(0.94);
   }
 
-  /* Ocupado: trama diagonal, NUNCA un rojo. No es un error, es una agenda. */
+  /* Ocupado: terracota suave y una ×, reconocible pero todavía pulsable. */
   .dia[data-ocupado] {
-    border-color: transparent;
-    color: var(--color-ash);
-    background: repeating-linear-gradient(
-      135deg,
-      transparent 0 5px,
-      color-mix(in srgb, var(--color-ash) 26%, transparent) 5px 10px
-    );
+    border-color: var(--color-ocupado);
+    color: var(--color-bone);
+    background: var(--color-ocupado-relleno);
+  }
+
+  .marca-ocupado {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    color: var(--color-ocupado);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  @media (hover: hover) {
+    .dia[data-ocupado]:hover {
+      border-color: var(--color-ocupado);
+    }
   }
 
   /* Tu fecha: latón sólido. Solo puede haber una selección. */
@@ -306,18 +319,14 @@ const hrefBase = enlace({ numero, base });
   }
 
   /**
-   * Un día OCUPADO elegido conserva su trama y solo gana un aro.
+   * Un día OCUPADO elegido conserva su fondo y solo gana un aro.
    *
    * Con el relleno sólido decía «tu fecha», que es justo lo que NO es:
    * contradecía al aviso de debajo —«ya tomado»— en la misma pantalla. Lo que
    * se está eligiendo ahí no es la fecha, es la pregunta por otra.
    */
   .dia[data-ocupado][aria-pressed='true'] {
-    background: repeating-linear-gradient(
-      135deg,
-      transparent 0 5px,
-      color-mix(in srgb, var(--color-ash) 26%, transparent) 5px 10px
-    );
+    background: var(--color-ocupado-relleno);
     border-color: var(--color-brass-relleno);
     box-shadow: 0 0 0 1px var(--color-brass-relleno);
     color: var(--color-bone);
@@ -473,8 +482,15 @@ const hrefBase = enlace({ numero, base });
           b.type = 'button';
           b.className = 'dia';
           b.dataset.dia = dia;
-          if (ocupados.has(dia)) b.dataset.ocupado = '';
           b.textContent = n;
+          if (ocupados.has(dia)) {
+            b.dataset.ocupado = '';
+            const marca = document.createElement('span');
+            marca.className = 'marca-ocupado';
+            marca.setAttribute('aria-hidden', 'true');
+            marca.textContent = '×';
+            b.append(marca);
+          }
           if (dia === hoy) {
             const punto = document.createElement('span');
             punto.className = 'punto-hoy';

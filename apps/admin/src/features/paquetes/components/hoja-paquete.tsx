@@ -243,6 +243,7 @@ export function HojaPaquete({
         valorUrl={paquete?.imageUrl}
         onChange={setImageKey}
         proporcion="4 / 3"
+        ayuda="Se recortará para llenar la tarjeta y aparecerá con un desenfoque suave."
       />
 
       {/* Pegado abajo, como la cabecera arriba: con un formulario largo,

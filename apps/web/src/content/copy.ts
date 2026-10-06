@@ -196,7 +196,7 @@ export const MENU = [
   { href: '/trabajos/', texto: 'Trabajos', icono: 'play' },
   { href: '#paquetes', texto: 'Paquetes', icono: 'caja' },
   { href: '/fechas-libres/', texto: 'Fechas libres', icono: 'calendario' },
-  { href: '/negocios/', texto: 'Negocios', icono: 'barras' },
+  { href: '/negocios/', texto: 'Publicidad/Negocios', icono: 'barras' },
   { href: '#testimonios', texto: 'Testimonios', icono: 'chat' },
   { href: '/testimonios/', texto: 'Testimonios', icono: 'chat' },
   { href: '/sobre-mi/', texto: 'Sobre mí', icono: 'persona' },

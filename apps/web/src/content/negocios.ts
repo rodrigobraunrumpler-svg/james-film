@@ -11,7 +11,7 @@
  */
 
 export const NEGOCIOS = {
-  eyebrow: 'Publicidad de negocios',
+  eyebrow: 'Publicidad/Negocios',
   titulo: 'Publicidad que vende, contenido que conecta.',
   entradilla:
     'Impulsa tu marca con contenido profesional que genera **confianza, visibilidad y ventas**.',

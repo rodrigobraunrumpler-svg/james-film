@@ -26,6 +26,8 @@ export const SIZES = {
   tesela: '(min-width: 1024px) 320px, (min-width: 640px) 33vw, 50vw',
   /** Portada de categoría: cuatro en fila desde `lg`. */
   categoria: '(min-width: 1024px) 25vw, 50vw',
+  /** Tarjeta de paquete: carrusel ancho en móvil y tres columnas arriba. */
+  paquete: '(min-width: 1024px) 33vw, (min-width: 640px) 62vw, 84vw',
   /** El reel del hero, que es lo más grande que se pinta. */
   hero: '(min-width: 1024px) 300px, 100vw',
 } as const;

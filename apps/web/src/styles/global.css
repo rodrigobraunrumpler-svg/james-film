@@ -51,6 +51,8 @@
    * libres del calendario; el botón verde es SIEMPRE el de WhatsApp.
    */
   --color-libre: #4fbf7b;
+  --color-ocupado: #d98c78;
+  --color-ocupado-relleno: #3a211d;
 
   /**
    * TRES radios y ninguno más. En los prototipos llegaron a convivir seis y se
@@ -110,6 +112,8 @@
   --color-brass-400: #806436; /* el de LEER */
   --color-brass-600: #806436;
   --color-libre: #2c6b42;
+  --color-ocupado: #9b4437;
+  --color-ocupado-relleno: #f6e2dd;
 }
 
 /**

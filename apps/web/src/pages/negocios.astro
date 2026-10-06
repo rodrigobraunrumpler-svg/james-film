@@ -12,6 +12,7 @@
  * la conversión es la conversación, no comparar tres columnas.
  */
 import Layout from '../layouts/Layout.astro';
+import { Image } from 'astro:assets';
 import Barra from '../components/Barra.astro';
 import BarraPegada from '../components/BarraPegada.astro';
 import Cta from '../components/Cta.astro';
@@ -25,6 +26,7 @@ import {
   TRABAJAMOS_CON,
 } from '../content/negocios';
 import { api } from '../lib/api';
+import equipoNegocios from '../assets/publicidad-negocios-equipo.png';
 
 const [ajustes, redes] = await Promise.all([api.ajustes(), api.redes()]);
 
@@ -62,29 +64,54 @@ const negrita = (t: string) =>
 
   <main id="contenido" class="flex flex-col">
     <!-- ── Cabecera ─────────────────────────────────────────────────────── -->
-    <section class="marco flex flex-col gap-4 py-7 lg:gap-6 lg:py-14">
+    <section class="marco py-7 lg:py-14">
       <a href="/" class="flex min-h-12 w-fit items-center gap-2 text-ash">
         <Icono nombre="atras" tamano={18} />
         Volver al inicio
       </a>
-      <p class="text-xs font-medium tracking-[0.18em] text-brass-600 uppercase">
-        {NEGOCIOS.eyebrow}
-      </p>
-      <h1
-        class="max-w-[18ch] font-display text-[34px] leading-[1.04] font-extrabold tracking-[-0.025em] lg:text-[56px]"
-      >
-        {NEGOCIOS.titulo}
-      </h1>
-      <div class="flex max-w-[54ch] flex-col gap-2.5 text-[17px] leading-snug lg:text-[19px]">
-        <p set:html={negrita(NEGOCIOS.entradilla)} />
-        <p set:html={negrita(NEGOCIOS.segundo)} />
-      </div>
 
-      <Cta {numero} {base} texto={NEGOCIOS.cta} fuente="negocios" clase="lg:w-[420px]" />
+      <div
+        class="mt-4 grid items-center gap-7 lg:mt-7 lg:grid-cols-[minmax(0,1.03fr)_minmax(360px,0.97fr)] lg:gap-12"
+      >
+        <div class="flex flex-col gap-4 lg:gap-6">
+          <p class="text-xs font-medium tracking-[0.18em] text-brass-600 uppercase">
+            {NEGOCIOS.eyebrow}
+          </p>
+          <h1
+            class="max-w-[18ch] font-display text-[34px] leading-[1.04] font-extrabold tracking-[-0.025em] lg:text-[56px]"
+          >
+            {NEGOCIOS.titulo}
+          </h1>
+          <div class="flex max-w-[54ch] flex-col gap-2.5 text-[17px] leading-snug lg:text-[19px]">
+            <p set:html={negrita(NEGOCIOS.entradilla)} />
+            <p set:html={negrita(NEGOCIOS.segundo)} />
+          </div>
+
+          <Cta {numero} {base} texto={NEGOCIOS.cta} fuente="negocios" clase="lg:w-[420px]" />
+        </div>
+
+        <figure
+          class="negocios-visual entra relative isolate flex min-h-[280px] items-end overflow-hidden rounded-panel border border-line px-3 pt-5 sm:min-h-[360px] sm:px-8 lg:min-h-[480px] lg:px-5 lg:pt-8"
+        >
+          <div class="negocios-halo pointer-events-none absolute inset-[12%] rounded-full" aria-hidden="true">
+          </div>
+          <Image
+            src={equipoNegocios}
+            alt="Equipo de grabación móvil con luces profesionales"
+            widths={[480, 720, 960]}
+            sizes="(min-width: 1024px) 44vw, 100vw"
+            format="webp"
+            quality={82}
+            loading="eager"
+            fetchpriority="high"
+            class="relative z-10 mx-auto h-auto w-full max-w-[720px] object-contain drop-shadow-[0_22px_28px_rgba(0,0,0,0.34)]"
+          />
+        </figure>
+      </div>
 
       <!-- El proceso, como la tira del flyer. -->
       <ul
-        class="sin-barra -mx-5 mt-2 flex list-none gap-2.5 overflow-x-auto px-5 lg:mx-0 lg:mt-4 lg:flex-wrap lg:px-0"
+        class="sin-barra -mx-5 mt-6 flex list-none gap-2.5 overflow-x-auto px-5 lg:mx-0 lg:mt-8 lg:flex-wrap lg:px-0"
       >
         {
           PROCESO_NEGOCIOS.map((p, i) => (
@@ -210,3 +237,31 @@ const negrita = (t: string) =>
   <Pie {redes} email={ajustes.email} marca={ajustes.brandName} />
   <BarraPegada {numero} {base} fuente="negocios" />
 </Layout>
+
+<style>
+  .negocios-visual {
+    background:
+      radial-gradient(
+        circle at 58% 40%,
+        color-mix(in srgb, var(--color-brass-relleno) 18%, transparent),
+        transparent 58%
+      ),
+      linear-gradient(145deg, var(--color-elevated), var(--color-surface));
+  }
+
+  .negocios-visual::before {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(color-mix(in srgb, var(--color-line) 48%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in srgb, var(--color-line) 48%, transparent) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: linear-gradient(to bottom, transparent, black 28%, black 82%, transparent);
+    content: '';
+  }
+
+  .negocios-halo {
+    background: color-mix(in srgb, var(--color-brass-relleno) 14%, transparent);
+    filter: blur(34px);
+  }
+</style>

@@ -210,18 +210,27 @@ describe('lista de galerías', () => {
   });
 
   it('la tarjeta dice cuándo se tocó y cuánto dura, no la fecha del evento', async () => {
+    // El texto es relativo al reloj real. Sin fijarlo, la fecha de la fixture
+    // acaba pasando de «hace N días» a «el mes pasado» y el test caduca.
+    const reloj = vi
+      .spyOn(Date, 'now')
+      .mockReturnValue(new Date('2026-08-29T10:00:00.000Z').getTime());
     vi.stubGlobal(
       'fetch',
       vi.fn(() => Promise.resolve(envuelto([galeria('g1', 'XV de Camila')], meta()))),
     );
 
-    render(<ListaGalerias />, { wrapper: Envoltorio });
-    await screen.findByText('XV de Camila');
+    try {
+      render(<ListaGalerias />, { wrapper: Envoltorio });
+      await screen.findByText('XV de Camila');
 
-    // «Bodas · Publicada hace N días»: el estado y el último cambio, que es lo
-    // que James mira. La fecha del evento ya la sabe.
-    expect(screen.getByText(/Bodas · Publicada hace/)).toBeInTheDocument();
-    expect(screen.getByText('1:12')).toBeInTheDocument();
+      // «Bodas · Publicada hace N días»: el estado y el último cambio, que es lo
+      // que James mira. La fecha del evento ya la sabe.
+      expect(screen.getByText('Bodas · Publicada hace 3 días')).toBeInTheDocument();
+      expect(screen.getByText('1:12')).toBeInTheDocument();
+    } finally {
+      reloj.mockRestore();
+    }
   });
 
   it('un error ofrece reintentar, no una pantalla en blanco', async () => {

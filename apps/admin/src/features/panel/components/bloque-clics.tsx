@@ -121,7 +121,7 @@ const FUENTE: Record<WhatsappSource, string> = {
   galeria: 'Desde una galería',
   'calendario-libre': 'Calendario · día libre',
   'calendario-ocupado': 'Calendario · día cogido',
-  negocios: 'Desde Negocios',
+  negocios: 'Desde Publicidad/Negocios',
 };
 
 /**
