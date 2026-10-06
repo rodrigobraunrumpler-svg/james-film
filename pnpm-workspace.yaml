@@ -20,6 +20,7 @@ allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true   # descarga los binarios del query engine
   esbuild: true             # lo usan tsx y vitest
+  sharp: true               # optimiza las imágenes locales de Astro durante el build
   # Telemetría que viaja con @nestjs/swagger vía swagger-ui-dist. Denegado a
   # propósito: no queremos un postinstall que reporte nada.
   '@scarf/scarf': false
