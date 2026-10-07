@@ -161,7 +161,22 @@ jobs:
       - name: Playwright · admin
         if: github.ref == 'refs/heads/main'
         run: |
-          pnpm --filter admin exec playwright install --with-deps chrome
+          # Los navegadores se bajan de un TERCERO en cada run —Chrome son 135 MB
+          # desde dl.google.com— y eso falla cada cierto tiempo a media descarga:
+          # `curl: (92) HTTP/2 stream was not closed cleanly`. No es un fallo del
+          # código ni de la suite, pero tumba el pipeline entero igual. Tres
+          # intentos: `playwright install` es idempotente, así que repetirlo no
+          # cuesta nada cuando ya está puesto.
+          instalar() {
+            for intento in 1 2 3; do
+              "$@" && return 0
+              echo "::warning::Falló «$*» (intento $intento de 3). Se reintenta en 15 s."
+              sleep 15
+            done
+            echo "::error::No se pudo instalar el navegador tras 3 intentos. Suele ser red, no código."
+            return 1
+          }
+          instalar pnpm --filter admin exec playwright install --with-deps chrome
           # `db:deploy` antes del seed: en el runner `jamesfilm` nace vacía, sin
           # una sola tabla. En tu máquina ya está migrada de hace semanas, y por
           # eso este paso no hacía falta en local y sí aquí.
@@ -199,7 +214,22 @@ jobs:
       - name: Playwright · landing
         if: github.ref == 'refs/heads/main'
         run: |
-          pnpm --filter web exec playwright install --with-deps chromium
+          # Los navegadores se bajan de un TERCERO en cada run —Chrome son 135 MB
+          # desde dl.google.com— y eso falla cada cierto tiempo a media descarga:
+          # `curl: (92) HTTP/2 stream was not closed cleanly`. No es un fallo del
+          # código ni de la suite, pero tumba el pipeline entero igual. Tres
+          # intentos: `playwright install` es idempotente, así que repetirlo no
+          # cuesta nada cuando ya está puesto.
+          instalar() {
+            for intento in 1 2 3; do
+              "$@" && return 0
+              echo "::warning::Falló «$*» (intento $intento de 3). Se reintenta en 15 s."
+              sleep 15
+            done
+            echo "::error::No se pudo instalar el navegador tras 3 intentos. Suele ser red, no código."
+            return 1
+          }
+          instalar pnpm --filter web exec playwright install --with-deps chromium
           pnpm --filter api start &
           for i in $(seq 1 60); do
             curl -sf http://localhost:3000/galleries >/dev/null && break
