@@ -95,7 +95,16 @@ const og = new URL(imagen || OG_DE_RESPALDO, Astro.site).href;
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
 
+    <!--
+      Tres iconos y ninguno sobra: el SVG lo usan los navegadores modernos y
+      escala a cualquier densidad; el `.ico` es la ruta que algunos piden SOLOS
+      aunque no se declare —y si no existe, se sirve un 404 o, peor, lo que
+      hubiera antes—; y el PNG de 180 es el que iOS pone en la pantalla de
+      inicio, que es exactamente donde James va a tener la web.
+    -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/icono-180.png" />
     <slot name="head" />
   </head>
 
