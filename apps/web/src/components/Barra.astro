@@ -338,94 +338,94 @@ const menu = MENU.filter((m) => anclas.includes(m.href)).map((m) => ({
 
 <style is:global>
   /**
-   * EL MENÚ ENTRA DESLIZÁNDOSE, y SALE deslizándose.
+   * LA HOJA APARECE EN SU SITIO, no viaja hasta él.
    *
-   * Lo segundo es lo que no se puede hacer a mano: `close()` saca el `<dialog>`
-   * de la capa superior en el mismo fotograma, así que una animación de salida
-   * no llega a verse. Se resuelve con `transition-behavior: allow-discrete`
-   * sobre `display` y `overlay` —que mantienen el diálogo mientras dura la
-   * transición— y `@starting-style`, que es de dónde ARRANCA al abrirse.
-   * Nativo en Chrome 117+, Safari 17.4+ y Firefox 129+; donde no exista,
-   * aparece y desaparece de golpe, que es lo que hacía hasta ahora.
+   * Antes recorría su altura entera deslizándose desde abajo. Esto es lo
+   * contrario: sube 22 px, se materializa con opacidad y crece un 1,5 %. Nada
+   * vuela, así que se lee calmada en vez de teatral — que es justo lo que pide
+   * un menú, donde lo que importa es llegar a leerlo, no el viaje.
    *
-   * Solo `transform` y `opacity`, y dentro de `prefers-reduced-motion`.
-   * Un menú tiene que estar legible en cuanto se abre, así que la cascada de
-   * entrada de sus enlaces sigue sin existir: lo que se mueve es el panel
-   * entero, una sola capa que resuelve el compositor.
+   * El `scale` es DELIBERADAMENTE pequeño. Un 0.985 sobre un panel de 390px
+   * son seis píxeles: suficiente para que tenga cuerpo, demasiado poco para
+   * que el texto se vea deformarse mientras dura. Por encima de ~0.95 el
+   * contenido se nota estirarse y parece un fallo de render.
    *
-   * **ENTRA Y SALE A DISTINTA VELOCIDAD, y eso es lo que lo hace sentir bien.**
-   * Antes eran 260 ms iguales en los dos sentidos con la misma curva, y eso se
-   * nota mecánico: abrir es una respuesta a una intención —puede permitirse
-   * aterrizar despacio— y cerrar es quitarse de en medio, donde cualquier
-   * demora se lee como lentitud. 420 ms al abrir, 220 al cerrar acelerando.
+   * ENTRA Y SALE A DISTINTA VELOCIDAD, que es lo que lo separa de una
+   * transición de plantilla: 360 ms al abrir, frenando; 200 al cerrar,
+   * acelerando. Abrir responde a una intención y puede permitirse aterrizar
+   * despacio; cerrar es quitarse de en medio, donde cualquier demora se lee
+   * como lentitud. El truco para conseguirlo sin JS: la transición de ENTRADA
+   * se declara en `[open]` y la de SALIDA en el selector base, porque una
+   * transición la gobierna siempre el estado de DESTINO.
    *
-   * La curva de entrada es la de `vaul`, y se eligió MIDIENDO el recorrido
-   * fotograma a fotograma contra una `expo-out`: aquélla se comía el **56 %
-   * del camino en los primeros 50 ms** —llega igual de pronto, pero el arranque
-   * se siente un golpe— mientras que ésta hace el 34 % y sube suave. De paso
-   * iguala la sensación con el admin, que usa esa misma librería para sus
-   * hojas.
+   * La SALIDA no se puede animar a mano: `close()` saca el `<dialog>` de la
+   * capa superior en el mismo fotograma. Se resuelve con
+   * `transition-behavior: allow-discrete` sobre `display` y `overlay` —que lo
+   * mantienen mientras dura la transición— y `@starting-style`, que es de
+   * dónde arranca al abrirse. Nativo en Chrome 117+, Safari 17.4+ y Firefox
+   * 129+; donde no exista, aparece y desaparece de golpe.
    *
-   * El truco para conseguirlo sin JS: la transición de ENTRADA se declara en
-   * `[open]` y la de SALIDA en el selector base. Una transición la gobierna
-   * siempre el estado de DESTINO, así que al abrir manda la de `[open]` y al
-   * cerrar la de base.
-   *
-   * Y el velo va por delante del panel —entra en 320 y sale en 180—: el fondo
-   * oscurece antes de que la hoja llegue, que es lo que la ancla en vez de
-   * dejarla flotando sobre una página todavía clara.
-   *
-   * `is:global` y no un estilo con ámbito: `::backdrop` no es un descendiente
-   * del diálogo y el atributo de ámbito de Astro no llega hasta él. El `#id` ya
-   * lo acota a este único elemento.
+   * `is:global` y no un estilo con ámbito: `::backdrop` no es descendiente del
+   * diálogo y el atributo de ámbito de Astro no llega hasta él.
    */
   @media (prefers-reduced-motion: no-preference) {
-    /* `display` y `overlay` tienen que durar lo que dure lo que se ve: al
-       cerrar es lo que mantiene el diálogo en pantalla mientras baja. */
+    /* 40 ms más que lo que se ve: con el mismo número, un fotograma de
+       desajuste esfuma el panel antes de terminar y se lee como un corte. */
     #menu-movil {
       transition:
-        display 220ms allow-discrete,
-        overlay 220ms allow-discrete;
+        display 240ms allow-discrete,
+        overlay 240ms allow-discrete;
     }
     #menu-movil[open] {
       transition:
-        display 420ms allow-discrete,
-        overlay 420ms allow-discrete;
+        display 360ms allow-discrete,
+        overlay 360ms allow-discrete;
     }
 
     #menu-movil [data-panel] {
-      transform: translateY(100%);
-      /* SALIDA: acelera al irse. */
-      transition: transform 220ms cubic-bezier(0.4, 0, 1, 1);
+      transform: translateY(22px) scale(0.985);
+      transform-origin: bottom center;
+      opacity: 0;
+      /* SALIDA: acelera al irse, y la opacidad va por delante para que no se
+         vea «encogerse» un panel ya casi transparente. */
+      transition:
+        transform 200ms cubic-bezier(0.4, 0, 1, 1),
+        opacity 150ms ease-in;
     }
     #menu-movil[open] [data-panel] {
-      transform: translateY(0);
-      /* ENTRADA: arranca suave y frena al final, que es de donde sale la
-         sensación de peso. Sin opacidad: una hoja que se desvanece parece un
-         fallo de render, no una hoja. */
-      transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
+      transform: none;
+      opacity: 1;
+      /* ENTRADA: la opacidad termina MUCHO antes que el movimiento, y 120 no
+         es un número suelto — con 200 se leía el hero a través del menú
+         durante siglo y medio de milisegundos, con los dos textos encima uno
+         del otro. El panel es sólido casi al instante y lo que sigue
+         asentándose es solo la posición. */
+      transition:
+        transform 360ms cubic-bezier(0.32, 0.72, 0, 1),
+        opacity 120ms ease-out;
     }
 
     #menu-movil::backdrop {
       opacity: 0;
       transition:
-        opacity 180ms ease-in,
-        display 220ms allow-discrete,
-        overlay 220ms allow-discrete;
+        opacity 160ms ease-in,
+        display 240ms allow-discrete,
+        overlay 240ms allow-discrete;
     }
     #menu-movil[open]::backdrop {
       opacity: 1;
       transition:
-        opacity 320ms ease-out,
-        display 420ms allow-discrete,
-        overlay 420ms allow-discrete;
+        opacity 260ms ease-out,
+        display 360ms allow-discrete,
+        overlay 360ms allow-discrete;
     }
 
     /* De dónde arranca la PRIMERA vez que se pinta. Sin esto no hay transición
        de entrada: el elemento nace ya en su estado final. */
     @starting-style {
       #menu-movil[open] [data-panel] {
-        transform: translateY(100%);
+        transform: translateY(22px) scale(0.985);
+        opacity: 0;
       }
       #menu-movil[open]::backdrop {
         opacity: 0;
@@ -562,24 +562,22 @@ const menu = MENU.filter((m) => anclas.includes(m.href)).map((m) => ({
      * botón: con un clic de verdad, `showModal()` no mueve nada. El fallo real
      * era el otro, el de arrastrar con el menú ya abierto.
      *
-     * Y se compensa el ancho de la barra de scroll cuando la hay: quitarla sin
-     * más ensancha el documento y toda la página da un tirón lateral. En un
-     * móvil no existe y no compensa nada.
+     * El ancho de la barra NO se compensa desde aquí: lo reserva de entrada
+     * `scrollbar-gutter: stable` en `global.css`. Se hacía con `padding-right`
+     * y era la causa de un tirón lateral al cerrar — el bloqueo se suelta en
+     * `close`, que salta al EMPEZAR la salida, así que la barra volvía a media
+     * animación y la página entera se desplazaba mientras el panel aún se
+     * movía. Con el hueco reservado siempre no hay nada que compensar.
      */
     const raiz = document.documentElement;
-    let padOriginal = '';
 
     dialogo.addEventListener('close', () => {
       raiz.style.overflow = '';
-      raiz.style.paddingRight = padOriginal;
     });
 
     for (const b of document.querySelectorAll('[data-abrir-menu]')) {
       b.addEventListener('click', () => {
-        const barra = window.innerWidth - raiz.clientWidth;
-        padOriginal = raiz.style.paddingRight;
         raiz.style.overflow = 'hidden';
-        if (barra > 0) raiz.style.paddingRight = `${barra}px`;
         dialogo.showModal();
       });
     }
@@ -608,7 +606,10 @@ const menu = MENU.filter((m) => anclas.includes(m.href)).map((m) => ({
     // Pulsar el fondo cierra. El `::backdrop` no recibe clics: el evento llega
     // al propio `<dialog>`, y solo cuando el punto queda fuera de su contenido.
     dialogo.addEventListener('click', (e) => {
-      const panel = dialogo.firstElementChild?.lastElementChild;
+      // Por `[data-panel]`, no por la posición: con `lastElementChild` del
+      // primer hijo, mover o envolver el panel rompía el cierre por fondo sin
+      // que fallara nada visible.
+      const panel = dialogo.querySelector('[data-panel]');
       if (!(panel instanceof Element)) return;
       const c = panel.getBoundingClientRect();
       const dentro =

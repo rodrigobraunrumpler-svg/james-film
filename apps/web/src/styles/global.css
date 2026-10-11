@@ -320,6 +320,25 @@
   }
   html {
     scroll-behavior: smooth;
+
+    /*
+     * EL HUECO DE LA BARRA SE RESERVA SIEMPRE, y eso es lo que impide que
+     * abrir o cerrar el menú mueva la página de lado.
+     *
+     * Con el menú abierto se bloquea el scroll (`overflow: hidden`), y en un
+     * escritorio con barras clásicas eso devuelve ~15px de ancho a la página:
+     * TODO se desplaza. Antes se compensaba desde JS sumando ese ancho como
+     * `padding-right`, pero el bloqueo se soltaba en el evento `close` —que
+     * salta al EMPEZAR a cerrarse, no al terminar—, así que la barra volvía a
+     * media animación y la página pegaba un tirón mientras el cajón aún
+     * salía. Se veía como un rebote, y de paso el envoltorio de `100dvw`
+     * quedaba más ancho que lo visible durante esos 220 ms.
+     *
+     * Con el hueco reservado de entrada no hay nada que compensar ni momento
+     * en que compensarlo. En móvil las barras son superpuestas y esto no
+     * reserva nada, así que no cuesta un píxel donde no hace falta.
+     */
+    scrollbar-gutter: stable;
   }
 }
 
