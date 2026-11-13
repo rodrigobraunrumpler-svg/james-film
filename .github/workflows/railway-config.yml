@@ -1,0 +1,64 @@
+name: Railway config
+
+# Railway como código (`.railway/railway.ts`), con el flujo que recomienda Railway: el PR recibe
+# el plan como comentario y al mergear se aplica ESE plan, no uno recalculado. Si entre medias el
+# entorno cambió —otro apply, una edición en el dashboard— el apply falla y hay que replanificar:
+# nunca se aplica algo distinto de lo que se revisó.
+#
+# Requisito: el secreto `RAILWAY_TOKEN`, un token de PROYECTO del entorno `production`
+# (Railway → Project Settings → Tokens). No uno de cuenta: este solo puede tocar ese entorno.
+#
+# ⚠ Los cambios a `.railway/` van SOLO por PR. Un push directo a `main` no tiene plan fijado, así
+# que el apply falla a propósito, y con «Wait for CI» Railway tampoco despliega ese commit.
+
+on:
+  pull_request:
+    paths: ['.railway/**']
+  push:
+    branches: [main]
+    paths: ['.railway/**']
+
+permissions: {}
+
+jobs:
+  plan:
+    # Los PR que vienen de forks no reciben secretos.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # el comentario con el plan
+    concurrency:
+      group: railway-plan-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: railwayapp/config@v1
+        with:
+          command: plan
+          railway-token: ${{ secrets.RAILWAY_TOKEN }}
+
+  apply:
+    # En el push del merge y no en el `closed` del PR: «Wait for CI» espera a los checks de ESTE
+    # commit, así que Railway no despliega hasta que la config nueva está aplicada.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read # descargar el plan que dejó el job del PR
+      pull-requests: read # encontrar el PR de este commit
+    # Sin cancelación, como las migraciones: un apply cortado a medias es peor que dos en fila.
+    concurrency:
+      group: railway-apply
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: railwayapp/config@v1
+        with:
+          command: apply
+          railway-token: ${{ secrets.RAILWAY_TOKEN }}
+          # Borrar un servicio, una variable o un volumen no ocurre solo por mergear: el apply
+          # falla, y se hace a mano con `railway config apply --confirm-destructive`.
+          confirm-destructive: false

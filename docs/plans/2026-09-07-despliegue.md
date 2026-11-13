@@ -356,13 +356,21 @@ hay menores en los XV años.
 > until **2026-12-01**. Starting 2026-08-28, services that have never used Config as Code cannot
 > opt in.
 
-- [ ] `railway config init` y `railway config pull` — importa el proyecto ya en verde, no lo
-      escribas a mano
-- [ ] Que `.railway/railway.ts` reproduzca las ocho claves de `railway.json`, más
-      `sleepApplication: false`
-- [ ] `railway config plan` y comparar contra los ajustes vivos **antes** de `apply`
-- [ ] Borrar `railway.json` y reescribir `railway.md` contra el fichero nuevo
-- [ ] Las diez variables y el dominio pasan al fichero: dejan de vivir solo en el dashboard
+- [x] ~~`railway config init` y `railway config pull`~~ — **escrito a mano** (13-nov-2026) contra los
+      tipos del SDK (`railway/iac`), porque no había CLI ni sesión de Railway en la máquina. Lo que
+      sustituye a «importar lo vivo» es el punto 3: el plan del PR enseña cada diferencia antes de
+      aplicar nada
+- [x] Que `.railway/railway.ts` reproduzca las ocho claves de `railway.json`, más
+      `sleepApplication: false` — y además `watchPatterns` (lo que entra en la imagen) y
+      `checkSuites` («Wait for CI»)
+- [ ] `railway config plan` y comparar contra los ajustes vivos **antes** de `apply` — lo hace el
+      workflow `railway-config.yml` como comentario en el PR. Pide antes el secreto `RAILWAY_TOKEN`
+      (token de PROYECTO del entorno `production`)
+- [x] Borrar `railway.json` y ~~reescribir `railway.md`~~ — borrados los dos: `railway.md` solo
+      existía porque JSON no admite comentarios, y sus porqués van ahora junto a cada ajuste
+- [x] Las diez variables pasan al fichero: los secretos con `preserve()` (el valor sigue en
+      Railway) y `S3_BUCKET`, `NODE_ENV` y `PRESIGN_TTL_SECONDS` con su valor. El dominio generado
+      no se declara —IaC no gestiona esos—; el propio entra en `domains` en la etapa 5
 
 **Cómo se comprueba:** `railway config plan` sin diferencias contra lo desplegado, y un deploy
 después que siga pasando las dos comprobaciones de la etapa 1 — `/health` en 200 y `/docs/admin`
