@@ -1260,9 +1260,14 @@ van en beta). Sustituye a `railway.json`, que Railway deja de leer el 1-dic-2026
 - `confirm-destructive: false`: borrar un servicio, una variable o un volumen nunca ocurre solo por
   mergear. `RAILWAY_TOKEN` es un token de **proyecto** del entorno `production`, no de cuenta.
 - Secretos con `preserve()`: se declara que existen, el valor no entra en el repo.
-- **`tsc -p .railway` va dentro de `pnpm typecheck`**: el objeto de `service()` es enorme y todo
-  opcional, y una clave mal escrita solo la caza el chequeo de propiedades sobrantes. Sin él,
+- **`tsconfig.railway.json` va dentro de `pnpm typecheck`**: el objeto de `service()` es enorme y
+  todo opcional, y una clave mal escrita solo la caza el chequeo de propiedades sobrantes. Sin él,
   `healtcheckPath` borraría el healthcheck sin un solo error. Comprobado.
+- **`railwayapp/config@v1` instala la raíz con NPM, no con pnpm** — su README sugiere detectar el
+  gestor y la `v1` no lo hace. Un `catalog:` o un `workspace:` en el `package.json` raíz y el plan
+  muere con `EUNSUPPORTEDPROTOCOL` sin evaluar nada. Pasó con el primer PR (#18): por eso el `tsc`
+  de ese typecheck lo pone `apps/api`. Y **nunca se mergea con el plan en rojo**: el apply busca
+  el plan de la cabeza del PR, no lo encuentra y falla también.
 
 ---
 

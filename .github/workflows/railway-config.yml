@@ -10,6 +10,9 @@ name: Railway config
 #
 # ⚠ Los cambios a `.railway/` van SOLO por PR. Un push directo a `main` no tiene plan fijado, así
 # que el apply falla a propósito, y con «Wait for CI» Railway tampoco despliega ese commit.
+# ⚠ Nunca se mergea con el plan en rojo: sin plan no hay nada que aplicar y el apply también falla.
+# ⚠ La action instala la raíz con NPM, no con pnpm: el `package.json` raíz no puede usar
+# `catalog:` ni `workspace:`, o el plan muere con EUNSUPPORTEDPROTOCOL antes de evaluar nada.
 
 on:
   pull_request:

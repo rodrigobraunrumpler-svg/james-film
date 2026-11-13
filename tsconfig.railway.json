@@ -1,0 +1,19 @@
+{
+  // Typecheck de `.railway/railway.ts` dentro de `pnpm typecheck`, y con eso en el CI. El objeto de
+  // `service()` es enorme y todo opcional: una clave mal escrita (`healtcheckPath`) solo la caza el
+  // chequeo de propiedades sobrantes, y sin él el healthcheck desaparecería sin un error.
+  //
+  // Vive FUERA de `.railway/` para que ahí solo haya lo que lee Railway. Y el `tsc` lo pone
+  // `apps/api` porque la raíz no puede declarar `typescript: catalog:`: la action de Railway
+  // instala la raíz con npm, que no entiende `catalog:`, y el plan muere con EUNSUPPORTEDPROTOCOL.
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "es2023",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": [],
+    "skipLibCheck": true
+  },
+  "include": [".railway/railway.ts"]
+}
