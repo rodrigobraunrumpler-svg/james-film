@@ -368,9 +368,11 @@ hay menores en los XV años.
       (token de PROYECTO del entorno `production`)
 - [x] Borrar `railway.json` y ~~reescribir `railway.md`~~ — borrados los dos: `railway.md` solo
       existía porque JSON no admite comentarios, y sus porqués van ahora junto a cada ajuste
-- [x] Las diez variables pasan al fichero: los secretos con `preserve()` (el valor sigue en
-      Railway) y `S3_BUCKET`, `NODE_ENV` y `PRESIGN_TTL_SECONDS` con su valor. El dominio generado
-      no se declara —IaC no gestiona esos—; el propio entra en `domains` en la etapa 5
+- [x] Las variables pasan al fichero —las diez, más `WEB_ORIGIN` y `DEPLOY_HOOK_URL`, que ya
+      estaban en Railway y el primer plan quería BORRAR por no estar declaradas—: los secretos con
+      `preserve()` (el valor sigue en Railway) y `S3_BUCKET`, `NODE_ENV` y `PRESIGN_TTL_SECONDS` con
+      su valor. El dominio generado no se declara —IaC no gestiona esos—; el propio entra en
+      `domains` en la etapa 5
 
 **Cómo se comprueba:** `railway config plan` sin diferencias contra lo desplegado, y un deploy
 después que siga pasando las dos comprobaciones de la etapa 1 — `/health` en 200 y `/docs/admin`

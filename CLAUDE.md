@@ -1259,7 +1259,10 @@ van en beta). Sustituye a `railway.json`, que Railway deja de leer el 1-dic-2026
   y un apply con el entorno cambiado entre el plan y el merge se rechaza.
 - `confirm-destructive: false`: borrar un servicio, una variable o un volumen nunca ocurre solo por
   mergear. `RAILWAY_TOKEN` es un token de **proyecto** del entorno `production`, no de cuenta.
-- Secretos con `preserve()`: se declara que existen, el valor no entra en el repo.
+- **El `env` del fichero es la lista COMPLETA de variables**: la que no se nombra, el plan la
+  BORRA de Railway. Pasó en el PR #19 con `WEB_ORIGIN` y `DEPLOY_HOOK_URL` —el clic a WhatsApp y
+  el rebuild de la landing— y lo paró `confirm-destructive: false`. Variable nueva en Railway =
+  línea nueva aquí, en el mismo PR. Los secretos van con `preserve()`: el valor no entra en el repo.
 - **`tsconfig.railway.json` va dentro de `pnpm typecheck`**: el objeto de `service()` es enorme y
   todo opcional, y una clave mal escrita solo la caza el chequeo de propiedades sobrantes. Sin él,
   `healtcheckPath` borraría el healthcheck sin un solo error. Comprobado.
