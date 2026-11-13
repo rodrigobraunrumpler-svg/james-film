@@ -987,6 +987,12 @@ en paquetes por cantidad de reels, duración y velocidad de entrega. Ayacucho, P
   o de dar una suite por buena: `ss -ltnp | grep 4321`. Y `astro dev stop` no siempre lo mata
   —si el registro del demonio se perdió dice «No dev server is running» con el proceso vivo—,
   así que ahí sí toca `kill` del pid que nombre `ss`.
+- **`scrollbar-gutter: stable` encoge el proyecto `movil` sin que se vea ninguna barra.** El
+  Chromium sin cabeza de Playwright oculta las barras pero reserva el hueco igual: a 390 la página
+  se maqueta en 375 —con `clientWidth` diciendo 390— y los días del calendario bajaron de 44,6 a
+  42,4 px. Tuvo `main` en rojo un mes, desde `9a5b7a1`, sin que un teléfono lo enseñara: allí las
+  barras son superpuestas y el hueco no reserva nada. Va bajo `(pointer: coarse)`, la condición
+  con la que el menú bloquea el scroll, que es lo único que lo necesita.
 - **`qs` y `mysql2` van forzados** en `overrides`. El primero SÍ está en el camino de una
   petición —parsea la query string de Express— y el segundo no se carga nunca aquí, pero acaba
   en el árbol de `pnpm deploy --prod`. Con ellos, `pnpm audit` da cero.

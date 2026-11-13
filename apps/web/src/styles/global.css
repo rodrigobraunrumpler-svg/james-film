@@ -320,21 +320,27 @@
   }
   html {
     scroll-behavior: smooth;
+  }
+}
 
-    /*
-     * EL HUECO DE LA BARRA SE RESERVA SIEMPRE, para que bloquear el scroll no
-     * mueva la página de lado.
-     *
-     * Con el menú abierto se bloquea el scroll (`overflow: hidden`), y donde
-     * las barras son clásicas eso devuelve ~15px de ancho a la página: TODO se
-     * desplaza. Con el hueco reservado de entrada no hay nada que compensar.
-     *
-     * Y SÍ, sigue haciendo falta aunque el bloqueo se aplique ya solo con
-     * `pointer: coarse` (ver `Barra.astro`): un portátil táctil tiene dedo Y
-     * barras clásicas a la vez, y ése es justo el cruce donde el salto
-     * aparecería. En un móvil las barras son superpuestas y esto no reserva
-     * nada, así que no cuesta un píxel donde no hace falta.
-     */
+/*
+ * EL HUECO DE LA BARRA SE RESERVA DONDE EL MENÚ BLOQUEA EL SCROLL, para que
+ * bloquearlo no mueva la página de lado: con `overflow: hidden` y barras
+ * clásicas la página recupera ~15px y TODO se desplaza. Es el portátil táctil,
+ * que tiene dedo Y barras clásicas a la vez.
+ *
+ * Bajo `pointer: coarse`, la MISMA condición del bloqueo (ver `Barra.astro`), y
+ * no suelto. Suelto, el Chromium sin cabeza de Playwright —oculta las barras
+ * pero reserva el hueco igual— maquetaba el proyecto `movil` en 375px y no en
+ * 390, y los días del calendario bajaban de 44,6 a 42,4px. En un teléfono las
+ * barras son superpuestas y el hueco no reserva nada: el fallo solo existía en
+ * el test.
+ *
+ * Y FUERA del bloque de movimiento, donde estaba: el bloqueo no mira
+ * `prefers-reduced-motion`, así que con movimiento reducido la página saltaba.
+ */
+@media (pointer: coarse) {
+  html {
     scrollbar-gutter: stable;
   }
 }
