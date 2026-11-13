@@ -65,9 +65,10 @@ export default defineRailway(() => {
     // deploy hooks. Arreglarlo pediría Redis.
     replicas: { [REGION]: 1 },
 
-    // Solo las variables cuyo valor difiere del default de `env.schema.ts`. `preserve()` declara
-    // que existe y deja el valor en Railway: ningún secreto entra en el repo. `PORT` lo inyecta
-    // Railway.
+    // La lista COMPLETA de variables del servicio: la que no se nombra aquí, el plan la BORRA de
+    // Railway (pasó con WEB_ORIGIN y DEPLOY_HOOK_URL; lo paró `confirm-destructive: false`). Entran
+    // solo las que difieren del default de `env.schema.ts`, y `PORT` lo inyecta Railway.
+    // `preserve()` deja el valor en Railway: ningún secreto entra en el repo.
     env: {
       DATABASE_URL: preserve(), // Neon CON `-pooler`
       DIRECT_URL: preserve(), // Neon SIN `-pooler`. El esquema la exige aunque solo migre el CI
@@ -83,9 +84,11 @@ export default defineRailway(() => {
       // El default son 900 s. Con 15 min, un aftermovie de 115 MB por 4G se queda sin URL a media
       // subida y R2 contesta 403 sin mencionar la caducidad.
       PRESIGN_TTL_SECONDS: '3600',
-      // Entran con la landing (etapas 4 y 5 del plan de despliegue):
-      // - WEB_ORIGIN: con el default (localhost) el clic a WhatsApp no se registra, y en silencio.
-      // - DEPLOY_HOOK_URL: sin él, lo que edita James no llega a la web.
+      // El origen de la landing. Con el default (localhost) el CORS rechaza el clic a WhatsApp, y
+      // en silencio: el panel diría «0 clics».
+      WEB_ORIGIN: preserve(),
+      // El Deploy Hook de Cloudflare Pages. Sin él, lo que edita James no llega a la web.
+      DEPLOY_HOOK_URL: preserve(),
     },
     // El dominio generado (`*.up.railway.app`) no se declara: IaC no gestiona esos. El propio
     // (`api.<dominio>`) entra aquí, en `domains`, en la etapa 5.
