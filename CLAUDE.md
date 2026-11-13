@@ -1250,6 +1250,20 @@ seek *después* de `loadedmetadata`) → presign en lote → PUT directo a R2 v�
 (concurrencia 3, backoff 1/2/4s) → PUT del poster → `confirm` → **HEAD a R2 para verificar
 que `ContentLength` coincide** → `READY`. Si no coincide: `FAILED` + `error`.
 
+**Railway se declara en `.railway/railway.ts`** (IaC; solo TypeScript, que es lo GA — Python y Go
+van en beta). Sustituye a `railway.json`, que Railway deja de leer el 1-dic-2026.
+- **Los cambios a `.railway/` van SIEMPRE por PR.** `railway-config.yml` comenta el plan en el PR y
+  al mergear aplica ESE plan. Un push directo a `main` que toque `.railway/` no tiene plan fijado:
+  el apply falla a propósito y «Wait for CI» deja ese commit **sin desplegar**.
+- **Lo que el fichero declara no se toca en el dashboard**: el siguiente plan lo vería como deriva,
+  y un apply con el entorno cambiado entre el plan y el merge se rechaza.
+- `confirm-destructive: false`: borrar un servicio, una variable o un volumen nunca ocurre solo por
+  mergear. `RAILWAY_TOKEN` es un token de **proyecto** del entorno `production`, no de cuenta.
+- Secretos con `preserve()`: se declara que existen, el valor no entra en el repo.
+- **`tsc -p .railway` va dentro de `pnpm typecheck`**: el objeto de `service()` es enorme y todo
+  opcional, y una clave mal escrita solo la caza el chequeo de propiedades sobrantes. Sin él,
+  `healtcheckPath` borraría el healthcheck sin un solo error. Comprobado.
+
 ---
 
 ## 5. Convenciones de código

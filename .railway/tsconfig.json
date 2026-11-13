@@ -1,0 +1,15 @@
+{
+  // Solo para typecheckear `railway.ts` dentro de `pnpm typecheck`, y con eso en el CI. El objeto
+  // de `service()` es enorme y todo opcional: una clave mal escrita (`healtcheckPath`) solo la caza
+  // el chequeo de propiedades sobrantes, y sin él el healthcheck desaparecería sin un error.
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "es2023",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": [],
+    "skipLibCheck": true
+  },
+  "include": ["railway.ts"]
+}

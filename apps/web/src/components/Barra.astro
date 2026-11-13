@@ -562,14 +562,21 @@ const menu = MENU.filter((m) => anclas.includes(m.href)).map((m) => ({
      * botón: con un clic de verdad, `showModal()` no mueve nada. El fallo real
      * era el otro, el de arrastrar con el menú ya abierto.
      *
-     * El ancho de la barra NO se compensa desde aquí: lo reserva de entrada
-     * `scrollbar-gutter: stable` en `global.css`. Se hacía con `padding-right`
-     * y era la causa de un tirón lateral al cerrar — el bloqueo se suelta en
-     * `close`, que salta al EMPEZAR la salida, así que la barra volvía a media
-     * animación y la página entera se desplazaba mientras el panel aún se
-     * movía. Con el hueco reservado siempre no hay nada que compensar.
+     * **Y SOLO SE BLOQUEA CON EL DEDO**, que es de quien hablaba el párrafo de
+     * arriba. Con ratón no hace falta —nadie arrastra el fondo sin querer— y
+     * hacerlo tiene un coste visible: `overflow: hidden` **hace desaparecer la
+     * barra de scroll**, así que al abrir el menú en una ventana estrecha de
+     * escritorio la barra se esfuma y vuelve, y eso se lee como que algo se
+     * rompió. En un móvil las barras son superpuestas y no se ve nada.
+     *
+     * Antes se compensaba además el ancho de la barra con `padding-right` para
+     * que la página no diera un tirón lateral. Eso también se va: sin bloqueo
+     * no hay nada que compensar, y aquella compensación se soltaba en el evento
+     * `close` —que salta al EMPEZAR la salida— así que devolvía la barra a
+     * media animación y desplazaba la página mientras el panel aún se movía.
      */
     const raiz = document.documentElement;
+    const conDedo = window.matchMedia('(pointer: coarse)');
 
     dialogo.addEventListener('close', () => {
       raiz.style.overflow = '';
@@ -577,7 +584,7 @@ const menu = MENU.filter((m) => anclas.includes(m.href)).map((m) => ({
 
     for (const b of document.querySelectorAll('[data-abrir-menu]')) {
       b.addEventListener('click', () => {
-        raiz.style.overflow = 'hidden';
+        if (conDedo.matches) raiz.style.overflow = 'hidden';
         dialogo.showModal();
       });
     }
